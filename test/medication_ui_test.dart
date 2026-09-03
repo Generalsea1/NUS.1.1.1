@@ -10,7 +10,6 @@ import 'package:nus/features/medications/data/local_medication_repository.dart';
 import 'package:nus/features/medications/domain/medication.dart';
 import 'package:nus/features/medications/domain/medication_reminder_port.dart';
 import 'package:nus/features/medications/presentation/medication_editor_page.dart';
-import 'package:nus/features/medications/presentation/medication_details_page.dart';
 import 'package:nus/features/medications/presentation/medications_page.dart';
 
 class _FakeReminderPort implements MedicationReminderPort {
