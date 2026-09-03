@@ -5,6 +5,7 @@ import 'package:timezone/data/latest_all.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
 
 import 'core/app_identity.dart';
+import 'core/supabase_service.dart';
 
 abstract interface class ReminderScheduler {
   Future<void> scheduleReminder({
@@ -34,6 +35,8 @@ class NotificationService implements ReminderScheduler {
     const settings = InitializationSettings(android: android);
     await _plugin.initialize(settings);
     _initialized = true;
+
+    await SupabaseService.initialize();
   }
 
   Future<bool> requestPermission() async {
