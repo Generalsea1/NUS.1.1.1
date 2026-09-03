@@ -193,7 +193,7 @@ jobs:
           printf '%s\n' "$BADGING" | grep -F "application-label:'NUS'"
           printf '%s\n' "$BADGING" | grep -F "application-icon:"
 
-          unzip -l "$APK" | grep -E 'mipmap-(mdpi|hdpi|xhdpi|xxhdpi|xxxhdpi)/ic_launcher(_round)?\.png$'
+          unzip -l "$APK" | grep -E 'res/mipmap-(mdpi|hdpi|xhdpi|xxhdpi|xxxhdpi)(-v[0-9]+)?/ic_launcher(_round)?\.png$'
           echo 'Packaged Android label and launcher icon resources verified.'
 
       - name: Upload APK
