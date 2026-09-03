@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:nus/core/app_identity.dart';
 import 'package:nus/main.dart';
 import 'package:nus/notification_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -27,6 +28,12 @@ class FakeReminderScheduler implements ReminderScheduler {
 void main() {
   setUp(() {
     SharedPreferences.setMockInitialValues({});
+  });
+
+  test('NUS identity contract is canonical and stable', () {
+    expect(AppIdentity.name, 'NUS');
+    expect(AppIdentity.packageName, 'nus');
+    expect(AppIdentity.scheduleChannelId, 'nus_schedule');
   });
 
   test('ScheduleItem round-trips through JSON without losing data', () {
