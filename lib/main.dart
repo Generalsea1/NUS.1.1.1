@@ -377,7 +377,7 @@ class _HomePageState extends State<HomePage> {
     final controller = TextEditingController();
     var selected = DateTime.now().add(const Duration(minutes: 30));
 
-    await showModalBottomSheet<void>(
+    final reminder = await showModalBottomSheet<({String title, DateTime dateTime})>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
@@ -445,14 +445,16 @@ class _HomePageState extends State<HomePage> {
               ]),
               const SizedBox(height: 16),
               FilledButton(
-                onPressed: () async {
+                onPressed: () {
                   final title = controller.text.trim();
                   final reminderDate = selected;
                   if (title.isEmpty || !reminderDate.isAfter(DateTime.now())) {
                     return;
                   }
-                  Navigator.of(context).pop();
-                  await widget.store.add(title, reminderDate);
+                  Navigator.of(context).pop((
+                    title: title,
+                    dateTime: reminderDate,
+                  ));
                 },
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 14),
@@ -469,6 +471,9 @@ class _HomePageState extends State<HomePage> {
       ),
     );
     controller.dispose();
+
+    if (!mounted || reminder == null) return;
+    await widget.store.add(reminder.title, reminder.dateTime);
   }
 }
 
