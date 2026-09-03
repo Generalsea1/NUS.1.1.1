@@ -40,6 +40,8 @@ NUS does not manually store access tokens or refresh tokens. Supabase remains re
 
 Future Email and Native Google authentication implementations must enter through `AuthRepository`. UI and business logic must not call Supabase Auth directly. No provider login is implemented in this phase.
 
+The repository also exposes a future `signOut()` boundary method, but no logout UI or provider-specific login flow is wired by Phase 3.
+
 ## Reminder isolation
 
 `ScheduleStore` continues to own local reminder persistence via `SharedPreferences` using `nos.schedule.v1`. `NotificationService` remains the local notification scheduler.
