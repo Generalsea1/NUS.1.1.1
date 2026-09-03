@@ -20,11 +20,11 @@ class AppointmentReminderCoordinator {
     while (scheduledCount < _maxOccurrences) {
       if (occurrence.isAfter(now)) {
         final reminderAt = occurrence.subtract(_reminderOffset(appointment.reminder));
-        if (reminderAt.isAfter(now)) {
+        if (reminderAt.isAfter(now) || appointment.reminder == AppointmentReminder.atTime) {
           await port.schedule(
             id: _occurrenceId(appointment.id, scheduledCount),
             title: appointment.title,
-            dateTime: reminderAt,
+            dateTime: reminderAt.isAfter(now) ? reminderAt : occurrence,
           );
         }
         scheduledCount++;
@@ -86,8 +86,20 @@ class AppointmentReminderCoordinator {
     }
   }
 
+  // Numeric IDs keep scheduling/cancellation deterministic across app restarts
+  // because the existing NotificationService treats numeric IDs as-is.
   static String _occurrenceId(String appointmentId, int index) =>
-      'appointment:$appointmentId:occurrence:$index';
+      _stableId('$appointmentId:occurrence:$index').toString();
 
-  static String _followUpId(String appointmentId) => 'appointment:$appointmentId:followup';
+  static String _followUpId(String appointmentId) =>
+      _stableId('$appointmentId:followup').toString();
+
+  static int _stableId(String value) {
+    var hash = 2166136261;
+    for (final unit in value.codeUnits) {
+      hash ^= unit;
+      hash = (hash * 16777619) & 0x7fffffff;
+    }
+    return hash == 0 ? 1 : hash;
+  }
 }
