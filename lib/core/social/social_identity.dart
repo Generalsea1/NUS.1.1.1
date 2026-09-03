@@ -19,8 +19,7 @@ class SocialIdentity {
         bio = _validateBio(bio),
         avatarUrl = _validateOptionalUrl(avatarUrl, 'avatarUrl'),
         coverUrl = _validateOptionalUrl(coverUrl, 'coverUrl'),
-        websiteUrl = _validateOptionalUrl(websiteUrl, 'websiteUrl'),
-        isVerified = isVerified;
+        websiteUrl = _validateOptionalUrl(websiteUrl, 'websiteUrl');
 
   final String id;
   final String username;
