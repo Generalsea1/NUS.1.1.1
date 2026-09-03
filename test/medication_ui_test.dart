@@ -1,5 +1,5 @@
-// Medication UI tests intentionally exercise both presentation navigation and
-// the application lifecycle boundary without touching NotificationService.
+// Medication UI tests exercise presentation navigation and the application
+// lifecycle boundary without touching NotificationService directly.
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -80,6 +80,15 @@ Future<void> _pumpPage(WidgetTester tester, MedicationLifecycleService service) 
   await tester.pumpAndSettle();
 }
 
+Future<void> _scrollToText(WidgetTester tester, String text) async {
+  await tester.scrollUntilVisible(
+    find.text(text),
+    400,
+    scrollable: find.byType(Scrollable).last,
+  );
+  await tester.pumpAndSettle();
+}
+
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
@@ -102,6 +111,7 @@ void main() {
 
     await tester.enterText(find.byType(TextField).at(0), 'Morning medicine');
     await tester.enterText(find.byType(TextField).at(1), '2');
+    await _scrollToText(tester, 'حفظ الدواء');
     await tester.tap(find.text('حفظ الدواء'));
     await tester.pumpAndSettle();
 
@@ -117,6 +127,7 @@ void main() {
     await tester.tap(find.text('إضافة دواء').first);
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField).at(1), '1');
+    await _scrollToText(tester, 'حفظ الدواء');
     await tester.tap(find.text('حفظ الدواء'));
     await tester.pump();
 
@@ -136,6 +147,7 @@ void main() {
     await tester.tap(find.byIcon(Icons.edit_outlined));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField).at(0), 'Edited medicine');
+    await _scrollToText(tester, 'حفظ التعديلات');
     await tester.tap(find.text('حفظ التعديلات'));
     await tester.pumpAndSettle();
 
@@ -154,8 +166,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect((await service.repository.getById('m1'))!.isActive, isFalse);
-    final cancelledAfterDeactivate = port.cancelled.length;
-    expect(cancelledAfterDeactivate, greaterThan(0));
+    expect(port.cancelled, isNotEmpty);
 
     await tester.tap(find.text('Daily medicine'));
     await tester.pumpAndSettle();
@@ -183,12 +194,8 @@ void main() {
     expect(port.cancelled, isNotEmpty);
   });
 
-  testWidgets('schedule creation and editing expose only supported frequency and reminder choices', (tester) async {
-    await tester.pumpWidget(
-      const MaterialApp(
-        home: MedicationEditorPage(),
-      ),
-    );
+  testWidgets('schedule editor exposes supported recurrence and reminder choices', (tester) async {
+    await tester.pumpWidget(const MaterialApp(home: MedicationEditorPage()));
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('إضافة', skipOffstage: false));
