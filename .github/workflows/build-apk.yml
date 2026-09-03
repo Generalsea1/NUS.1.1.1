@@ -1,4 +1,4 @@
-name: Build NOS Android APK
+name: Build NUS Android APK
 
 on:
   workflow_dispatch:
@@ -6,7 +6,7 @@ on:
     branches: [ main ]
 
 concurrency:
-  group: nos-android-build
+  group: nus-android-build
   cancel-in-progress: true
 
 jobs:
@@ -23,7 +23,7 @@ jobs:
           cache: true
 
       - name: Generate Android project files
-        run: flutter create --platforms=android --project-name=nos .
+        run: flutter create --platforms=android --project-name=nus .
 
       - name: Configure Android notification scheduling
         shell: python
@@ -113,5 +113,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: nos-debug-apk
+          name: nus-debug-apk
           path: build/app/outputs/flutter-apk/app-debug.apk
