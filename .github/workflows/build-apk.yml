@@ -21,11 +21,20 @@ jobs:
       - name: Generate Android project files
         run: flutter create --platforms=android --project-name=nos .
 
+      - name: Restore repository test after Flutter scaffolding
+        run: git checkout -- test/widget_test.dart
+
       - name: Get dependencies
         run: flutter pub get
 
+      - name: Verify formatting
+        run: dart format --output=none --set-exit-if-changed lib test
+
       - name: Analyze
         run: flutter analyze
+
+      - name: Test
+        run: flutter test
 
       - name: Build debug APK
         run: flutter build apk --debug
