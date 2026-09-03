@@ -25,6 +25,73 @@ jobs:
       - name: Generate Android project files
         run: flutter create --platforms=android --project-name=nus .
 
+      - name: Configure NUS branding and launcher icon
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          ICON_SOURCE='Neural_network_brain_app_icon_202609031742.jpeg'
+          test -s "$ICON_SOURCE"
+
+          command -v identify
+          command -v convert
+
+          identify_output="$(identify -format '%m %wx%h %[channels]' "$ICON_SOURCE")"
+          printf 'NUS icon source: %s\n' "$identify_output"
+
+          case "$identify_output" in
+            JPEG\ *x*\ *) ;;
+            *) echo 'ERROR: NUS launcher source must be a JPEG image.' >&2; exit 1 ;;
+          esac
+
+          for spec in \
+            'mdpi:48' \
+            'hdpi:72' \
+            'xhdpi:96' \
+            'xxhdpi:144' \
+            'xxxhdpi:192'; do
+            density="${spec%%:*}"
+            size="${spec##*:}"
+            target="android/app/src/main/res/mipmap-${density}"
+            mkdir -p "$target"
+            convert "$ICON_SOURCE" \
+              -auto-orient \
+              -resize "${size}x${size}^" \
+              -gravity center \
+              -extent "${size}x${size}" \
+              -strip \
+              -define png:color-type=6 \
+              "$target/ic_launcher.png"
+            cp "$target/ic_launcher.png" "$target/ic_launcher_round.png"
+          done
+
+          rm -f \
+            android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml \
+            android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
+
+          manifest='android/app/src/main/AndroidManifest.xml'
+          python3 - "$manifest" <<'PY'
+          from pathlib import Path
+          import re
+          import sys
+
+          manifest = Path(sys.argv[1])
+          text = manifest.read_text()
+          updated, count = re.subn(r'android:label="[^"]*"', 'android:label="NUS"', text, count=1)
+          if count != 1:
+              raise SystemExit('ERROR: Could not normalize Android application label.')
+          manifest.write_text(updated)
+          PY
+
+          grep -q 'android:label="NUS"' "$manifest"
+          test -s android/app/src/main/res/mipmap-mdpi/ic_launcher.png
+          test -s android/app/src/main/res/mipmap-hdpi/ic_launcher.png
+          test -s android/app/src/main/res/mipmap-xhdpi/ic_launcher.png
+          test -s android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
+          test -s android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+          test ! -e android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
+          echo 'NUS branding and launcher icon configuration verified.'
+
       - name: Configure Android notification scheduling
         shell: python
         run: |
@@ -88,6 +155,7 @@ jobs:
           assert 'android.permission.POST_NOTIFICATIONS' in final_manifest
           assert 'android.permission.SCHEDULE_EXACT_ALARM' in final_manifest
           assert 'android.permission.RECEIVE_BOOT_COMPLETED' in final_manifest
+          assert 'android:label="NUS"' in final_manifest
           print('Android notification manifest configuration verified.')
 
       - name: Restore repository tests after Flutter scaffolding
@@ -109,6 +177,24 @@ jobs:
 
       - name: Verify APK exists
         run: test -s build/app/outputs/flutter-apk/app-debug.apk
+
+      - name: Verify Android application label and launcher icon in APK
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          APK='build/app/outputs/flutter-apk/app-debug.apk'
+          test -s "$APK"
+
+          AAPT2="$(find "$ANDROID_HOME/build-tools" -type f -name aapt2 -print | sort -V | tail -n 1)"
+          test -x "$AAPT2"
+
+          BADGING="$($AAPT2 dump badging "$APK")"
+          printf '%s\n' "$BADGING" | grep -F "application-label:'NUS'"
+          printf '%s\n' "$BADGING" | grep -F "application-icon:"
+
+          unzip -l "$APK" | grep -E 'mipmap-(mdpi|hdpi|xhdpi|xxhdpi|xxxhdpi)/ic_launcher(_round)?\.png$'
+          echo 'Packaged Android label and launcher icon resources verified.'
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
