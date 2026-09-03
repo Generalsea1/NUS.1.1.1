@@ -21,7 +21,7 @@ Feature code must depend inward. Domain models and repository ports must not imp
 
 ## Shared domain contract
 
-`core/domain/domain_entity.dart` contains only stable identity. `core/domain/domain_repository.dart` provides a small optional CRUD-shaped repository port. A feature may extend or narrow the contract when its business rules require it; generic CRUD is not a substitute for domain-specific behavior.
+`core/domain/domain_entity.dart` contains only stable identity. `core/domain/domain_repository.dart` provides a small optional CRUD-shaped repository port. A feature may extend or narrow the contract when business rules require operations that are not generic CRUD.
 
 No concrete data-source implementation is created in this phase. This keeps local-first behavior possible and leaves storage choice explicit per feature.
 
@@ -41,7 +41,7 @@ Each boundary is independent. Feature domains must not directly import other fea
 
 ## Model discipline
 
-The models are intentionally minimal and immutable. Fields were limited to information required to name and identify the future concept plus its obvious lifecycle/value data. Search, categories, recurrence, attachments, contacts, sharing permissions, analytics, and other product details are deferred until requirements exist.
+The models are intentionally minimal and immutable. Fields were limited to information required to name and identify the future concept plus obvious lifecycle/value data. Search, recurrence, attachments, contacts, sharing permissions, analytics, and other product details are deferred until requirements exist.
 
 `SocialIdentity` and `Profile` remain separate accepted architecture and are not redefined here.
 
@@ -49,13 +49,13 @@ The models are intentionally minimal and immutable. Fields were limited to infor
 
 `core/ai/ai_insight.dart` defines provider-neutral `AiInsight`, `AiContextItem`, and `AiInsightRequest`.
 
-`core/ai/ai_insight_provider.dart` defines the only provider boundary:
+`core/ai/ai_insight_provider.dart` defines the provider boundary:
 
 ```text
 Domain/application → AiInsightProvider → future provider adapter
 ```
 
-No UI code receives or constructs an LLM SDK type. No Google, OpenAI, Gemini, or other AI dependency is introduced. A later provider adapter may transform domain context into the vendor-specific request format without changing the domain model.
+No UI code receives or constructs an LLM SDK type. No Google, OpenAI, Gemini, or other AI dependency is introduced. A later provider adapter may transform domain context into a vendor-specific request without changing the domain model.
 
 ## Local-first rule
 
@@ -65,11 +65,9 @@ The existing local reminder subsystem remains outside this new architecture in t
 
 ## Supabase and authentication boundary
 
-No Phase 6.1 feature imports Supabase. The accepted AuthRepository, Profile architecture, and SupabaseService remain unchanged. Cloud persistence and RLS are deferred to the dedicated security/sync work.
+No Phase 6.1 feature imports Supabase. The accepted AuthRepository, Profile architecture, and SupabaseService remain unchanged. Cloud persistence and RLS are deferred to dedicated security/sync work.
 
 ## Deferred concepts
-
-The following remain intentionally deferred until a concrete requirement exists:
 
 - doctor contact records and clinical metadata
 - medication dose schedules and prescription details
@@ -87,4 +85,4 @@ This phase adds no package dependency. Dart core types are sufficient. State man
 
 ## Testing strategy
 
-Architecture tests use fakes rather than live databases or providers. They verify that feature models can share the identity contract, repository ports can be independently tested, and the AI boundary returns a domain-level `AiInsight` without requiring a provider SDK.
+Architecture tests use fakes rather than live databases or providers. They verify shared domain identity, repository-port testability, and an AI boundary that returns a domain-level `AiInsight` without a provider SDK.
