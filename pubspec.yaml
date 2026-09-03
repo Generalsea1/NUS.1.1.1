@@ -1,6 +1,6 @@
-name: nos
+name: nus
 version: 1.0.0+1
-description: NOS — a simple bilingual life organizer, starting with smart schedules.
+description: NUS — a bilingual personal life organizer, designed to grow into a global platform.
 publish_to: 'none'
 
 environment:
