@@ -28,9 +28,7 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
   void initState() {
     super.initState();
     _repository = widget.repository ?? LocalAppointmentRepository();
-    _reminders = widget.reminderCoordinator ?? AppointmentReminderCoordinator(
-      ReminderSchedulerAppointmentAdapter(NotificationService()),
-    );
+    _reminders = widget.reminderCoordinator ?? AppointmentReminderCoordinator(ReminderSchedulerAppointmentAdapter(NotificationService()));
     _load();
   }
 
@@ -41,17 +39,13 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
   }
 
   Future<void> _add() async {
-    final appointment = await Navigator.of(context).push<Appointment>(
-      MaterialPageRoute(builder: (_) => AppointmentEditorPage(isArabic: widget.isArabic)),
-    );
+    final appointment = await Navigator.of(context).push<Appointment>(MaterialPageRoute(builder: (_) => AppointmentEditorPage(isArabic: widget.isArabic)));
     if (!mounted || appointment == null) return;
     await _persist(appointment);
   }
 
   Future<void> _edit(Appointment appointment) async {
-    final updated = await Navigator.of(context).push<Appointment>(
-      MaterialPageRoute(builder: (_) => AppointmentEditorPage(isArabic: widget.isArabic, initial: appointment)),
-    );
+    final updated = await Navigator.of(context).push<Appointment>(MaterialPageRoute(builder: (_) => AppointmentEditorPage(isArabic: widget.isArabic, initial: appointment)));
     if (!mounted || updated == null) return;
     await _persist(updated);
   }
@@ -69,7 +63,10 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
   Future<void> _setStatus(Appointment appointment, AppointmentStatus status) async {
     final updated = appointment.copyWith(status: status);
     final errors = AppointmentValidator.validate(updated);
-    if (errors.isNotEmpty) { _message(_validationMessage(errors.first)); return; }
+    if (errors.isNotEmpty) {
+      _message(_validationMessage(errors.first));
+      return;
+    }
     await _repository.save(updated);
     await _reminders.sync(updated);
     await _load();
@@ -94,13 +91,15 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
   }
 
   Future<void> _details(Appointment appointment) async {
-    final result = await Navigator.of(context).push<Object>(
-      MaterialPageRoute(builder: (_) => AppointmentDetailsPage(isArabic: widget.isArabic, appointment: appointment)),
-    );
+    final result = await Navigator.of(context).push<Object>(MaterialPageRoute(builder: (_) => AppointmentDetailsPage(isArabic: widget.isArabic, appointment: appointment)));
     if (!mounted) return;
-    if (result == AppointmentDetailsAction.edit) await _edit(appointment);
-    else if (result == AppointmentDetailsAction.delete) await _delete(appointment);
-    else if (result is AppointmentStatus) await _setStatus(appointment, result);
+    if (result == AppointmentDetailsAction.edit) {
+      await _edit(appointment);
+    } else if (result == AppointmentDetailsAction.delete) {
+      await _delete(appointment);
+    } else if (result is AppointmentStatus) {
+      await _setStatus(appointment, result);
+    }
   }
 
   void _message(String message) {
@@ -161,15 +160,7 @@ class _AppointmentCard extends StatelessWidget {
     final date = '${item.startsAt.day}/${item.startsAt.month}/${item.startsAt.year}';
     final time = TimeOfDay.fromDateTime(item.startsAt).format(context);
     final type = switch (item.type) {
-      AppointmentType.personal => isArabic ? 'شخصي' : 'Personal',
-      AppointmentType.doctor => isArabic ? 'طبيب' : 'Doctor',
-      AppointmentType.work => isArabic ? 'عمل' : 'Work',
-      AppointmentType.government => isArabic ? 'حكومي' : 'Government',
-      AppointmentType.study => isArabic ? 'دراسة' : 'Study',
-      AppointmentType.family => isArabic ? 'عائلة' : 'Family',
-      AppointmentType.travel => isArabic ? 'سفر' : 'Travel',
-      AppointmentType.phoneCall => isArabic ? 'مكالمة' : 'Phone call',
-      AppointmentType.custom => isArabic ? 'مخصص' : 'Custom',
+      AppointmentType.personal => isArabic ? 'شخصي' : 'Personal', AppointmentType.doctor => isArabic ? 'طبيب' : 'Doctor', AppointmentType.work => isArabic ? 'عمل' : 'Work', AppointmentType.government => isArabic ? 'حكومي' : 'Government', AppointmentType.study => isArabic ? 'دراسة' : 'Study', AppointmentType.family => isArabic ? 'عائلة' : 'Family', AppointmentType.travel => isArabic ? 'سفر' : 'Travel', AppointmentType.phoneCall => isArabic ? 'مكالمة' : 'Phone call', AppointmentType.custom => isArabic ? 'مخصص' : 'Custom',
     };
     return Card(elevation: 0, child: ListTile(
       onTap: onTap,
