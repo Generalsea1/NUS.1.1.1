@@ -446,11 +446,13 @@ class _HomePageState extends State<HomePage> {
               const SizedBox(height: 16),
               FilledButton(
                 onPressed: () async {
-                  await widget.store.add(controller.text, selected);
-                  if (context.mounted && controller.text.trim().isNotEmpty &&
-                      selected.isAfter(DateTime.now())) {
-                    Navigator.of(context).pop();
+                  final title = controller.text.trim();
+                  final reminderDate = selected;
+                  if (title.isEmpty || !reminderDate.isAfter(DateTime.now())) {
+                    return;
                   }
+                  Navigator.of(context).pop();
+                  await widget.store.add(title, reminderDate);
                 },
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 14),
