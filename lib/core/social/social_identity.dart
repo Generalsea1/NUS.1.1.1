@@ -8,18 +8,19 @@ class SocialIdentity {
     required String id,
     required String username,
     required String displayName,
-    this.bio = '',
-    this.avatarUrl,
-    this.coverUrl,
-    this.websiteUrl,
-    this.isVerified = false,
+    String bio = '',
+    String? avatarUrl,
+    String? coverUrl,
+    String? websiteUrl,
+    bool isVerified = false,
   })  : id = _requireNonEmpty(id, 'id'),
         username = _normalizeAndValidateUsername(username),
         displayName = _validateDisplayName(displayName),
         bio = _validateBio(bio),
         avatarUrl = _validateOptionalUrl(avatarUrl, 'avatarUrl'),
         coverUrl = _validateOptionalUrl(coverUrl, 'coverUrl'),
-        websiteUrl = _validateOptionalUrl(websiteUrl, 'websiteUrl');
+        websiteUrl = _validateOptionalUrl(websiteUrl, 'websiteUrl'),
+        isVerified = isVerified;
 
   final String id;
   final String username;
