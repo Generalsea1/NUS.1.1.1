@@ -10,8 +10,7 @@ class LocalAppointmentRepository implements AppointmentRepository {
   static const storageKey = 'nus.appointments.v1';
   final SharedPreferences? _preferences;
 
-  Future<SharedPreferences> get _prefs async =>
-      _preferences ?? SharedPreferences.getInstance();
+  Future<SharedPreferences> get _prefs async => _preferences ?? SharedPreferences.getInstance();
 
   @override
   Future<Appointment?> getById(String id) async {
@@ -34,9 +33,7 @@ class LocalAppointmentRepository implements AppointmentRepository {
     for (final entry in decoded) {
       if (entry is! Map) continue;
       try {
-        appointments.add(
-          Appointment.fromJson(Map<String, dynamic>.from(entry)),
-        );
+        appointments.add(Appointment.fromJson(Map<String, dynamic>.from(entry)));
       } on Object {
         // Ignore one malformed local record rather than losing all appointments.
       }
@@ -47,7 +44,7 @@ class LocalAppointmentRepository implements AppointmentRepository {
 
   @override
   Future<void> save(Appointment entity) async {
-    if (AppointmentValidator.validate(entity).where((e) => e != 'start_must_be_future').isNotEmpty) {
+    if (AppointmentValidator.validate(entity).isNotEmpty) {
       throw ArgumentError('Invalid appointment data.');
     }
 
@@ -61,10 +58,7 @@ class LocalAppointmentRepository implements AppointmentRepository {
     appointments.sort((a, b) => a.startsAt.compareTo(b.startsAt));
 
     final prefs = await _prefs;
-    await prefs.setString(
-      storageKey,
-      jsonEncode(appointments.map((item) => item.toJson()).toList()),
-    );
+    await prefs.setString(storageKey, jsonEncode(appointments.map((item) => item.toJson()).toList()));
   }
 
   @override
@@ -72,9 +66,6 @@ class LocalAppointmentRepository implements AppointmentRepository {
     final appointments = await list();
     appointments.removeWhere((item) => item.id == id);
     final prefs = await _prefs;
-    await prefs.setString(
-      storageKey,
-      jsonEncode(appointments.map((item) => item.toJson()).toList()),
-    );
+    await prefs.setString(storageKey, jsonEncode(appointments.map((item) => item.toJson()).toList()));
   }
 }
