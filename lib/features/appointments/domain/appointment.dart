@@ -13,7 +13,7 @@ class Appointment implements DomainEntity {
   const Appointment({
     required this.id,
     required this.title,
-    required this.type,
+    this.type = AppointmentType.personal,
     required this.startsAt,
     this.endsAt,
     this.location,
