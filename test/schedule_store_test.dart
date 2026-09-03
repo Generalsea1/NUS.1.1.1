@@ -2,7 +2,27 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nos/main.dart';
+import 'package:nos/notification_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+class FakeReminderScheduler implements ReminderScheduler {
+  final scheduled = <String>[];
+  final cancelled = <String>[];
+
+  @override
+  Future<void> scheduleReminder({
+    required String id,
+    required String title,
+    required DateTime dateTime,
+  }) async {
+    scheduled.add(id);
+  }
+
+  @override
+  Future<void> cancelReminder(String id) async {
+    cancelled.add(id);
+  }
+}
 
 void main() {
   setUp(() {
@@ -54,6 +74,53 @@ void main() {
     await store.add('Past', DateTime.now().subtract(const Duration(minutes: 1)));
 
     expect(store.items, isEmpty);
+  });
+
+  test('schedule lifecycle is wired to the reminder scheduler', () async {
+    final scheduler = FakeReminderScheduler();
+    final store = ScheduleStore(notifications: scheduler);
+    final itemTime = DateTime.now().add(const Duration(hours: 2));
+
+    await store.add('Review contract', itemTime);
+    final item = store.items.single;
+    expect(scheduler.scheduled, [item.id]);
+
+    await store.toggle(item);
+    expect(scheduler.cancelled, [item.id]);
+
+    await store.toggle(item);
+    expect(scheduler.scheduled, [item.id, item.id]);
+
+    await store.remove(item);
+    expect(scheduler.cancelled, [item.id, item.id]);
+    expect(store.items, isEmpty);
+  });
+
+  test('reschedulePending schedules only future incomplete reminders', () async {
+    final scheduler = FakeReminderScheduler();
+    final store = ScheduleStore(notifications: scheduler);
+    store.items.addAll([
+      ScheduleItem(
+        id: 'future',
+        title: 'Future',
+        dateTime: DateTime.now().add(const Duration(hours: 1)),
+      ),
+      ScheduleItem(
+        id: 'completed',
+        title: 'Completed',
+        dateTime: DateTime.now().add(const Duration(hours: 1)),
+        completed: true,
+      ),
+      ScheduleItem(
+        id: 'past',
+        title: 'Past',
+        dateTime: DateTime.now().subtract(const Duration(minutes: 1)),
+      ),
+    ]);
+
+    await store.reschedulePending();
+
+    expect(scheduler.scheduled, ['future']);
   });
 
   test('toggle persists completion state and remove deletes the reminder', () async {
