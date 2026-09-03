@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nus/main.dart';
 import 'package:nus/notification_service.dart';
@@ -47,7 +48,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('تذكير جديد'), findsOneWidget);
 
-    await tester.enterText(find.byType(EditableText), 'موعد اختبار');
+    await tester.enterText(find.byType(TextField), 'موعد اختبار');
     await tester.tap(find.text('احفظ التذكير'));
     await tester.pumpAndSettle();
 
