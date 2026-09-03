@@ -47,7 +47,19 @@ void main() {
   test('future domain models implement only the shared identity contract', () {
     final entities = <DomainEntity>[
       Appointment(id: 'a', title: 'Appointment', startsAt: DateTime.utc(2026)),
-      Medication(id: 'm', name: 'Medication'),
+      Medication(
+        id: 'm',
+        name: 'Medication',
+        dosage: const Dosage(amount: '1', unit: DosageUnit.tablet),
+        startDate: DateTime.utc(2026, 9, 3),
+        schedules: <MedicationSchedule>[
+          MedicationSchedule(
+            id: 'schedule-1',
+            minutesSinceMidnight: 8 * 60,
+            frequency: MedicationFrequency.daily,
+          ),
+        ],
+      ),
       ShoppingItem(id: 's', name: 'Milk'),
       Expense(
         id: 'e',
