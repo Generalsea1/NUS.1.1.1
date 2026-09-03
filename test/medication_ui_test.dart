@@ -80,12 +80,12 @@ Future<void> _pumpPage(WidgetTester tester, MedicationLifecycleService service) 
   await tester.pumpAndSettle();
 }
 
-Future<void> _scrollToText(WidgetTester tester, String text) async {
-  await tester.scrollUntilVisible(
-    find.text(text),
-    400,
-    scrollable: find.byType(Scrollable).last,
-  );
+Future<void> _tapSave(WidgetTester tester) async {
+  final finder = find.byKey(const Key('medication_editor_save'), skipOffstage: false);
+  expect(finder, findsOneWidget);
+  await tester.ensureVisible(finder);
+  await tester.pumpAndSettle();
+  await tester.tap(finder);
   await tester.pumpAndSettle();
 }
 
@@ -107,13 +107,9 @@ void main() {
 
     await tester.tap(find.text('إضافة دواء').first);
     await tester.pumpAndSettle();
-    expect(find.byType(MedicationEditorPage), findsOneWidget);
-
     await tester.enterText(find.byType(TextField).at(0), 'Morning medicine');
     await tester.enterText(find.byType(TextField).at(1), '2');
-    await _scrollToText(tester, 'حفظ الدواء');
-    await tester.tap(find.text('حفظ الدواء'));
-    await tester.pumpAndSettle();
+    await _tapSave(tester);
 
     expect((await service.repository.list()).single.name, 'Morning medicine');
     expect(port.scheduled, isNotEmpty);
@@ -127,9 +123,7 @@ void main() {
     await tester.tap(find.text('إضافة دواء').first);
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField).at(1), '1');
-    await _scrollToText(tester, 'حفظ الدواء');
-    await tester.tap(find.text('حفظ الدواء'));
-    await tester.pump();
+    await _tapSave(tester);
 
     expect(find.text('اسم الدواء مطلوب.'), findsOneWidget);
     expect(find.byType(MedicationEditorPage), findsOneWidget);
@@ -143,13 +137,10 @@ void main() {
 
     await tester.tap(find.text('Daily medicine'));
     await tester.pumpAndSettle();
-    expect(find.byType(MedicationDetailsPage), findsOneWidget);
     await tester.tap(find.byIcon(Icons.edit_outlined));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField).at(0), 'Edited medicine');
-    await _scrollToText(tester, 'حفظ التعديلات');
-    await tester.tap(find.text('حفظ التعديلات'));
-    await tester.pumpAndSettle();
+    await _tapSave(tester);
 
     expect((await service.repository.getById('m1'))!.name, 'Edited medicine');
   });

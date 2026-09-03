@@ -311,6 +311,7 @@ class _MedicationEditorPageState extends State<MedicationEditorPage> {
               ),
           const SizedBox(height: 18),
           FilledButton.icon(
+            key: const Key('medication_editor_save'),
             onPressed: _save,
             icon: const Icon(Icons.check_rounded),
             label: Padding(

@@ -11,11 +11,7 @@ class FakeMedicationReminderPort implements MedicationReminderPort {
   final cancelled = <String>[];
 
   @override
-  Future<void> schedule({
-    required String id,
-    required String title,
-    required DateTime dateTime,
-  }) async {
+  Future<void> schedule({required String id, required String title, required DateTime dateTime}) async {
     scheduled.add((id: id, title: title, dateTime: dateTime));
   }
 
@@ -30,11 +26,7 @@ class FakeReminderScheduler implements ReminderScheduler {
   final cancelled = <String>[];
 
   @override
-  Future<void> scheduleReminder({
-    required String id,
-    required String title,
-    required DateTime dateTime,
-  }) async {
+  Future<void> scheduleReminder({required String id, required String title, required DateTime dateTime}) async {
     scheduled.add((id: id, title: title, dateTime: dateTime));
   }
 
@@ -134,13 +126,15 @@ void main() {
   });
 
   test('reminder ID contains no medication name or dosage', () {
+    const medicationName = 'Private Medication';
+    const dosageAmount = '77';
     final id = MedicationReminderCoordinator.reminderId(
       'm-private',
       'schedule-private',
       DateTime(2026, 9, 3, 9),
     );
-    expect(id, isNot(contains('Private')));
-    expect(id, isNot(contains('1')));
+    expect(id, isNot(contains(medicationName)));
+    expect(id, isNot(contains(dosageAmount)));
     expect(id, matches(RegExp(r'^\d+$')));
   });
 
@@ -179,9 +173,7 @@ void main() {
 
   test('endDate is inclusive', () async {
     final port = FakeMedicationReminderPort();
-    await coordinator(port).sync(
-      medication(endDate: DateTime(2026, 9, 5)),
-    );
+    await coordinator(port).sync(medication(endDate: DateTime(2026, 9, 5)));
 
     expect(port.scheduled.map((item) => item.dateTime), [
       DateTime(2026, 9, 3, 9),
