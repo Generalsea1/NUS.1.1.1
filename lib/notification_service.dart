@@ -21,9 +21,9 @@ class NotificationService implements ReminderScheduler {
   final FlutterLocalNotificationsPlugin _plugin;
   bool _initialized = false;
 
-  static const _channelId = 'nos_schedule';
-  static const _channelName = 'NOS reminders';
-  static const _channelDescription = 'Notifications for scheduled NOS reminders.';
+  static const _channelId = 'nus_schedule';
+  static const _channelName = 'NUS reminders';
+  static const _channelDescription = 'Notifications for scheduled NUS reminders.';
 
   Future<void> initialize() async {
     if (_initialized) return;
@@ -79,7 +79,7 @@ class NotificationService implements ReminderScheduler {
     try {
       await _plugin.zonedSchedule(
         notificationId,
-        'NOS Reminder',
+        'NUS Reminder',
         title,
         scheduled,
         details,
@@ -89,7 +89,7 @@ class NotificationService implements ReminderScheduler {
     } on PlatformException {
       await _plugin.zonedSchedule(
         notificationId,
-        'NOS Reminder',
+        'NUS Reminder',
         title,
         scheduled,
         details,
