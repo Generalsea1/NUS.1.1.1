@@ -80,6 +80,9 @@ Future<void> _pumpPage(WidgetTester tester, MedicationLifecycleService service) 
 }
 
 Future<void> _tapSave(WidgetTester tester) async {
+  tester.testTextInput.hide();
+  await tester.pumpAndSettle();
+
   final finder = find.byKey(const Key('medication_editor_save'), skipOffstage: false);
   expect(finder, findsOneWidget);
   await tester.ensureVisible(finder);
