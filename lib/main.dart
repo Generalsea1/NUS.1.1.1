@@ -5,6 +5,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'notification_service.dart';
 import 'features/appointments/presentation/appointments_page.dart';
+import 'features/medications/application/medication_lifecycle_service.dart';
+import 'features/medications/application/medication_reminder_coordinator.dart';
+import 'features/medications/data/local_medication_repository.dart';
+import 'features/medications/data/medication_reminder_adapter.dart';
+import 'features/medications/presentation/medications_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -15,12 +20,20 @@ Future<void> main() async {
   await store.load();
   await store.reschedulePending();
 
-  runApp(NosApp(store: store));
+  final medicationService = MedicationLifecycleService(
+    repository: LocalMedicationRepository(),
+    reminders: MedicationReminderCoordinator(
+      MedicationReminderAdapter(notifications),
+    ),
+  );
+
+  runApp(NosApp(store: store, medicationService: medicationService));
 }
 
 class NosApp extends StatefulWidget {
-  const NosApp({super.key, required this.store});
+  const NosApp({super.key, required this.store, required this.medicationService});
   final ScheduleStore store;
+  final MedicationLifecycleService medicationService;
   @override
   State<NosApp> createState() => _NosAppState();
 }
@@ -43,6 +56,7 @@ class _NosAppState extends State<NosApp> {
         textDirection: isArabic ? TextDirection.rtl : TextDirection.ltr,
         child: HomePage(
           store: widget.store,
+          medicationService: widget.medicationService,
           isArabic: isArabic,
           onToggleLanguage: () => setState(() => isArabic = !isArabic),
         ),
@@ -188,11 +202,13 @@ class HomePage extends StatefulWidget {
   const HomePage({
     super.key,
     required this.store,
+    required this.medicationService,
     required this.isArabic,
     required this.onToggleLanguage,
   });
 
   final ScheduleStore store;
+  final MedicationLifecycleService medicationService;
   final bool isArabic;
   final VoidCallback onToggleLanguage;
 
@@ -308,6 +324,22 @@ class _HomePageState extends State<HomePage> {
               label: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 13),
                 child: Text(t('Appointments', 'المواعيد'), style: const TextStyle(fontWeight: FontWeight.w900)),
+              ),
+            ),
+            const SizedBox(height: 10),
+            OutlinedButton.icon(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => MedicationsPage(
+                    service: widget.medicationService,
+                    isArabic: widget.isArabic,
+                  ),
+                ),
+              ),
+              icon: const Icon(Icons.medication_outlined),
+              label: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 13),
+                child: Text(t('Medications', 'الأدوية'), style: const TextStyle(fontWeight: FontWeight.w900)),
               ),
             ),
             const SizedBox(height: 28),
