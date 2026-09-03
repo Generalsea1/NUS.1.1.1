@@ -1,9 +1,20 @@
+import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/data/latest_all.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
 
-class NotificationService {
+abstract interface class ReminderScheduler {
+  Future<void> scheduleReminder({
+    required String id,
+    required String title,
+    required DateTime dateTime,
+  });
+
+  Future<void> cancelReminder(String id);
+}
+
+class NotificationService implements ReminderScheduler {
   NotificationService({FlutterLocalNotificationsPlugin? plugin})
       : _plugin = plugin ?? FlutterLocalNotificationsPlugin();
 
@@ -43,6 +54,7 @@ class NotificationService {
     return granted ?? true;
   }
 
+  @override
   Future<void> scheduleReminder({
     required String id,
     required String title,
@@ -64,17 +76,30 @@ class NotificationService {
       ),
     );
 
-    await _plugin.zonedSchedule(
-      notificationId,
-      'NOS Reminder',
-      title,
-      scheduled,
-      details,
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      payload: id,
-    );
+    try {
+      await _plugin.zonedSchedule(
+        notificationId,
+        'NOS Reminder',
+        title,
+        scheduled,
+        details,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        payload: id,
+      );
+    } on PlatformException {
+      await _plugin.zonedSchedule(
+        notificationId,
+        'NOS Reminder',
+        title,
+        scheduled,
+        details,
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        payload: id,
+      );
+    }
   }
 
+  @override
   Future<void> cancelReminder(String id) async {
     await initialize();
     await _plugin.cancel(_notificationId(id));
