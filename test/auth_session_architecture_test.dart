@@ -50,9 +50,9 @@ void main() {
     );
 
     expect(state.isAuthenticated, isTrue);
-    expect(state.session!.user.id, 'user-123');
-    expect(state.session!.user.email, 'user@example.com');
-    expect(state.session!.user.displayName, 'NUS User');
+    expect(state.session.user.id, 'user-123');
+    expect(state.session.user.email, 'user@example.com');
+    expect(state.session.user.displayName, 'NUS User');
   });
 
   test('application AuthState works with a provider-agnostic test double', () async {
