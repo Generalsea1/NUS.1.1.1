@@ -17,7 +17,10 @@ void main() {
       completed: true,
     );
 
-    final decoded = ScheduleItem.fromJson(jsonDecode(jsonEncode(item.toJson())));
+    final encoded = jsonEncode(item.toJson());
+    final decoded = ScheduleItem.fromJson(
+      Map<String, dynamic>.from(jsonDecode(encoded) as Map),
+    );
 
     expect(decoded.id, item.id);
     expect(decoded.title, item.title);
@@ -33,12 +36,15 @@ void main() {
     await store.add('Later', later);
     await store.add('Sooner', sooner);
 
-    expect(store.items.map((item) => item.title), ['Sooner', 'Later']);
+    expect(store.items.map((item) => item.title).toList(), ['Sooner', 'Later']);
 
     final secondStore = ScheduleStore();
     await secondStore.load();
 
-    expect(secondStore.items.map((item) => item.title), ['Sooner', 'Later']);
+    expect(
+      secondStore.items.map((item) => item.title).toList(),
+      ['Sooner', 'Later'],
+    );
   });
 
   test('ScheduleStore rejects empty and past reminders', () async {
