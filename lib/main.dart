@@ -83,7 +83,7 @@ class ScheduleStore extends ChangeNotifier {
 
   static const _storageKey = 'nos.schedule.v1';
   final List<ScheduleItem> items = [];
-  final NotificationService? notifications;
+  final ReminderScheduler? notifications;
 
   Future<void> load() async {
     final prefs = await SharedPreferences.getInstance();
@@ -128,8 +128,10 @@ class ScheduleStore extends ChangeNotifier {
 
     final service = notifications;
     if (service != null) {
-      await service.requestPermission();
-      await service.requestExactAlarmPermission();
+      if (service is NotificationService) {
+        await service.requestPermission();
+        await service.requestExactAlarmPermission();
+      }
       await service.scheduleReminder(
         id: item.id,
         title: item.title,
@@ -148,7 +150,10 @@ class ScheduleStore extends ChangeNotifier {
       if (item.completed) {
         await service.cancelReminder(item.id);
       } else if (item.dateTime.isAfter(DateTime.now())) {
-        await service.requestPermission();
+        if (service is NotificationService) {
+          await service.requestPermission();
+          await service.requestExactAlarmPermission();
+        }
         await service.scheduleReminder(
           id: item.id,
           title: item.title,
