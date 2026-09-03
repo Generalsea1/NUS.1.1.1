@@ -374,7 +374,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _showAddSheet(BuildContext context) async {
-    final controller = TextEditingController();
+    var title = '';
     var selected = DateTime.now().add(const Duration(minutes: 30));
 
     final reminder = await showModalBottomSheet<({String title, DateTime dateTime})>(
@@ -394,9 +394,9 @@ class _HomePageState extends State<HomePage> {
               )),
               const SizedBox(height: 16),
               TextField(
-                controller: controller,
                 autofocus: true,
                 textInputAction: TextInputAction.done,
+                onChanged: (value) => title = value,
                 decoration: InputDecoration(labelText: t(
                   'What do you need to remember?', 'إيه اللي محتاج تفتكره؟',
                 )),
@@ -446,13 +446,13 @@ class _HomePageState extends State<HomePage> {
               const SizedBox(height: 16),
               FilledButton(
                 onPressed: () {
-                  final title = controller.text.trim();
+                  final cleanTitle = title.trim();
                   final reminderDate = selected;
-                  if (title.isEmpty || !reminderDate.isAfter(DateTime.now())) {
+                  if (cleanTitle.isEmpty || !reminderDate.isAfter(DateTime.now())) {
                     return;
                   }
                   Navigator.of(context).pop((
-                    title: title,
+                    title: cleanTitle,
                     dateTime: reminderDate,
                   ));
                 },
@@ -470,7 +470,6 @@ class _HomePageState extends State<HomePage> {
         ),
       ),
     );
-    controller.dispose();
 
     if (!mounted || reminder == null) return;
     await widget.store.add(reminder.title, reminder.dateTime);
