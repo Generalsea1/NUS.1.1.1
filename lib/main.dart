@@ -354,12 +354,14 @@ class _HomePageState extends State<HomePage> {
                       lastDate: DateTime.now().add(const Duration(days: 3650)),
                       initialDate: selected,
                     );
-                    if (picked != null) setSheetState(() {
-                      selected = DateTime(
-                        picked.year, picked.month, picked.day,
-                        selected.hour, selected.minute,
-                      );
-                    });
+                    if (picked != null) {
+                      setSheetState(() {
+                        selected = DateTime(
+                          picked.year, picked.month, picked.day,
+                          selected.hour, selected.minute,
+                        );
+                      });
+                    }
                   },
                   icon: const Icon(Icons.calendar_today_outlined),
                   label: Text('${selected.day}/${selected.month}/${selected.year}'),
@@ -371,12 +373,14 @@ class _HomePageState extends State<HomePage> {
                       context: context,
                       initialTime: TimeOfDay.fromDateTime(selected),
                     );
-                    if (picked != null) setSheetState(() {
-                      selected = DateTime(
-                        selected.year, selected.month, selected.day,
-                        picked.hour, picked.minute,
-                      );
-                    });
+                    if (picked != null) {
+                      setSheetState(() {
+                        selected = DateTime(
+                          selected.year, selected.month, selected.day,
+                          picked.hour, picked.minute,
+                        );
+                      });
+                    }
                   },
                   icon: const Icon(Icons.schedule_outlined),
                   label: Text(TimeOfDay.fromDateTime(selected).format(context)),
