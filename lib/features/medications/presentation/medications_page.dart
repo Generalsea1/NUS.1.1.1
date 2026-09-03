@@ -200,7 +200,7 @@ class _MedicationCard extends StatelessWidget {
         ? (medication.dosage.customUnit ?? t('Custom', 'مخصص'))
         : _unitLabel(medication.dosage.unit);
     final scheduleSummary = medication.schedules.length == 1
-        ? _scheduleLabel(medication.schedules.first)
+        ? _scheduleLabel(context, medication.schedules.first)
         : '${medication.schedules.length} ${t('schedules', 'مواعيد')}';
     return Card(
       elevation: 0,
@@ -225,7 +225,7 @@ class _MedicationCard extends StatelessWidget {
         DosageUnit.custom => t('custom', 'مخصص'),
       };
 
-  String _scheduleLabel(MedicationSchedule schedule) {
+  String _scheduleLabel(BuildContext context, MedicationSchedule schedule) {
     final hour = schedule.minutesSinceMidnight ~/ 60;
     final minute = schedule.minutesSinceMidnight % 60;
     final time = TimeOfDay(hour: hour, minute: minute).format(context);

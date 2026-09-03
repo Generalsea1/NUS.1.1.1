@@ -31,9 +31,9 @@ Future<void> main() async {
 }
 
 class NosApp extends StatefulWidget {
-  const NosApp({super.key, required this.store, required this.medicationService});
+  const NosApp({super.key, required this.store, this.medicationService});
   final ScheduleStore store;
-  final MedicationLifecycleService medicationService;
+  final MedicationLifecycleService? medicationService;
   @override
   State<NosApp> createState() => _NosAppState();
 }
@@ -202,13 +202,13 @@ class HomePage extends StatefulWidget {
   const HomePage({
     super.key,
     required this.store,
-    required this.medicationService,
+    this.medicationService,
     required this.isArabic,
     required this.onToggleLanguage,
   });
 
   final ScheduleStore store;
-  final MedicationLifecycleService medicationService;
+  final MedicationLifecycleService? medicationService;
   final bool isArabic;
   final VoidCallback onToggleLanguage;
 
@@ -328,14 +328,16 @@ class _HomePageState extends State<HomePage> {
             ),
             const SizedBox(height: 10),
             OutlinedButton.icon(
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => MedicationsPage(
-                    service: widget.medicationService,
-                    isArabic: widget.isArabic,
-                  ),
-                ),
-              ),
+              onPressed: widget.medicationService == null
+                  ? null
+                  : () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => MedicationsPage(
+                          service: widget.medicationService!,
+                          isArabic: widget.isArabic,
+                        ),
+                      ),
+                    ),
               icon: const Icon(Icons.medication_outlined),
               label: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 13),

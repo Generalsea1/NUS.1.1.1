@@ -76,7 +76,7 @@ Medication medication({
       schedules: schedules ?? <MedicationSchedule>[schedule()],
     );
 
-const fixedNow = DateTime(2026, 9, 3, 8);
+final fixedNow = DateTime(2026, 9, 3, 8);
 
 MedicationReminderCoordinator coordinator(FakeMedicationReminderPort port) =>
     MedicationReminderCoordinator(port, clock: () => fixedNow);
@@ -159,7 +159,7 @@ void main() {
       schedules: [
         schedule(
           frequency: MedicationFrequency.selectedWeekdays,
-          weekdays: const [4, 6], // Thursday and Saturday
+          weekdays: const [4, 6],
         ),
       ],
     );
@@ -194,7 +194,10 @@ void main() {
     final port = FakeMedicationReminderPort();
     await coordinator(port).sync(medication(endDate: DateTime(2026, 9, 4)));
 
-    expect(port.scheduled.every((item) => !item.dateTime.isAfter(DateTime(2026, 9, 4, 23, 59)), isTrue);
+    expect(
+      port.scheduled.every((item) => !item.dateTime.isAfter(DateTime(2026, 9, 4, 23, 59))),
+      isTrue,
+    );
   });
 
   test('inactive medication schedules nothing', () async {
