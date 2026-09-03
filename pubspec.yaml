@@ -1,0 +1,23 @@
+name: nos
+version: 1.0.0+1
+description: NOS — a simple bilingual life organizer, starting with smart schedules.
+publish_to: 'none'
+
+environment:
+  sdk: '>=3.5.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  shared_preferences: ^2.5.3
+  flutter_local_notifications: ^19.4.1
+  timezone: ^0.10.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
