@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'notification_service.dart';
+import 'features/appointments/presentation/appointments_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -296,6 +297,17 @@ class _HomePageState extends State<HomePage> {
                 child: Text(t('Add reminder', 'إضافة تذكير'), style: const TextStyle(
                   fontWeight: FontWeight.w900,
                 )),
+              ),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => AppointmentsPage(isArabic: widget.isArabic)),
+              ),
+              icon: const Icon(Icons.event_available_outlined),
+              label: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 13),
+                child: Text(t('Appointments', 'المواعيد'), style: const TextStyle(fontWeight: FontWeight.w900)),
               ),
             ),
             const SizedBox(height: 28),
