@@ -1,5 +1,4 @@
 import '../auth/auth_repository.dart';
-import '../auth/auth_state.dart';
 import '../supabase_service.dart';
 import 'profile.dart';
 import 'profile_repository.dart';
