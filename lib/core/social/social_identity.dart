@@ -12,7 +12,7 @@ class SocialIdentity {
     String? avatarUrl,
     String? coverUrl,
     String? websiteUrl,
-    bool isVerified = false,
+    this.isVerified = false,
   })  : id = _requireNonEmpty(id, 'id'),
         username = _normalizeAndValidateUsername(username),
         displayName = _validateDisplayName(displayName),
