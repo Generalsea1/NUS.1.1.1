@@ -194,7 +194,7 @@ jobs:
 
           BADGING="$($AAPT2 dump badging "$APK")"
           printf '%s\n' "$BADGING" | grep -F "application-label:'NUS'"
-          printf '%s\n' "$BADGING" | grep -F "application-icon:"
+          printf '%s\n' "$BADGING" | grep -E 'application-icon(-[0-9]+)?:'
 
           unzip -l "$APK" | grep -E 'res/mipmap-(mdpi|hdpi|xhdpi|xxhdpi|xxxhdpi)(-v[0-9]+)?/ic_launcher(_round)?\.png$'
           echo 'Packaged Android label and launcher icon resources verified.'
