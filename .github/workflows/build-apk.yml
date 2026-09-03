@@ -29,34 +29,38 @@ jobs:
         shell: python
         run: |
           from pathlib import Path
+          import re
 
           manifest = Path('android/app/src/main/AndroidManifest.xml')
           text = manifest.read_text()
-          permission_anchor = '<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />'
-          if permission_anchor not in text:
+
+          permission_block = '''    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+              <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+              <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />'''
+          if 'android.permission.POST_NOTIFICATIONS' not in text:
               text = text.replace(
                   '<manifest xmlns:android="http://schemas.android.com/apk/res/android">',
                   '<manifest xmlns:android="http://schemas.android.com/apk/res/android">\n'
-                  '    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n'
-                  '    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />',
+                  + permission_block,
                   1,
               )
 
           receiver_name = 'com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver'
           if receiver_name not in text:
-              receiver_block = '''\n        <receiver\n            android:exported="false"\n            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />\n        <receiver\n            android:exported="false"\n            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver">\n            <intent-filter>\n                <action android:name="android.intent.action.BOOT_COMPLETED" />\n                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />\n                <action android:name="android.intent.action.PACKAGE_REPLACED" />\n            </intent-filter>\n        </receiver>\n'''
+              receiver_block = '''\n        <receiver\n            android:exported="false"\n            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />\n        <receiver\n            android:exported="false"\n            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver">\n            <intent-filter>\n                <action android:name="android.intent.action.BOOT_COMPLETED" />\n                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />\n                <action android:name="android.intent.action.PACKAGE_REPLACED" />\n                <action android:name="android.intent.action.QUICKBOOT_POWERON" />\n                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON" />\n            </intent-filter>\n        </receiver>\n'''
               text = text.replace('</application>', receiver_block + '    </application>', 1)
           manifest.write_text(text)
 
           gradle = Path('android/app/build.gradle.kts')
           text = gradle.read_text()
-          desugar_flag = 'isCoreLibraryDesugaringEnabled = true'
-          if desugar_flag not in text:
-              if 'compileOptions {' in text:
-                  text = text.replace(
-                      'compileOptions {\n',
-                      'compileOptions {\n        isCoreLibraryDesugaringEnabled = true\n',
-                      1,
+
+          if 'isCoreLibraryDesugaringEnabled = true' not in text:
+              if re.search(r'(?m)^\s*compileOptions\s*\{', text):
+                  text = re.sub(
+                      r'(?m)^(\s*compileOptions\s*\{\n)',
+                      r'\1        isCoreLibraryDesugaringEnabled = true\n',
+                      text,
+                      count=1,
                   )
               else:
                   text = text.replace(
@@ -66,14 +70,25 @@ jobs:
                       '    }\n',
                       1,
                   )
-          dependency = 'coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")'
+
+          dependency = 'coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")'
           if dependency not in text:
-              text = text.replace(
-                  'dependencies {\n',
-                  'dependencies {\n    ' + dependency + '\n',
-                  1,
-              )
+              text += '\n\ndependencies {\n    ' + dependency + '\n}\n'
+
           gradle.write_text(text)
+
+          final_gradle = gradle.read_text()
+          assert 'isCoreLibraryDesugaringEnabled = true' in final_gradle
+          assert dependency in final_gradle
+          print('Android notification Gradle configuration verified.')
+
+          final_manifest = manifest.read_text()
+          assert 'ScheduledNotificationReceiver' in final_manifest
+          assert 'ScheduledNotificationBootReceiver' in final_manifest
+          assert 'android.permission.POST_NOTIFICATIONS' in final_manifest
+          assert 'android.permission.SCHEDULE_EXACT_ALARM' in final_manifest
+          assert 'android.permission.RECEIVE_BOOT_COMPLETED' in final_manifest
+          print('Android notification manifest configuration verified.')
 
       - name: Restore repository tests after Flutter scaffolding
         run: |
