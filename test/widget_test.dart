@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:nos/main.dart';
+import 'package:nus/main.dart';
 
 void main() {
-  testWidgets('NOS renders the schedule home screen', (tester) async {
+  testWidgets('NUS renders the schedule home screen', (tester) async {
     final store = ScheduleStore();
 
     await tester.pumpWidget(NosApp(store: store));
