@@ -4,6 +4,8 @@ import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/data/latest_all.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
 
+import 'core/app_identity.dart';
+
 abstract interface class ReminderScheduler {
   Future<void> scheduleReminder({
     required String id,
@@ -20,10 +22,6 @@ class NotificationService implements ReminderScheduler {
 
   final FlutterLocalNotificationsPlugin _plugin;
   bool _initialized = false;
-
-  static const _channelId = 'nus_schedule';
-  static const _channelName = 'NUS reminders';
-  static const _channelDescription = 'Notifications for scheduled NUS reminders.';
 
   Future<void> initialize() async {
     if (_initialized) return;
@@ -68,9 +66,9 @@ class NotificationService implements ReminderScheduler {
 
     const details = NotificationDetails(
       android: AndroidNotificationDetails(
-        _channelId,
-        _channelName,
-        channelDescription: _channelDescription,
+        AppIdentity.scheduleChannelId,
+        AppIdentity.scheduleChannelName,
+        channelDescription: AppIdentity.scheduleChannelDescription,
         importance: Importance.high,
         priority: Priority.high,
       ),
@@ -79,7 +77,7 @@ class NotificationService implements ReminderScheduler {
     try {
       await _plugin.zonedSchedule(
         notificationId,
-        'NUS Reminder',
+        AppIdentity.reminderTitle,
         title,
         scheduled,
         details,
@@ -89,7 +87,7 @@ class NotificationService implements ReminderScheduler {
     } on PlatformException {
       await _plugin.zonedSchedule(
         notificationId,
-        'NUS Reminder',
+        AppIdentity.reminderTitle,
         title,
         scheduled,
         details,
