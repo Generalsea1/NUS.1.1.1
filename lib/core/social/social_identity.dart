@@ -1,8 +1,8 @@
 /// Immutable social identity value model for NUS.
 ///
 /// This layer contains no persistence, networking, authentication, or UI
-/// behavior. It is intentionally independent so account/profile features can
-/// depend on a stable domain contract before backend adapters are introduced.
+/// behavior. It defines the canonical domain contract used by future account,
+/// profile, social-graph, and backend adapters.
 class SocialIdentity {
   SocialIdentity({
     required String id,
@@ -30,9 +30,15 @@ class SocialIdentity {
   final String? websiteUrl;
   final bool isVerified;
 
+  static const int minUsernameLength = 3;
+  static const int maxUsernameLength = 30;
   static const int maxDisplayNameLength = 80;
   static const int maxBioLength = 500;
-  static final RegExp _usernamePattern = RegExp(r'^[a-z0-9_]{3,30}$');
+
+  static final RegExp _usernamePattern = RegExp(
+    r'^[a-z0-9_]{3,30}$',
+    caseSensitive: true,
+  );
 
   factory SocialIdentity.fromJson(Map<String, dynamic> json) {
     return SocialIdentity(
@@ -60,6 +66,10 @@ class SocialIdentity {
     };
   }
 
+  /// Creates a new identity without mutating the original value.
+  ///
+  /// Nullable URL fields use [clearAvatarUrl], [clearCoverUrl], and
+  /// [clearWebsiteUrl] to distinguish "leave unchanged" from "set to null".
   SocialIdentity copyWith({
     String? id,
     String? username,
@@ -69,15 +79,34 @@ class SocialIdentity {
     String? coverUrl,
     String? websiteUrl,
     bool? isVerified,
+    bool clearAvatarUrl = false,
+    bool clearCoverUrl = false,
+    bool clearWebsiteUrl = false,
   }) {
+    if (clearAvatarUrl && avatarUrl != null) {
+      throw ArgumentError(
+        'avatarUrl cannot be provided when clearAvatarUrl is true.',
+      );
+    }
+    if (clearCoverUrl && coverUrl != null) {
+      throw ArgumentError(
+        'coverUrl cannot be provided when clearCoverUrl is true.',
+      );
+    }
+    if (clearWebsiteUrl && websiteUrl != null) {
+      throw ArgumentError(
+        'websiteUrl cannot be provided when clearWebsiteUrl is true.',
+      );
+    }
+
     return SocialIdentity(
       id: id ?? this.id,
       username: username ?? this.username,
       displayName: displayName ?? this.displayName,
       bio: bio ?? this.bio,
-      avatarUrl: avatarUrl ?? this.avatarUrl,
-      coverUrl: coverUrl ?? this.coverUrl,
-      websiteUrl: websiteUrl ?? this.websiteUrl,
+      avatarUrl: clearAvatarUrl ? null : avatarUrl ?? this.avatarUrl,
+      coverUrl: clearCoverUrl ? null : coverUrl ?? this.coverUrl,
+      websiteUrl: clearWebsiteUrl ? null : websiteUrl ?? this.websiteUrl,
       isVerified: isVerified ?? this.isVerified,
     );
   }
@@ -118,11 +147,14 @@ class SocialIdentity {
 
   static String _normalizeAndValidateUsername(String value) {
     final String normalized = value.trim().toLowerCase();
-    if (!_usernamePattern.hasMatch(normalized)) {
+    if (!_usernamePattern.hasMatch(normalized) ||
+        normalized.length < minUsernameLength ||
+        normalized.length > maxUsernameLength) {
       throw ArgumentError.value(
         value,
         'username',
-        'must contain only lowercase letters, numbers, or underscores and be 3-30 characters long',
+        'must contain only lowercase letters, numbers, or underscores and be '
+        '$minUsernameLength-$maxUsernameLength characters long',
       );
     }
     return normalized;
@@ -164,7 +196,9 @@ class SocialIdentity {
       return null;
     }
     final Uri? uri = Uri.tryParse(normalized);
-    if (uri == null || (uri.scheme != 'http' && uri.scheme != 'https') || uri.host.isEmpty) {
+    if (uri == null ||
+        (uri.scheme != 'http' && uri.scheme != 'https') ||
+        uri.host.isEmpty) {
       throw ArgumentError.value(
         value,
         field,
