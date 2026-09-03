@@ -31,7 +31,7 @@ class _NosAppState extends State<NosApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'NOS',
+      title: 'NUS',
       locale: isArabic ? const Locale('ar') : const Locale('en'),
       theme: ThemeData(
         useMaterial3: true,
@@ -258,7 +258,7 @@ class _HomePageState extends State<HomePage> {
             )),
           ),
           const SizedBox(width: 10),
-          const Text('NOS', style: TextStyle(
+          const Text('NUS', style: TextStyle(
             fontWeight: FontWeight.w900, letterSpacing: 1.2,
           )),
         ]),
