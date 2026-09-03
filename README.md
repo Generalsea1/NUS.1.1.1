@@ -1,6 +1,6 @@
-# NOS v1.0.0
+# NUS v1.0.0
 
-A bilingual (Arabic / English) personal life organizer, designed to grow from a lightweight free MVP into a global product.
+A bilingual (Arabic / English) personal life organizer, designed to grow from a lightweight free MVP into a global platform.
 
 ## Product roadmap
 1. Smart Schedule — current foundation: clean home screen, bilingual RTL/LTR experience, quick reminder entry.
