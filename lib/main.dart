@@ -3,10 +3,17 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'notification_service.dart';
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  final store = ScheduleStore();
+  final notifications = NotificationService();
+  await notifications.initialize();
+
+  final store = ScheduleStore(notifications: notifications);
   await store.load();
+  await store.reschedulePending();
+
   runApp(NosApp(store: store));
 }
 
@@ -72,8 +79,11 @@ class ScheduleItem {
 }
 
 class ScheduleStore extends ChangeNotifier {
+  ScheduleStore({this.notifications});
+
   static const _storageKey = 'nos.schedule.v1';
   final List<ScheduleItem> items = [];
+  final NotificationService? notifications;
 
   Future<void> load() async {
     final prefs = await SharedPreferences.getInstance();
@@ -89,28 +99,70 @@ class ScheduleStore extends ChangeNotifier {
       ..sort(_compareItems);
   }
 
+  Future<void> reschedulePending() async {
+    final service = notifications;
+    if (service == null) return;
+    for (final item in items) {
+      if (!item.completed && item.dateTime.isAfter(DateTime.now())) {
+        await service.scheduleReminder(
+          id: item.id,
+          title: item.title,
+          dateTime: item.dateTime,
+        );
+      }
+    }
+  }
+
   Future<void> add(String title, DateTime dateTime) async {
     final clean = title.trim();
     if (clean.isEmpty || dateTime.isBefore(DateTime.now())) return;
-    items.add(ScheduleItem(
+
+    final item = ScheduleItem(
       id: DateTime.now().microsecondsSinceEpoch.toString(),
       title: clean,
       dateTime: dateTime,
-    ));
+    );
+    items.add(item);
     items.sort(_compareItems);
     await _save();
+
+    final service = notifications;
+    if (service != null) {
+      await service.requestPermission();
+      await service.requestExactAlarmPermission();
+      await service.scheduleReminder(
+        id: item.id,
+        title: item.title,
+        dateTime: item.dateTime,
+      );
+    }
     notifyListeners();
   }
 
   Future<void> toggle(ScheduleItem item) async {
     item.completed = !item.completed;
     await _save();
+
+    final service = notifications;
+    if (service != null) {
+      if (item.completed) {
+        await service.cancelReminder(item.id);
+      } else if (item.dateTime.isAfter(DateTime.now())) {
+        await service.requestPermission();
+        await service.scheduleReminder(
+          id: item.id,
+          title: item.title,
+          dateTime: item.dateTime,
+        );
+      }
+    }
     notifyListeners();
   }
 
   Future<void> remove(ScheduleItem item) async {
     items.removeWhere((candidate) => candidate.id == item.id);
     await _save();
+    await notifications?.cancelReminder(item.id);
     notifyListeners();
   }
 
