@@ -82,7 +82,7 @@ Future<void> _openCreate(WidgetTester tester) async {
 
 Future<void> _tapSave(WidgetTester tester) async {
   final save = find.text('حفظ المصروف');
-  await tester.ensureVisible(save);
+  await tester.scrollUntilVisible(save, 500, scrollable: find.byType(Scrollable));
   await tester.tap(save);
   await tester.pumpAndSettle();
 }
@@ -139,6 +139,8 @@ void main() {
       expect(find.text('2.00 USD'), findsOneWidget);
 
       final emptyRepository = _FakeExpenseRepository();
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump();
       await tester.pumpWidget(_app(ExpenseLifecycleService(repository: emptyRepository)));
       await tester.pumpAndSettle();
       expect(find.text('لسه مفيش مصروفات'), findsOneWidget);
@@ -233,7 +235,7 @@ void main() {
       await _openCreate(tester);
       await _fillMinimalValidExpense(tester);
       final save = find.text('حفظ المصروف');
-      await tester.ensureVisible(save);
+      await tester.scrollUntilVisible(save, 500, scrollable: find.byType(Scrollable));
       await tester.tap(save);
       await tester.pump();
       expect(repository.saveCount, 1);
@@ -306,7 +308,7 @@ void main() {
       await _openCreate(tester);
       await _fillMinimalValidExpense(tester);
       final save = find.text('حفظ المصروف');
-      await tester.ensureVisible(save);
+      await tester.scrollUntilVisible(save, 500, scrollable: find.byType(Scrollable));
       await tester.tap(save);
       await tester.pump();
       Navigator.of(tester.element(find.text('مصروف جديد'))).pop();
