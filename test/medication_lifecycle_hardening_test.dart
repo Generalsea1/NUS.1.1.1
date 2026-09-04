@@ -372,7 +372,7 @@ void main() {
     final stored = await service.repository.getById('m1');
     expect(stored, isNotNull);
     expect(stored!.isActive, isFalse);
-    expect(stored.schedules, medication.schedules);
+    expect(stored.schedules.single.toJson(), medication.schedules.single.toJson());
     expect(port.active, isEmpty);
   });
 
