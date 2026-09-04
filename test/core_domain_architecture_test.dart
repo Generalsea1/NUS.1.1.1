@@ -6,6 +6,8 @@ import 'package:nus/core/domain/domain_entity.dart';
 import 'package:nus/features/appointments/domain/appointment.dart';
 import 'package:nus/features/bills/domain/bill.dart';
 import 'package:nus/features/expenses/domain/expense.dart';
+import 'package:nus/features/expenses/domain/expense_date.dart';
+import 'package:nus/features/expenses/domain/money.dart';
 import 'package:nus/features/finance/domain/budget.dart';
 import 'package:nus/features/medications/domain/medication.dart';
 import 'package:nus/features/notes/domain/note.dart';
@@ -63,9 +65,8 @@ void main() {
       ShoppingItem(id: 's', name: 'Milk'),
       Expense(
         id: 'e',
-        amount: 10,
-        currencyCode: 'USD',
-        occurredAt: DateTime.utc(2026),
+        amount: Money(minorUnits: 10, currencyCode: 'USD'),
+        date: ExpenseDate(year: 2026, month: 1, day: 1),
       ),
       Budget(
         id: 'b',

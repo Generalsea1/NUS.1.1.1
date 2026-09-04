@@ -1,4 +1,5 @@
 import '../../../core/domain/domain_entity.dart';
+import '../../../core/domain/domain_repository.dart';
 import 'expense_date.dart';
 import 'money.dart';
 
