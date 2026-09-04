@@ -42,12 +42,13 @@ No floating-point representation is permitted for persisted financial value.
 
 Currency conversion is explicitly out of scope until a dedicated exchange-rate design exists.
 
-The Finance transaction primitive now implemented follows this contract:
+The Finance transaction primitive implements this contract:
 
-- amount is positive minor units;
-- transaction type supplies direction (`income` or `expense`);
-- `signedMinorUnits` is derived for cash-flow calculations;
-- currency is normalized to uppercase three-letter form.
+- amount is a non-zero signed integer in minor units;
+- positive amount represents income/inflow;
+- negative amount represents expense/outflow;
+- currency is normalized to uppercase three-letter form;
+- zero-value transactions are rejected.
 
 ## 4. Identity
 
@@ -78,7 +79,7 @@ Initial account categories:
 
 An account owns no transaction persistence directly in the domain; transactions reference `accountId`.
 
-Future balances are derived from transactions and opening/adjustment entries rather than copied into unrelated feature records.
+Balances are derived from the account opening balance plus compatible transaction history. No independently mutable current-balance field is stored in the Account aggregate.
 
 ### 5.1 Phase 7.3 account aggregate baseline
 
@@ -96,7 +97,34 @@ The implemented Account aggregate establishes the minimum production foundation 
 
 The local repository persists accounts under `nus.finance.accounts.v1`. `deleteById` uses archive semantics rather than physically removing the account, preserving stable identity for future transaction history.
 
-No current account balance is stored in the Account aggregate. Balance computation remains a future transaction-integration concern.
+### 5.2 Phase 7.4 account balance / transaction integration
+
+The implemented ledger foundation connects transactions to accounts by stable `FinancialTransaction.accountId` identity.
+
+The balance equation is deterministic:
+
+```text
+Account Balance = openingBalanceMinorUnits + Σ transaction.amountMinorUnits
+```
+
+Because transaction amounts are signed integers:
+
+- positive values increase the balance;
+- negative values decrease the balance;
+- no floating-point arithmetic is required;
+- the Account aggregate does not store a mutable current balance.
+
+The application/query boundary exposes:
+
+- `balanceForAccount(accountId)`;
+- `balanceMinorUnits(accountId)`;
+- `transactionsForAccount(accountId)`.
+
+Each transaction selected for an account must match the account currency exactly. A mismatch raises `AccountCurrencyMismatchException`; incompatible currencies are never silently summed.
+
+Account archive/rename operations do not rewrite or delete historical transactions because transaction storage is independent and keyed by stable account ID.
+
+The local transaction repository persists independently under `nus.finance.transactions.v1` and isolates malformed individual records.
 
 ## 6. Categories
 
@@ -209,35 +237,54 @@ Finance persistence must not reuse:
 - `nus.expenses.v1`.
 
 The Phase 7.3 Account repository uses `nus.finance.accounts.v1`.
+The Phase 7.4 transaction repository uses `nus.finance.transactions.v1`.
 
-No Supabase synchronization is part of the first Finance slice.
+No Supabase synchronization is part of the current Finance foundation slices.
 
-## 17. First implementation slice
+## 17. Implementation slices
 
-The first Phase 7 implementation slice is the Finance transaction primitive:
+### 17.1 Financial transaction core — implemented / verification open
 
 - stable transaction identity;
 - stable account reference;
-- exact minor-unit money representation;
-- explicit income/expense direction;
-- category/source references as opaque IDs;
+- exact signed minor-unit money representation;
 - deterministic serialization;
-- domain tests for invariants and signed cash flow.
+- domain invariants.
 
-No account UI, ledger UI, cloud sync, budgets dashboard, or migration of Expenses is included in this slice.
+### 17.2 Expense financial read boundary — implemented / verification open
+
+Finance consumes existing Expense data through an application/query boundary. Expense does not import Finance.
+
+### 17.3 Account aggregate + local repository — implemented / verification open
+
+- stable account identity;
+- bank/wallet/cash types;
+- exact opening balance;
+- archive semantics;
+- dedicated local storage namespace.
+
+### 17.4 Account balance / transaction integration — implemented / verification open
+
+- stable transaction → account identity reference;
+- dedicated transaction persistence;
+- account-specific transaction queries;
+- deterministic opening + signed transaction balance derivation;
+- explicit currency mismatch failure;
+- no stored mutable current balance;
+- account rename/archive preserves historical transaction references.
+
+No account UI, ledger UI, cloud sync, budgets dashboard, or migration of Expenses is included.
 
 ## 18. Future implementation order
 
-1. Financial transaction query/read boundary for Expense data.
-2. Account aggregate + local repository.
-3. Account balance / transaction integration.
-4. Category aggregate + local repository.
-5. Income capture and transaction application service.
-6. Budget aggregate/lifecycle and budget queries.
-7. Bill and subscription application/data layers.
-8. Debt tracking.
-9. Savings goals.
-10. Financial summaries/trends/dashboard.
-11. Shared recurrence integration for recurring bills/subscriptions.
+1. Financial transaction creation / mutation use case.
+2. Category aggregate + local repository.
+3. Income capture and transaction application service, if not covered by the transaction mutation slice.
+4. Budget aggregate/lifecycle and budget queries.
+5. Bill and subscription application/data layers.
+6. Debt tracking.
+7. Savings goals.
+8. Financial summaries/trends/dashboard.
+9. Shared recurrence integration for recurring bills/subscriptions.
 
 Each item receives its own inspect → plan → implement → test → verify → evidence gate.
