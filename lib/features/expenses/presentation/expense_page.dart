@@ -380,6 +380,7 @@ class _ExpenseFormPageState extends State<ExpenseFormPage> {
       body: SafeArea(
         child: Form(
           child: ListView(
+            key: const ValueKey<String>('expense-form-list'),
             padding: EdgeInsets.fromLTRB(20, 16, 20, MediaQuery.of(context).viewInsets.bottom + 28),
             children: [
               _field(

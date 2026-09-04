@@ -81,14 +81,11 @@ Future<void> _openCreate(WidgetTester tester) async {
 }
 
 Finder _expenseFormScrollable() {
-  final form = find.byType(Form);
-  expect(form, findsOneWidget);
-  final scrollable = find.descendant(
-    of: form,
-    matching: find.byType(Scrollable),
+  final list = find.byKey(
+    const ValueKey<String>('expense-form-list'),
   );
-  expect(scrollable, findsOneWidget);
-  return scrollable;
+  expect(list, findsOneWidget);
+  return list;
 }
 
 Future<void> _tapSave(WidgetTester tester) async {
