@@ -19,7 +19,7 @@ Status vocabulary: `DONE` / `IN PROGRESS` / `BLOCKED` / `BLOCKED — ENVIRONMENT
 | 6.4 — Shopping | DONE | Shopping lifecycle + local repository + UI |
 | 6.5 — Expenses | ACCEPTED WITH KNOWN BLOCKED DIAGNOSTIC | Expense implementation accepted; final Save interaction verification remains isolated and environment-blocked |
 | 6.6 — Master Architecture Constitution | DONE | Constitution + master backlog |
-| 7 — Financial System | IN PROGRESS | Financial architecture + transaction core + Expense read/query + Account + balance integration foundations |
+| 7 — Financial System | IN PROGRESS | Financial architecture + transaction core + Expense read/query + Account + balance + controlled mutation foundations |
 | 8 — Tasks & Goals | FUTURE | Tasks, projects, goals, progress and recurrence composition |
 | 9 — Notes & Universal Search | FUTURE | Notes, indexing, unified search and navigation |
 | 10 — Home Manager | FUTURE | Household assets, maintenance, utilities and service records |
@@ -194,11 +194,31 @@ Slice includes:
 
 No Expense dependency, Expense storage change, reminder infrastructure change, Supabase sync, Family/Shared, or Android change was introduced.
 
-### 7.5 Financial Transaction Creation / Mutation Use Case — READY
+### 7.5 Financial Transaction Creation / Mutation Use Case — IMPLEMENTED / VERIFICATION OPEN
 
-Do not implement in the 7.4 slice.
+Implemented in:
 
-### 7.6 Category Aggregate + Local Repository — FUTURE
+- `lib/features/finance/application/financial_transaction_mutation_service.dart`
+- `test/financial_transaction_mutation_test.dart`
+
+Slice includes:
+
+- Controlled application-layer creation entry point — DONE.
+- Stable transaction/account IDs and domain validation — DONE.
+- Account existence validation — DONE.
+- Archived-account rejection for new transactions — DONE.
+- Exact currency compatibility validation — DONE.
+- Duplicate transaction-ID protection on create — DONE.
+- Stable ID and account preservation on update — DONE.
+- Repository-only persistence — DONE.
+- Optional opaque category/source references preserved — DONE.
+- No transaction-transfer logic — DONE.
+- Destructive transaction delete intentionally excluded pending an explicit reversal/void policy — DONE.
+- Focused tests — IMPLEMENTED / BLOCKED — ENVIRONMENT for execution.
+
+No Expense dependency, Expense storage change, reminder infrastructure change, Supabase sync, Family/Shared, or Android change was introduced.
+
+### 7.6 Financial Categories + Category Repository — READY
 ### 7.7 Income capture + application service — FUTURE
 ### 7.8 Budget aggregate/lifecycle + queries — FUTURE
 ### 7.9 Bills + subscriptions application/data — FUTURE
@@ -238,7 +258,6 @@ Rules:
 - Maintenance records — FUTURE.
 - Utility/service records — FUTURE.
 - Household reminders — FUTURE.
-- Home document attachments — FUTURE.
 
 ## Phase 11 — NUS Intelligence
 
@@ -313,6 +332,6 @@ No workaround is allowed merely to change a status from BLOCKED to DONE.
 
 ## Immediate next implementation task
 
-`7.5 — Financial Transaction Creation / Mutation Use Case`.
+`7.6 — Financial Categories + Category Repository`.
 
-7.4 runtime verification remains open until an execution-capable Flutter environment is available.
+7.5 runtime verification remains open until an execution-capable Flutter environment is available.
