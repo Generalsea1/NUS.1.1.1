@@ -8,8 +8,6 @@ import 'package:nus/features/shopping/application/shopping_lifecycle_service.dar
 import 'package:nus/features/shopping/data/local_shopping_repository.dart';
 import 'package:nus/features/shopping/domain/shopping_item.dart';
 import 'package:nus/features/shopping/domain/shopping_list.dart';
-import 'package:nus/features/shopping/presentation/shopping_list_details_page.dart';
-import 'package:nus/features/shopping/presentation/shopping_list_editor_page.dart';
 import 'package:nus/features/shopping/presentation/shopping_page.dart';
 
 class _HardeningRepository implements ShoppingRepository {
