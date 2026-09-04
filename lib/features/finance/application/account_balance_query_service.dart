@@ -39,26 +39,16 @@ class AccountBalance {
   int get minorUnits => openingBalanceMinorUnits + transactionTotalMinorUnits;
 }
 
-/// Minimal account read port used by finance queries.
-abstract interface class AccountReader {
-  Future<Account?> getById(String id);
-}
-
-/// Minimal transaction read port used by finance queries.
-abstract interface class FinancialTransactionReader {
-  Future<List<FinancialTransaction>> list();
-}
-
 /// Deterministically derives account balances without storing mutable balance state.
 class AccountBalanceQueryService {
   const AccountBalanceQueryService({
-    required AccountReader accounts,
-    required FinancialTransactionReader transactions,
+    required AccountRepository accounts,
+    required FinancialTransactionRepository transactions,
   })  : _accounts = accounts,
         _transactions = transactions;
 
-  final AccountReader _accounts;
-  final FinancialTransactionReader _transactions;
+  final AccountRepository _accounts;
+  final FinancialTransactionRepository _transactions;
 
   Future<AccountBalance> balanceForAccount(String accountId) async {
     final account = await _requireAccount(accountId);
