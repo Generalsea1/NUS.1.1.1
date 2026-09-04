@@ -113,10 +113,9 @@ void main() {
     );
   });
 
-  test('repository follows the domain repository boundary', () {
-    final repository = LocalAccountRepository(
-      preferences: SharedPreferences.getMockInitialValues(),
-    );
+  test('repository follows the domain repository boundary', () async {
+    final preferences = await SharedPreferences.getInstance();
+    final repository = LocalAccountRepository(preferences: preferences);
 
     expect(repository, isA<DomainRepository<Account>>());
     expect(repository, isA<AccountRepository>());
@@ -136,7 +135,12 @@ void main() {
       <String>['a-account', 'b-account'],
     );
 
-    await repository.save(account.copyWith(name: 'Updated', openingBalanceMinorUnits: 999));
+    await repository.save(
+      account.copyWith(
+        name: 'Updated',
+        openingBalanceMinorUnits: 999,
+      ),
+    );
     final updated = await repository.getById('b-account');
 
     expect(updated!.id, 'b-account');
@@ -208,11 +212,11 @@ void main() {
     final preferences = await SharedPreferences.getInstance();
     await LocalAccountRepository(preferences: preferences).save(makeAccount());
 
-    expect(preferences.getString(LocalAccountRepository.storageKey), isNotNull);
     expect(
-      preferences.getString('nus.expenses.v1'),
-      isNull,
+      preferences.getString(LocalAccountRepository.storageKey),
+      isNotNull,
     );
+    expect(preferences.getString('nus.expenses.v1'), isNull);
     expect(
       LocalAccountRepository.storageKey,
       isNot('nus.expenses.v1'),
