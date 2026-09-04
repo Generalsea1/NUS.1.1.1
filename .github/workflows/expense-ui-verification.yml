@@ -9,7 +9,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  APPLICATION_VERIFICATION_SHA: 1ad41960aeb0f008f2d646b095df8afd7f62a1ab
+  APPLICATION_VERIFICATION_SHA: 40d696c2c46456aeb3c5f1cd8e98e2fb5e247304
 
 jobs:
   verify-expense-ui:
