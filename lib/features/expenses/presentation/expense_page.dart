@@ -315,7 +315,7 @@ class _ExpenseFormPageState extends State<ExpenseFormPage> {
     try {
       final minorUnits = parseExpenseAmountToMinorUnits(_amountController.text);
       final currency = _currencyController.text.trim().toUpperCase();
-      if (!RegExp(r'^[A-Z]{3}\$').hasMatch(currency)) {
+      if (!RegExp(r'^[A-Z]{3}$').hasMatch(currency)) {
         throw const FormatException('Currency must be exactly three letters.');
       }
 
