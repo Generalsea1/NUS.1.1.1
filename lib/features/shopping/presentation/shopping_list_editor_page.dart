@@ -16,6 +16,7 @@ class ShoppingListEditorPage extends StatefulWidget {
 
 class _ShoppingListEditorPageState extends State<ShoppingListEditorPage> {
   late final TextEditingController _name;
+  bool _saving = false;
 
   bool get _editing => widget.initialName != null;
   String t(String en, String ar) => widget.isArabic ? ar : en;
@@ -33,6 +34,7 @@ class _ShoppingListEditorPageState extends State<ShoppingListEditorPage> {
   }
 
   void _save() {
+    if (_saving) return;
     final cleanName = _name.text.trim();
     if (cleanName.isEmpty) {
       ScaffoldMessenger.of(context)
@@ -43,6 +45,7 @@ class _ShoppingListEditorPageState extends State<ShoppingListEditorPage> {
       return;
     }
 
+    _saving = true;
     Navigator.of(context).pop(cleanName);
   }
 
@@ -56,7 +59,7 @@ class _ShoppingListEditorPageState extends State<ShoppingListEditorPage> {
         ),
         leading: IconButton(
           tooltip: t('Cancel', 'إلغاء'),
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: _saving ? null : () => Navigator.of(context).pop(),
           icon: const Icon(Icons.close_rounded),
         ),
       ),
@@ -68,6 +71,7 @@ class _ShoppingListEditorPageState extends State<ShoppingListEditorPage> {
             controller: _name,
             autofocus: true,
             textInputAction: TextInputAction.done,
+            enabled: !_saving,
             onSubmitted: (_) => _save(),
             decoration: InputDecoration(
               labelText: t('List name *', 'اسم القائمة *'),
@@ -78,8 +82,14 @@ class _ShoppingListEditorPageState extends State<ShoppingListEditorPage> {
           const SizedBox(height: 18),
           FilledButton.icon(
             key: const Key('shopping_list_editor_save'),
-            onPressed: _save,
-            icon: const Icon(Icons.check_rounded),
+            onPressed: _saving ? null : _save,
+            icon: _saving
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.check_rounded),
             label: Padding(
               padding: const EdgeInsets.symmetric(vertical: 14),
               child: Text(
@@ -91,7 +101,7 @@ class _ShoppingListEditorPageState extends State<ShoppingListEditorPage> {
           const SizedBox(height: 8),
           TextButton(
             key: const Key('shopping_list_editor_cancel'),
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: _saving ? null : () => Navigator.of(context).pop(),
             child: Text(t('Cancel', 'إلغاء')),
           ),
         ],

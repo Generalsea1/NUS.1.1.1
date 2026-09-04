@@ -27,6 +27,7 @@ class _ShoppingListDetailsPageState extends State<ShoppingListDetailsPage> {
   String? _error;
   final Set<String> _busyItems = <String>{};
   bool _listActionBusy = false;
+  bool _itemMutationBusy = false;
 
   String t(String en, String ar) => widget.isArabic ? ar : en;
 
@@ -61,7 +62,7 @@ class _ShoppingListDetailsPageState extends State<ShoppingListDetailsPage> {
 
   Future<void> _editList() async {
     final list = _list;
-    if (list == null) return;
+    if (list == null || _listActionBusy || _itemMutationBusy) return;
     final name = await Navigator.of(context).push<String>(
       MaterialPageRoute(
         builder: (_) => ShoppingListEditorPage(
@@ -70,19 +71,22 @@ class _ShoppingListDetailsPageState extends State<ShoppingListDetailsPage> {
         ),
       ),
     );
-    if (!mounted || name == null) return;
+    if (!mounted || name == null || _listActionBusy || _itemMutationBusy) return;
 
+    setState(() => _listActionBusy = true);
     try {
       final updated = await widget.service.updateList(widget.listId, name: name);
       if (!mounted) return;
       setState(() => _list = updated);
     } on Object {
       _message(t('Could not update the shopping list.', 'تعذر تعديل قائمة المشتريات.'));
+    } finally {
+      if (mounted) setState(() => _listActionBusy = false);
     }
   }
 
   Future<void> _deleteList() async {
-    if (_list == null || _listActionBusy) return;
+    if (_list == null || _listActionBusy || _itemMutationBusy) return;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
@@ -105,7 +109,7 @@ class _ShoppingListDetailsPageState extends State<ShoppingListDetailsPage> {
         ],
       ),
     );
-    if (!mounted || confirmed != true) return;
+    if (!mounted || confirmed != true || _listActionBusy || _itemMutationBusy) return;
 
     setState(() => _listActionBusy = true);
     try {
@@ -114,20 +118,23 @@ class _ShoppingListDetailsPageState extends State<ShoppingListDetailsPage> {
       Navigator.of(context).pop(true);
     } on Object {
       if (!mounted) return;
-      setState(() => _listActionBusy = false);
       _message(t('Could not delete the shopping list.', 'تعذر حذف قائمة المشتريات.'));
+    } finally {
+      if (mounted) setState(() => _listActionBusy = false);
     }
   }
 
   Future<void> _addItem() async {
+    if (_itemMutationBusy || _listActionBusy) return;
     final draft = await showModalBottomSheet<_ShoppingItemDraft>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
       builder: (_) => _ShoppingItemEditorSheet(isArabic: widget.isArabic),
     );
-    if (!mounted || draft == null) return;
+    if (!mounted || draft == null || _itemMutationBusy || _listActionBusy) return;
 
+    setState(() => _itemMutationBusy = true);
     try {
       final updated = await widget.service.addItem(
         widget.listId,
@@ -138,10 +145,13 @@ class _ShoppingListDetailsPageState extends State<ShoppingListDetailsPage> {
       setState(() => _list = updated);
     } on Object {
       _message(t('Could not add the item.', 'تعذر إضافة العنصر.'));
+    } finally {
+      if (mounted) setState(() => _itemMutationBusy = false);
     }
   }
 
   Future<void> _editItem(ShoppingItem item) async {
+    if (_busyItems.contains(item.id) || _itemMutationBusy || _listActionBusy) return;
     final draft = await showModalBottomSheet<_ShoppingItemDraft>(
       context: context,
       isScrollControlled: true,
@@ -151,8 +161,9 @@ class _ShoppingListDetailsPageState extends State<ShoppingListDetailsPage> {
         isArabic: widget.isArabic,
       ),
     );
-    if (!mounted || draft == null) return;
+    if (!mounted || draft == null || _busyItems.contains(item.id) || _itemMutationBusy || _listActionBusy) return;
 
+    setState(() => _itemMutationBusy = true);
     try {
       final updated = await widget.service.updateItem(
         widget.listId,
@@ -166,11 +177,13 @@ class _ShoppingListDetailsPageState extends State<ShoppingListDetailsPage> {
       setState(() => _list = updated);
     } on Object {
       _message(t('Could not update the item.', 'تعذر تعديل العنصر.'));
+    } finally {
+      if (mounted) setState(() => _itemMutationBusy = false);
     }
   }
 
   Future<void> _toggleItem(ShoppingItem item) async {
-    if (_busyItems.contains(item.id)) return;
+    if (_busyItems.contains(item.id) || _itemMutationBusy || _listActionBusy) return;
     setState(() => _busyItems.add(item.id));
     try {
       final updated = await widget.service.toggleItemCompletion(widget.listId, item.id);
@@ -186,7 +199,7 @@ class _ShoppingListDetailsPageState extends State<ShoppingListDetailsPage> {
   }
 
   Future<void> _deleteItem(ShoppingItem item) async {
-    if (_busyItems.contains(item.id)) return;
+    if (_busyItems.contains(item.id) || _itemMutationBusy || _listActionBusy) return;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
@@ -204,7 +217,7 @@ class _ShoppingListDetailsPageState extends State<ShoppingListDetailsPage> {
         ],
       ),
     );
-    if (!mounted || confirmed != true) return;
+    if (!mounted || confirmed != true || _busyItems.contains(item.id) || _itemMutationBusy || _listActionBusy) return;
 
     setState(() => _busyItems.add(item.id));
     try {
@@ -230,6 +243,7 @@ class _ShoppingListDetailsPageState extends State<ShoppingListDetailsPage> {
   @override
   Widget build(BuildContext context) {
     final list = _list;
+    final mutationBusy = _listActionBusy || _itemMutationBusy;
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -239,7 +253,7 @@ class _ShoppingListDetailsPageState extends State<ShoppingListDetailsPage> {
         actions: [
           if (list != null)
             PopupMenuButton<String>(
-              enabled: !_listActionBusy,
+              enabled: !mutationBusy,
               onSelected: (value) {
                 if (value == 'edit') _editList();
                 if (value == 'delete') _deleteList();
@@ -253,23 +267,36 @@ class _ShoppingListDetailsPageState extends State<ShoppingListDetailsPage> {
       ),
       floatingActionButton: list == null || _loading
           ? null
-          : FloatingActionButton.extended(
-              onPressed: _addItem,
-              icon: const Icon(Icons.add_rounded),
-              label: Text(t('Add item', 'إضافة عنصر')),
-            ),
+          : mutationBusy
+              ? FloatingActionButton.extended(
+                  onPressed: null,
+                  icon: const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                  label: Text(t('Saving', 'جارٍ الحفظ')),
+                )
+              : FloatingActionButton.extended(
+                  onPressed: _addItem,
+                  icon: const Icon(Icons.add_rounded),
+                  label: Text(t('Add item', 'إضافة عنصر')),
+                ),
       body: SafeArea(
         child: _loading
             ? const Center(child: CircularProgressIndicator())
             : _error != null
                 ? _ErrorState(message: _error!, onRetry: _load, isArabic: widget.isArabic)
                 : RefreshIndicator(
-                    onRefresh: _load,
+                    onRefresh: mutationBusy ? () async {} : _load,
                     child: list!.items.isEmpty
                         ? ListView(
                             children: [
                               const SizedBox(height: 100),
-                              _EmptyItemsState(onAdd: _addItem, isArabic: widget.isArabic),
+                              _EmptyItemsState(
+                                onAdd: mutationBusy ? null : _addItem,
+                                isArabic: widget.isArabic,
+                              ),
                             ],
                           )
                         : ListView.separated(
@@ -281,7 +308,7 @@ class _ShoppingListDetailsPageState extends State<ShoppingListDetailsPage> {
                               return _ShoppingItemTile(
                                 item: item,
                                 isArabic: widget.isArabic,
-                                busy: _busyItems.contains(item.id),
+                                busy: mutationBusy || _busyItems.contains(item.id),
                                 onToggle: () => _toggleItem(item),
                                 onEdit: () => _editItem(item),
                                 onDelete: () => _deleteItem(item),
@@ -315,7 +342,7 @@ class _ShoppingItemTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final quantity = item.quantity?.trim();
+    final quantity = item.quantity;
     final subtitle = quantity == null || quantity.isEmpty ? null : quantity;
     return Card(
       elevation: 0,
@@ -371,6 +398,7 @@ class _ShoppingItemEditorSheet extends StatefulWidget {
 class _ShoppingItemEditorSheetState extends State<_ShoppingItemEditorSheet> {
   late final TextEditingController _name;
   late final TextEditingController _quantity;
+  bool _saving = false;
 
   bool get _editing => widget.initial != null;
   String t(String en, String ar) => widget.isArabic ? ar : en;
@@ -390,6 +418,7 @@ class _ShoppingItemEditorSheetState extends State<_ShoppingItemEditorSheet> {
   }
 
   void _save() {
+    if (_saving) return;
     final cleanName = _name.text.trim();
     if (cleanName.isEmpty) {
       ScaffoldMessenger.of(context)
@@ -400,10 +429,10 @@ class _ShoppingItemEditorSheetState extends State<_ShoppingItemEditorSheet> {
       return;
     }
 
-    final cleanQuantity = _quantity.text.trim();
+    _saving = true;
     final draft = _ShoppingItemDraft(
       name: cleanName,
-      quantity: cleanQuantity.isEmpty ? null : cleanQuantity,
+      quantity: _quantity.text.isEmpty ? null : _quantity.text,
     );
     Navigator.of(context).pop(draft);
   }
@@ -425,6 +454,7 @@ class _ShoppingItemEditorSheetState extends State<_ShoppingItemEditorSheet> {
               key: const Key('shopping_item_name_field'),
               controller: _name,
               autofocus: true,
+              enabled: !_saving,
               textInputAction: TextInputAction.next,
               decoration: InputDecoration(
                 labelText: t('Item name *', 'اسم العنصر *'),
@@ -435,6 +465,7 @@ class _ShoppingItemEditorSheetState extends State<_ShoppingItemEditorSheet> {
             TextField(
               key: const Key('shopping_item_quantity_field'),
               controller: _quantity,
+              enabled: !_saving,
               textInputAction: TextInputAction.done,
               onSubmitted: (_) => _save(),
               decoration: InputDecoration(
@@ -445,14 +476,20 @@ class _ShoppingItemEditorSheetState extends State<_ShoppingItemEditorSheet> {
             const SizedBox(height: 20),
             FilledButton.icon(
               key: const Key('shopping_item_editor_save'),
-              onPressed: _save,
-              icon: const Icon(Icons.check_rounded),
+              onPressed: _saving ? null : _save,
+              icon: _saving
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.check_rounded),
               label: Text(t('Save item', 'حفظ العنصر')),
             ),
             const SizedBox(height: 6),
             TextButton(
               key: const Key('shopping_item_editor_cancel'),
-              onPressed: () => Navigator.of(context).pop(),
+              onPressed: _saving ? null : () => Navigator.of(context).pop(),
               child: Text(t('Cancel', 'إلغاء')),
             ),
           ],
@@ -465,7 +502,7 @@ class _ShoppingItemEditorSheetState extends State<_ShoppingItemEditorSheet> {
 class _EmptyItemsState extends StatelessWidget {
   const _EmptyItemsState({required this.onAdd, required this.isArabic});
 
-  final VoidCallback onAdd;
+  final VoidCallback? onAdd;
   final bool isArabic;
 
   @override

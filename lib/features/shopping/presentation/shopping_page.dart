@@ -22,6 +22,7 @@ class ShoppingPage extends StatefulWidget {
 class _ShoppingPageState extends State<ShoppingPage> {
   List<ShoppingList> _lists = const <ShoppingList>[];
   bool _loading = true;
+  bool _mutationBusy = false;
   String? _error;
 
   String t(String en, String ar) => widget.isArabic ? ar : en;
@@ -54,13 +55,15 @@ class _ShoppingPageState extends State<ShoppingPage> {
   }
 
   Future<void> _create() async {
+    if (_mutationBusy) return;
     final name = await Navigator.of(context).push<String>(
       MaterialPageRoute(
         builder: (_) => ShoppingListEditorPage(isArabic: widget.isArabic),
       ),
     );
-    if (!mounted || name == null) return;
+    if (!mounted || name == null || _mutationBusy) return;
 
+    setState(() => _mutationBusy = true);
     try {
       await widget.service.createList(name: name);
       await _load();
@@ -69,10 +72,13 @@ class _ShoppingPageState extends State<ShoppingPage> {
     } on Object {
       _message(t('Could not save the shopping list.', 'تعذر حفظ قائمة المشتريات.'));
       await _load();
+    } finally {
+      if (mounted) setState(() => _mutationBusy = false);
     }
   }
 
   Future<void> _edit(ShoppingList list) async {
+    if (_mutationBusy) return;
     final name = await Navigator.of(context).push<String>(
       MaterialPageRoute(
         builder: (_) => ShoppingListEditorPage(
@@ -81,8 +87,9 @@ class _ShoppingPageState extends State<ShoppingPage> {
         ),
       ),
     );
-    if (!mounted || name == null) return;
+    if (!mounted || name == null || _mutationBusy) return;
 
+    setState(() => _mutationBusy = true);
     try {
       await widget.service.updateList(list.id, name: name);
       await _load();
@@ -91,10 +98,13 @@ class _ShoppingPageState extends State<ShoppingPage> {
     } on Object {
       _message(t('Could not update the shopping list.', 'تعذر تعديل قائمة المشتريات.'));
       await _load();
+    } finally {
+      if (mounted) setState(() => _mutationBusy = false);
     }
   }
 
   Future<void> _delete(ShoppingList list) async {
+    if (_mutationBusy) return;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
@@ -117,18 +127,22 @@ class _ShoppingPageState extends State<ShoppingPage> {
         ],
       ),
     );
-    if (!mounted || confirmed != true) return;
+    if (!mounted || confirmed != true || _mutationBusy) return;
 
+    setState(() => _mutationBusy = true);
     try {
       await widget.service.deleteList(list.id);
       await _load();
     } on Object {
       _message(t('Could not delete the shopping list.', 'تعذر حذف قائمة المشتريات.'));
       await _load();
+    } finally {
+      if (mounted) setState(() => _mutationBusy = false);
     }
   }
 
   Future<void> _open(ShoppingList list) async {
+    if (_mutationBusy) return;
     final deleted = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (_) => ShoppingListDetailsPage(
@@ -159,8 +173,14 @@ class _ShoppingPageState extends State<ShoppingPage> {
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: _create,
-        icon: const Icon(Icons.add_rounded),
+        onPressed: _mutationBusy ? null : _create,
+        icon: _mutationBusy
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Icon(Icons.add_rounded),
         label: Text(t('New list', 'قائمة جديدة')),
       ),
       body: SafeArea(
@@ -169,12 +189,12 @@ class _ShoppingPageState extends State<ShoppingPage> {
             : _error != null
                 ? _ErrorState(message: _error!, onRetry: _load, isArabic: widget.isArabic)
                 : RefreshIndicator(
-                    onRefresh: _load,
+                    onRefresh: _mutationBusy ? () async {} : _load,
                     child: _lists.isEmpty
                         ? ListView(
                             children: [
                               const SizedBox(height: 100),
-                              _EmptyState(onAdd: _create, isArabic: widget.isArabic),
+                              _EmptyState(onAdd: _mutationBusy ? null : _create, isArabic: widget.isArabic),
                             ],
                           )
                         : ListView.separated(
@@ -186,6 +206,7 @@ class _ShoppingPageState extends State<ShoppingPage> {
                               return _ShoppingListCard(
                                 list: list,
                                 isArabic: widget.isArabic,
+                                disabled: _mutationBusy,
                                 onTap: () => _open(list),
                                 onEdit: () => _edit(list),
                                 onDelete: () => _delete(list),
@@ -202,6 +223,7 @@ class _ShoppingListCard extends StatelessWidget {
   const _ShoppingListCard({
     required this.list,
     required this.isArabic,
+    required this.disabled,
     required this.onTap,
     required this.onEdit,
     required this.onDelete,
@@ -209,6 +231,7 @@ class _ShoppingListCard extends StatelessWidget {
 
   final ShoppingList list;
   final bool isArabic;
+  final bool disabled;
   final VoidCallback onTap;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
@@ -225,7 +248,7 @@ class _ShoppingListCard extends StatelessWidget {
     return Card(
       elevation: 0,
       child: ListTile(
-        onTap: onTap,
+        onTap: disabled ? null : onTap,
         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
         leading: const CircleAvatar(child: Icon(Icons.shopping_cart_outlined)),
         title: Text(
@@ -236,6 +259,7 @@ class _ShoppingListCard extends StatelessWidget {
         ),
         subtitle: Text(summary),
         trailing: PopupMenuButton<String>(
+          enabled: !disabled,
           onSelected: (value) {
             if (value == 'edit') onEdit();
             if (value == 'delete') onDelete();
@@ -253,7 +277,7 @@ class _ShoppingListCard extends StatelessWidget {
 class _EmptyState extends StatelessWidget {
   const _EmptyState({required this.onAdd, required this.isArabic});
 
-  final VoidCallback onAdd;
+  final VoidCallback? onAdd;
   final bool isArabic;
 
   @override
