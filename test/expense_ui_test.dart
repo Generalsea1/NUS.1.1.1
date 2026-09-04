@@ -85,10 +85,14 @@ Future<void> _revealSave(WidgetTester tester) async {
     const ValueKey<String>('expense-form-list'),
   );
   expect(formList, findsOneWidget);
-  await tester.drag(formList, const Offset(0, -500));
-  await tester.pumpAndSettle();
 
   final save = find.text('حفظ المصروف');
+  await tester.dragUntilVisible(
+    save,
+    formList,
+    const Offset(0, -500),
+    maxIteration: 10,
+  );
   expect(save, findsOneWidget);
 }
 
