@@ -11,6 +11,8 @@ Phase 6.5.2 establishes the financially safe local foundation for Expenses.
 
 No floating-point value is persisted or used for Money. The foundation does not implement currency conversion or exchange rates. Minor-unit scale is an explicit currency/display concern and is not guessed from locale.
 
+Currency validation in this phase is deliberately limited to the canonical three-letter ISO-style shape. A future currency registry may add membership/metadata rules without changing the stored integer-money representation.
+
 ## Expense date
 
 `ExpenseDate` is a date-only value object containing year, month, and day. It has no time-of-day or timezone semantics. Serialization is always `YYYY-MM-DD`.
