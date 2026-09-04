@@ -17,9 +17,9 @@ Status vocabulary: `DONE` / `IN PROGRESS` / `BLOCKED` / `BLOCKED — ENVIRONMENT
 | 6.2 — Appointments hardening | DONE | Appointment architecture and reminder boundaries |
 | 6.3 — Medications | DONE | Medication lifecycle + reminder coordinator/adapter |
 | 6.4 — Shopping | DONE | Shopping lifecycle + local repository + UI |
-| 6.5 — Expenses | ACCEPTED WITH KNOWN BLOCKED DIAGNOSTIC | Expense domain, lifecycle, local persistence and UI implementation accepted; one test-runtime interaction blocker remains isolated |
+| 6.5 — Expenses | ACCEPTED WITH KNOWN BLOCKED DIAGNOSTIC | Expense implementation accepted; final Save interaction verification remains isolated and environment-blocked |
 | 6.6 — Master Architecture Constitution | DONE | Constitution + master backlog |
-| 7 — Financial System | IN PROGRESS | Financial architecture baseline + first transaction-core slice |
+| 7 — Financial System | IN PROGRESS | Financial architecture + transaction core + Expense read/query foundation |
 | 8 — Tasks & Goals | FUTURE | Tasks, projects, goals, progress and recurrence composition |
 | 9 — Notes & Universal Search | FUTURE | Notes, indexing, unified search and navigation |
 | 10 — Home Manager | FUTURE | Household assets, maintenance, utilities and service records |
@@ -74,13 +74,12 @@ Known facts:
 - Root cause: NOT PROVEN.
 - Best hypothesis: TEST TARGET MISMATCH — VERY HIGH CONFIDENCE.
 - Candidate test-only change remains UNEXECUTED.
-- Current environment cannot execute an uncommitted test-only experiment, so no further experiment is authorized here.
 
 The blocker does not freeze unrelated product architecture or implementation work.
 
 ### 6.5.5 Final Expense acceptance — ACCEPTED WITH KNOWN BLOCKED DIAGNOSTIC
 
-Available static/source/runtime evidence supports the completed Expense domain, repository, lifecycle, persistence, UI state, and boundary implementation. The remaining interaction verification is explicitly environment-blocked and is not treated as evidence of a production defect.
+Available static/source/runtime evidence supports the completed Expense domain, repository, lifecycle, persistence, UI state, error handling, and dependency boundaries. Runtime interaction items that require a new execution-capable environment remain explicitly blocked rather than treated as product defects.
 
 Acceptance closure requirements when execution capability is restored:
 
@@ -90,8 +89,6 @@ Acceptance closure requirements when execution capability is restored:
 - run full suite;
 - verify analyze;
 - verify exact final SHA and diff.
-
-Until then, the hit-test issue remains BLOCKED and isolated.
 
 ## Phase 6.6 — Constitution — DONE
 
@@ -117,6 +114,8 @@ Status: IN PROGRESS.
 
 ### 7.0 Financial System Architecture — DONE
 
+Reference: `docs/FINANCIAL_SYSTEM_ARCHITECTURE.md`.
+
 - Money representation policy — DONE.
 - Transaction identity policy — DONE.
 - Account identity policy — DONE.
@@ -132,9 +131,9 @@ Status: IN PROGRESS.
 - Income → Account relation policy — DONE.
 - Account → net cash flow model — DONE.
 
-Reference: `docs/FINANCIAL_SYSTEM_ARCHITECTURE.md`.
-
 ### 7.1 Financial Transaction Core — IMPLEMENTED / VERIFICATION OPEN
+
+Implemented in `lib/features/finance/domain/financial_transaction.dart` with dedicated domain tests.
 
 - Stable transaction ID — DONE.
 - Stable account reference — DONE.
@@ -145,7 +144,19 @@ Reference: `docs/FINANCIAL_SYSTEM_ARCHITECTURE.md`.
 - Deterministic serialization — DONE.
 - Domain invariant tests — IMPLEMENTED / BLOCKED — ENVIRONMENT for execution.
 
-### 7.2 Financial read/query model for Expenses — READY
+### 7.2 Financial read/query model for Expenses — IMPLEMENTED / VERIFICATION OPEN
+
+Implemented without changing Expense domain or storage:
+
+- `FinancialExpenseSnapshot` read model — DONE.
+- `FinancialExpenseReader` application boundary — DONE.
+- Expense repository → Finance adapter — DONE.
+- Monthly expense total by currency — DONE.
+- Monthly category totals — DONE.
+- Exact minor-unit aggregation — DONE.
+- Cross-currency aggregation isolation — DONE.
+- Query tests — IMPLEMENTED / BLOCKED — ENVIRONMENT for execution.
+
 ### 7.3 Account aggregate + local repository — READY
 ### 7.4 Category aggregate + local repository — FUTURE
 ### 7.5 Income capture + application service — FUTURE
@@ -262,6 +273,6 @@ No workaround is allowed merely to change a status from BLOCKED to DONE.
 
 ## Immediate next implementation task
 
-`7.2 — Financial read/query model for Expenses`.
+`7.3 — Account aggregate + local repository`.
 
-Implement the smallest application-level read boundary that can consume existing `ExpenseRepository` data for financial summaries without importing Finance into Expenses, without persistence migration, and without UI/cloud work.
+Keep the account model local-first and exact-money compatible, with stable opaque account identity and no dependency on Expenses, Supabase, Family/Shared, or Android infrastructure.
