@@ -5,6 +5,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'notification_service.dart';
 import 'features/appointments/presentation/appointments_page.dart';
+import 'features/expenses/application/expense_lifecycle_service.dart';
+import 'features/expenses/data/local_expense_repository.dart';
+import 'features/expenses/presentation/expense_page.dart';
 import 'features/medications/application/medication_lifecycle_service.dart';
 import 'features/medications/application/medication_reminder_coordinator.dart';
 import 'features/medications/data/local_medication_repository.dart';
@@ -32,11 +35,15 @@ Future<void> main() async {
   final shoppingService = ShoppingLifecycleService(
     repository: LocalShoppingRepository(),
   );
+  final expenseService = ExpenseLifecycleService(
+    repository: LocalExpenseRepository(),
+  );
 
   runApp(NosApp(
     store: store,
     medicationService: medicationService,
     shoppingService: shoppingService,
+    expenseService: expenseService,
   ));
 }
 
@@ -46,11 +53,13 @@ class NosApp extends StatefulWidget {
     required this.store,
     this.medicationService,
     this.shoppingService,
+    this.expenseService,
   });
 
   final ScheduleStore store;
   final MedicationLifecycleService? medicationService;
   final ShoppingLifecycleService? shoppingService;
+  final ExpenseLifecycleService? expenseService;
 
   @override
   State<NosApp> createState() => _NosAppState();
@@ -76,6 +85,7 @@ class _NosAppState extends State<NosApp> {
           store: widget.store,
           medicationService: widget.medicationService,
           shoppingService: widget.shoppingService,
+          expenseService: widget.expenseService,
           isArabic: isArabic,
           onToggleLanguage: () => setState(() => isArabic = !isArabic),
         ),
@@ -223,6 +233,7 @@ class HomePage extends StatefulWidget {
     required this.store,
     this.medicationService,
     this.shoppingService,
+    this.expenseService,
     required this.isArabic,
     required this.onToggleLanguage,
   });
@@ -230,6 +241,7 @@ class HomePage extends StatefulWidget {
   final ScheduleStore store;
   final MedicationLifecycleService? medicationService;
   final ShoppingLifecycleService? shoppingService;
+  final ExpenseLifecycleService? expenseService;
   final bool isArabic;
   final VoidCallback onToggleLanguage;
 
@@ -381,6 +393,24 @@ class _HomePageState extends State<HomePage> {
               label: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 13),
                 child: Text(t('Shopping', 'المشتريات'), style: const TextStyle(fontWeight: FontWeight.w900)),
+              ),
+            ),
+            const SizedBox(height: 10),
+            OutlinedButton.icon(
+              onPressed: widget.expenseService == null
+                  ? null
+                  : () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => ExpensePage(
+                          service: widget.expenseService!,
+                          isArabic: widget.isArabic,
+                        ),
+                      ),
+                    ),
+              icon: const Icon(Icons.receipt_long_outlined),
+              label: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 13),
+                child: Text(t('Expenses', 'المصروفات'), style: const TextStyle(fontWeight: FontWeight.w900)),
               ),
             ),
             const SizedBox(height: 28),
