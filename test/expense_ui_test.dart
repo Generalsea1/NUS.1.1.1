@@ -12,34 +12,32 @@ import 'package:nus/features/expenses/presentation/expense_page.dart';
 
 class _FakeExpenseRepository implements ExpenseRepository {
   final Map<String, Expense> _store = <String, Expense>{};
-  int saveCount = 0;
-  StateError? listFailure;
-  StateError? saveFailure;
-  StateError? deleteFailure;
-  Completer<void>? saveCompleter;
-  bool blockSave = false;
+  Object? listFailure;
+  Object? saveFailure;
+  Object? deleteFailure;
   final List<String> deletedIds = <String>[];
+  int saveCount = 0;
+  bool blockSave = false;
+  Completer<void>? saveCompleter;
 
   @override
-  Future<Expense?> getById(String id) async {
-    return _store[id];
-  }
+  Future<Expense?> getById(String id) async => _store[id];
 
   @override
   Future<List<Expense>> list() async {
     if (listFailure != null) throw listFailure!;
-    return _store.values.toList();
+    return List<Expense>.of(_store.values);
   }
 
   @override
-  Future<void> save(Expense expense) async {
+  Future<void> save(Expense entity) async {
     saveCount++;
     if (saveFailure != null) throw saveFailure!;
     if (blockSave) {
-      saveCompleter = Completer<void>();
+      saveCompleter ??= Completer<void>();
       await saveCompleter!.future;
     }
-    _store[expense.id] = expense;
+    _store[entity.id] = entity;
   }
 
   @override
