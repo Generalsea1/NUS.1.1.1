@@ -9,21 +9,70 @@ enum FinancialTransactionType { income, expense }
 /// Amount is always non-negative. Transaction type determines cash-flow
 /// direction, which keeps income and expense semantics explicit.
 class FinancialTransaction implements DomainEntity {
-  const FinancialTransaction({
+  factory FinancialTransaction({
+    required String id,
+    required String accountId,
+    required int amountMinorUnits,
+    required String currencyCode,
+    required DateTime occurredAt,
+    required FinancialTransactionType type,
+    String? categoryId,
+    String? description,
+    String? sourceReference,
+  }) {
+    final cleanId = id.trim();
+    final cleanAccountId = accountId.trim();
+    final cleanCurrency = currencyCode.trim().toUpperCase();
+
+    if (cleanId.isEmpty) {
+      throw ArgumentError.value(id, 'id', 'Transaction ID must not be empty.');
+    }
+    if (cleanAccountId.isEmpty) {
+      throw ArgumentError.value(
+        accountId,
+        'accountId',
+        'Account ID must not be empty.',
+      );
+    }
+    if (amountMinorUnits <= 0) {
+      throw ArgumentError.value(
+        amountMinorUnits,
+        'amountMinorUnits',
+        'Transaction amount must be positive.',
+      );
+    }
+    if (!RegExp(r'^[A-Z]{3}$').hasMatch(cleanCurrency)) {
+      throw ArgumentError.value(
+        currencyCode,
+        'currencyCode',
+        'Currency code must be exactly three alphabetic characters.',
+      );
+    }
+
+    return FinancialTransaction._(
+      id: cleanId,
+      accountId: cleanAccountId,
+      amountMinorUnits: amountMinorUnits,
+      currencyCode: cleanCurrency,
+      occurredAt: occurredAt,
+      type: type,
+      categoryId: _normalizeOptional(categoryId),
+      description: _normalizeOptional(description),
+      sourceReference: _normalizeOptional(sourceReference),
+    );
+  }
+
+  const FinancialTransaction._({
     required this.id,
     required this.accountId,
     required this.amountMinorUnits,
     required this.currencyCode,
     required this.occurredAt,
     required this.type,
-    this.categoryId,
-    this.description,
-    this.sourceReference,
-  })
-  : assert(id != '', 'Transaction ID must not be empty.'),
-        assert(accountId != '', 'Account ID must not be empty.'),
-        assert(amountMinorUnits > 0, 'Transaction amount must be positive.'),
-        assert(currencyCode != '', 'Currency code must not be empty.');
+    required this.categoryId,
+    required this.description,
+    required this.sourceReference,
+  });
 
   @override
   final String id;
@@ -56,6 +105,12 @@ class FinancialTransaction implements DomainEntity {
         'description': description,
         'sourceReference': sourceReference,
       };
+
+  static String? _normalizeOptional(String? value) {
+    if (value == null) return null;
+    final clean = value.trim();
+    return clean.isEmpty ? null : clean;
+  }
 }
 
 /// Repository boundary for future persisted Finance transactions.
