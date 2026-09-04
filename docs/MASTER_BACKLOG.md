@@ -2,7 +2,7 @@
 
 Constitution: `docs/NUS_MASTER_PRODUCT_ARCHITECTURE_CONSTITUTION.md` v1.0
 Baseline assessed: `c949e1e49d0790e4722da66552111f19cc208099`
-Status vocabulary: `DONE` / `IN PROGRESS` / `BLOCKED` / `BLOCKED — ENVIRONMENT` / `READY` / `FUTURE` / `IMPLEMENTED / VERIFICATION OPEN`.
+Status vocabulary: `DONE` / `IN PROGRESS` / `BLOCKED` / `BLOCKED — ENVIRONMENT` / `READY` / `FUTURE` / `IMPLEMENTED / VERIFICATION OPEN` / `IMPLEMENTED / VERIFICATION OPEN — ENVIRONMENT BLOCKED`.
 
 ## Portfolio status
 
@@ -19,7 +19,7 @@ Status vocabulary: `DONE` / `IN PROGRESS` / `BLOCKED` / `BLOCKED — ENVIRONMENT
 | 6.4 — Shopping | DONE | Shopping lifecycle + local repository + UI |
 | 6.5 — Expenses | ACCEPTED WITH KNOWN BLOCKED DIAGNOSTIC | Expense implementation accepted; final Save interaction verification remains isolated and environment-blocked |
 | 6.6 — Master Architecture Constitution | DONE | Constitution + master backlog |
-| 7 — Financial System | IN PROGRESS | Financial architecture + transaction core + Expense read/query + Account foundation |
+| 7 — Financial System | IN PROGRESS | Financial architecture + transaction core + Expense read/query + Account + balance integration foundations |
 | 8 — Tasks & Goals | FUTURE | Tasks, projects, goals, progress and recurrence composition |
 | 9 — Notes & Universal Search | FUTURE | Notes, indexing, unified search and navigation |
 | 10 — Home Manager | FUTURE | Household assets, maintenance, utilities and service records |
@@ -137,10 +137,9 @@ Implemented in `lib/features/finance/domain/financial_transaction.dart` with ded
 
 - Stable transaction ID — DONE.
 - Stable account reference — DONE.
-- Exact integer minor-unit amount — DONE.
-- Explicit income/expense direction — DONE.
+- Exact integer signed minor-unit amount — DONE.
+- Explicit positive/negative transaction direction — DONE.
 - Category/source opaque references — DONE.
-- Signed cash-flow derivation — DONE.
 - Deterministic serialization — DONE.
 - Domain invariant tests — IMPLEMENTED / BLOCKED — ENVIRONMENT for execution.
 
@@ -157,7 +156,7 @@ Implemented without changing Expense domain or storage:
 - Cross-currency aggregation isolation — DONE.
 - Query tests — IMPLEMENTED / BLOCKED — ENVIRONMENT for execution.
 
-### 7.3 Account Aggregate + Local Repository — IMPLEMENTED / VERIFICATION OPEN
+### 7.3 Account Aggregate + Local Repository — IMPLEMENTED / VERIFICATION OPEN — ENVIRONMENT BLOCKED
 
 Implemented in:
 
@@ -165,34 +164,48 @@ Implemented in:
 - `lib/features/finance/data/local_account_repository.dart`
 - `test/account_test.dart`
 
+Slice includes stable account identity, bank/wallet/cash types, exact opening balance, active/archived state, deterministic serialization, equality/copy semantics, `AccountRepository`, `nus.finance.accounts.v1` local persistence, malformed-record isolation, and archive semantics.
+
+Focused tests are implemented but runtime execution remains environment-blocked.
+
+### 7.4 Account Balance / Transaction Integration — IMPLEMENTED / VERIFICATION OPEN
+
+Implemented in:
+
+- `lib/features/finance/domain/financial_transaction.dart`
+- `lib/features/finance/data/local_financial_transaction_repository.dart`
+- `lib/features/finance/application/account_balance_query_service.dart`
+- `test/financial_transaction_test.dart`
+- `test/account_balance_query_test.dart`
+
 Slice includes:
 
-- Stable opaque account ID — DONE.
-- Account name/type/currency — DONE.
-- Exact integer opening balance — DONE.
-- Bank / wallet / cash types — DONE.
-- Active/archived state — DONE.
-- Deterministic serialization + equality/copy semantics — DONE.
-- `AccountRepository` boundary — DONE.
-- Local `SharedPreferences` persistence under `nus.finance.accounts.v1` — DONE.
+- Stable `FinancialTransaction.accountId` reference — DONE.
+- Transaction repository boundary using `DomainRepository<FinancialTransaction>` — DONE.
+- Dedicated local storage `nus.finance.transactions.v1` — DONE.
+- Deterministic transaction ordering and update-by-ID — DONE.
 - Malformed individual-record isolation — DONE.
-- Archive semantics through `archiveById` and `deleteById` — DONE.
-- Focused test coverage — IMPLEMENTED / BLOCKED — ENVIRONMENT for execution.
+- Account-specific transaction query — DONE.
+- Balance = opening balance + signed transaction minor units — DONE.
+- No mutable stored current-balance field — DONE.
+- Explicit account/transaction currency mismatch exception — DONE.
+- Account rename/archive leaves transaction identity/history intact — DONE.
+- Focused tests — IMPLEMENTED / BLOCKED — ENVIRONMENT for execution.
 
-No Expense, ScheduleStore, notification, Supabase, Family/Shared, or Android infrastructure was changed.
+No Expense dependency, Expense storage change, reminder infrastructure change, Supabase sync, Family/Shared, or Android change was introduced.
 
-### 7.4 Account Balance / Transaction Integration — READY
+### 7.5 Financial Transaction Creation / Mutation Use Case — READY
 
-Next logical slice only. Do not implement until Phase 7.3 verification is closed.
+Do not implement in the 7.4 slice.
 
-### 7.5 Category Aggregate + Local Repository — FUTURE
-### 7.6 Income capture + application service — FUTURE
-### 7.7 Budget aggregate/lifecycle + queries — FUTURE
-### 7.8 Bills + subscriptions application/data — FUTURE
-### 7.9 Debt tracking — FUTURE
-### 7.10 Savings goals — FUTURE
-### 7.11 Financial summaries/trends/dashboard — FUTURE
-### 7.12 Central recurrence integration for recurring financial obligations — FUTURE
+### 7.6 Category Aggregate + Local Repository — FUTURE
+### 7.7 Income capture + application service — FUTURE
+### 7.8 Budget aggregate/lifecycle + queries — FUTURE
+### 7.9 Bills + subscriptions application/data — FUTURE
+### 7.10 Debt tracking — FUTURE
+### 7.11 Savings goals — FUTURE
+### 7.12 Financial summaries/trends/dashboard — FUTURE
+### 7.13 Central recurrence integration for recurring financial obligations — FUTURE
 
 Rules:
 
@@ -300,6 +313,6 @@ No workaround is allowed merely to change a status from BLOCKED to DONE.
 
 ## Immediate next implementation task
 
-`7.4 — Account Balance / Transaction Integration`.
+`7.5 — Financial Transaction Creation / Mutation Use Case`.
 
-Do not implement 7.4 in the 7.3 slice. Verification of 7.3 should close before the balance/transaction integration slice begins.
+7.4 runtime verification remains open until an execution-capable Flutter environment is available.
