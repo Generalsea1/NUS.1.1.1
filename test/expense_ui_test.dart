@@ -80,9 +80,20 @@ Future<void> _openCreate(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
+Finder _expenseFormScrollable() {
+  final listView = find.byType(ListView);
+  expect(listView, findsOneWidget);
+  final scrollable = find.descendant(
+    of: listView,
+    matching: find.byType(Scrollable),
+  );
+  expect(scrollable, findsOneWidget);
+  return scrollable;
+}
+
 Future<void> _tapSave(WidgetTester tester) async {
   final save = find.text('حفظ المصروف');
-  final scrollable = find.byType(ListView);
+  final scrollable = _expenseFormScrollable();
   await tester.scrollUntilVisible(save, 500, scrollable: scrollable);
   await tester.tap(save);
   await tester.pumpAndSettle();
@@ -236,7 +247,7 @@ void main() {
       await _openCreate(tester);
       await _fillMinimalValidExpense(tester);
       final save = find.text('حفظ المصروف');
-      final scrollable = find.byType(ListView);
+      final scrollable = _expenseFormScrollable();
       await tester.scrollUntilVisible(save, 500, scrollable: scrollable);
       await tester.tap(save);
       await tester.pump();
@@ -310,7 +321,7 @@ void main() {
       await _openCreate(tester);
       await _fillMinimalValidExpense(tester);
       final save = find.text('حفظ المصروف');
-      final scrollable = find.byType(ListView);
+      final scrollable = _expenseFormScrollable();
       await tester.scrollUntilVisible(save, 500, scrollable: scrollable);
       await tester.tap(save);
       await tester.pump();
