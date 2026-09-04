@@ -81,8 +81,8 @@ class ShoppingItem implements DomainEntity {
     return ShoppingItem(
       id: id,
       name: name,
-      quantity: quantity as String?,
-      isCompleted: isCompleted as bool? ?? false,
+      quantity: quantity,
+      isCompleted: isCompleted ?? false,
     );
   }
 }
