@@ -48,7 +48,7 @@ MedicationSchedule _schedule({
 Medication _medication({
   String id = 'm1',
   String name = 'Private Medication',
-  DateTime startDate = const DateTime(2026, 9, 3),
+  DateTime? startDate,
   DateTime? endDate,
   bool active = true,
   List<MedicationSchedule>? schedules,
@@ -56,7 +56,7 @@ Medication _medication({
       id: id,
       name: name,
       dosage: const Dosage(amount: '1', unit: DosageUnit.tablet),
-      startDate: startDate,
+      startDate: startDate ?? DateTime(2026, 9, 3),
       endDate: endDate,
       isActive: active,
       schedules: schedules ?? <MedicationSchedule>[_schedule()],
