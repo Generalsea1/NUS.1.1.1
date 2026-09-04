@@ -2,7 +2,7 @@
 
 Constitution: `docs/NUS_MASTER_PRODUCT_ARCHITECTURE_CONSTITUTION.md` v1.0
 Baseline assessed: `c949e1e49d0790e4722da66552111f19cc208099`
-Status vocabulary: `DONE` / `IN PROGRESS` / `BLOCKED` / `BLOCKED — ENVIRONMENT` / `READY` / `FUTURE`.
+Status vocabulary: `DONE` / `IN PROGRESS` / `BLOCKED` / `BLOCKED — ENVIRONMENT` / `READY` / `FUTURE` / `IMPLEMENTED / VERIFICATION OPEN`.
 
 ## Portfolio status
 
@@ -19,7 +19,7 @@ Status vocabulary: `DONE` / `IN PROGRESS` / `BLOCKED` / `BLOCKED — ENVIRONMENT
 | 6.4 — Shopping | DONE | Shopping lifecycle + local repository + UI |
 | 6.5 — Expenses | ACCEPTED WITH KNOWN BLOCKED DIAGNOSTIC | Expense implementation accepted; final Save interaction verification remains isolated and environment-blocked |
 | 6.6 — Master Architecture Constitution | DONE | Constitution + master backlog |
-| 7 — Financial System | IN PROGRESS | Financial architecture + transaction core + Expense read/query foundation |
+| 7 — Financial System | IN PROGRESS | Financial architecture + transaction core + Expense read/query + Account foundation |
 | 8 — Tasks & Goals | FUTURE | Tasks, projects, goals, progress and recurrence composition |
 | 9 — Notes & Universal Search | FUTURE | Notes, indexing, unified search and navigation |
 | 10 — Home Manager | FUTURE | Household assets, maintenance, utilities and service records |
@@ -157,15 +157,42 @@ Implemented without changing Expense domain or storage:
 - Cross-currency aggregation isolation — DONE.
 - Query tests — IMPLEMENTED / BLOCKED — ENVIRONMENT for execution.
 
-### 7.3 Account aggregate + local repository — READY
-### 7.4 Category aggregate + local repository — FUTURE
-### 7.5 Income capture + application service — FUTURE
-### 7.6 Budget aggregate/lifecycle + queries — FUTURE
-### 7.7 Bills + subscriptions application/data — FUTURE
-### 7.8 Debt tracking — FUTURE
-### 7.9 Savings goals — FUTURE
-### 7.10 Financial summaries/trends/dashboard — FUTURE
-### 7.11 Central recurrence integration for recurring financial obligations — FUTURE
+### 7.3 Account Aggregate + Local Repository — IMPLEMENTED / VERIFICATION OPEN
+
+Implemented in:
+
+- `lib/features/finance/domain/account.dart`
+- `lib/features/finance/data/local_account_repository.dart`
+- `test/account_test.dart`
+
+Slice includes:
+
+- Stable opaque account ID — DONE.
+- Account name/type/currency — DONE.
+- Exact integer opening balance — DONE.
+- Bank / wallet / cash types — DONE.
+- Active/archived state — DONE.
+- Deterministic serialization + equality/copy semantics — DONE.
+- `AccountRepository` boundary — DONE.
+- Local `SharedPreferences` persistence under `nus.finance.accounts.v1` — DONE.
+- Malformed individual-record isolation — DONE.
+- Archive semantics through `archiveById` and `deleteById` — DONE.
+- Focused test coverage — IMPLEMENTED / BLOCKED — ENVIRONMENT for execution.
+
+No Expense, ScheduleStore, notification, Supabase, Family/Shared, or Android infrastructure was changed.
+
+### 7.4 Account Balance / Transaction Integration — READY
+
+Next logical slice only. Do not implement until Phase 7.3 verification is closed.
+
+### 7.5 Category Aggregate + Local Repository — FUTURE
+### 7.6 Income capture + application service — FUTURE
+### 7.7 Budget aggregate/lifecycle + queries — FUTURE
+### 7.8 Bills + subscriptions application/data — FUTURE
+### 7.9 Debt tracking — FUTURE
+### 7.10 Savings goals — FUTURE
+### 7.11 Financial summaries/trends/dashboard — FUTURE
+### 7.12 Central recurrence integration for recurring financial obligations — FUTURE
 
 Rules:
 
@@ -273,6 +300,6 @@ No workaround is allowed merely to change a status from BLOCKED to DONE.
 
 ## Immediate next implementation task
 
-`7.3 — Account aggregate + local repository`.
+`7.4 — Account Balance / Transaction Integration`.
 
-Keep the account model local-first and exact-money compatible, with stable opaque account identity and no dependency on Expenses, Supabase, Family/Shared, or Android infrastructure.
+Do not implement 7.4 in the 7.3 slice. Verification of 7.3 should close before the balance/transaction integration slice begins.
