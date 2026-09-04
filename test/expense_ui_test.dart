@@ -87,6 +87,12 @@ Future<void> _tapSave(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
+Future<void> _fillMinimalValidExpense(WidgetTester tester) async {
+  await tester.enterText(find.byType(TextField).at(0), '1.01');
+  await tester.enterText(find.byType(TextField).at(1), 'USD');
+  await tester.enterText(find.byType(TextField).at(2), 'Test');
+}
+
 void main() {
   group('Expense amount conversion', () {
     test('uses exact integer minor units for supported decimal input', () {
