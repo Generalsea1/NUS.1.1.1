@@ -29,7 +29,7 @@ class _EffectiveReminderPort implements MedicationReminderPort {
   }
 }
 
-const _now = DateTime(2026, 9, 3, 8);
+final _now = DateTime(2026, 9, 3, 8);
 
 MedicationSchedule _schedule({
   String id = 's1',
@@ -56,7 +56,7 @@ Medication _medication({
       id: id,
       name: name,
       dosage: const Dosage(amount: '1', unit: DosageUnit.tablet),
-      startDate: startDate ?? DateTime(2026, 9, 3),
+      startDate: startDate ?? _now,
       endDate: endDate,
       isActive: active,
       schedules: schedules ?? <MedicationSchedule>[_schedule()],
@@ -181,10 +181,8 @@ void main() {
 
     _expectEffectiveSet(port, current);
     expect(
-      port.active.containsKey(
-        MedicationReminderCoordinator.reminderId('m1', 'b', DateTime(2026, 9, 3, 21)),
-      ),
-      isFalse,
+      port.active.keys,
+      everyElement(isNot(MedicationReminderCoordinator.reminderId('m1', 'b', DateTime(2026, 9, 3, 21)))),
     );
   });
 
