@@ -2,8 +2,7 @@
 
 Constitution: `docs/NUS_MASTER_PRODUCT_ARCHITECTURE_CONSTITUTION.md` v1.0
 Baseline assessed: `c949e1e49d0790e4722da66552111f19cc208099`
-
-Status vocabulary: `DONE` / `IN PROGRESS` / `BLOCKED` / `READY` / `FUTURE`.
+Status vocabulary: `DONE` / `IN PROGRESS` / `BLOCKED` / `BLOCKED — ENVIRONMENT` / `READY` / `FUTURE`.
 
 ## Portfolio status
 
@@ -18,9 +17,9 @@ Status vocabulary: `DONE` / `IN PROGRESS` / `BLOCKED` / `READY` / `FUTURE`.
 | 6.2 — Appointments hardening | DONE | Appointment architecture and reminder boundaries |
 | 6.3 — Medications | DONE | Medication lifecycle + reminder coordinator/adapter |
 | 6.4 — Shopping | DONE | Shopping lifecycle + local repository + UI |
-| 6.5 — Expenses | IN PROGRESS | Expense domain, lifecycle, local persistence, UI verification |
-| 6.6 — Master Architecture Constitution | DONE | This constitution + master backlog |
-| 7 — Financial System | READY | Budgets, income/expense queries, financial summaries, bills/debts |
+| 6.5 — Expenses | ACCEPTED WITH KNOWN BLOCKED DIAGNOSTIC | Expense domain, lifecycle, local persistence and UI implementation accepted; one test-runtime interaction blocker remains isolated |
+| 6.6 — Master Architecture Constitution | DONE | Constitution + master backlog |
+| 7 — Financial System | IN PROGRESS | Financial architecture baseline + first transaction-core slice |
 | 8 — Tasks & Goals | FUTURE | Tasks, projects, goals, progress and recurrence composition |
 | 9 — Notes & Universal Search | FUTURE | Notes, indexing, unified search and navigation |
 | 10 — Home Manager | FUTURE | Household assets, maintenance, utilities and service records |
@@ -48,7 +47,7 @@ Status vocabulary: `DONE` / `IN PROGRESS` / `BLOCKED` / `READY` / `FUTURE`.
 - Deterministic ordering — DONE.
 - Malformed record/root handling — DONE.
 - Lifecycle create/update/delete service — DONE.
-- Stable edit ID preservation — IMPLEMENTED / VERIFICATION DEPENDENT.
+- Stable edit ID preservation — IMPLEMENTED; targeted runtime verification remains blocked by the known Save hit-test path.
 
 ### 6.5.3 Expense UI — DONE IMPLEMENTATION / VERIFICATION OPEN
 
@@ -56,9 +55,9 @@ Status vocabulary: `DONE` / `IN PROGRESS` / `BLOCKED` / `READY` / `FUTURE`.
 - Create form — DONE.
 - Edit form — DONE.
 - Delete confirmation/failure path — DONE.
-- Save failure UX — IMPLEMENTED / VERIFICATION OPEN.
-- Duplicate submission protection — IMPLEMENTED / VERIFICATION OPEN.
-- Navigation during pending save — IMPLEMENTED / VERIFICATION OPEN.
+- Save failure UX — IMPLEMENTED / BLOCKED — ENVIRONMENT for final runtime acceptance.
+- Duplicate submission protection — IMPLEMENTED / BLOCKED — ENVIRONMENT for final runtime acceptance.
+- Navigation during pending save — IMPLEMENTED / BLOCKED — ENVIRONMENT for final runtime acceptance.
 
 ### 6.5.4 Blocked Diagnostics — BLOCKED
 
@@ -75,20 +74,24 @@ Known facts:
 - Root cause: NOT PROVEN.
 - Best hypothesis: TEST TARGET MISMATCH — VERY HIGH CONFIDENCE.
 - Candidate test-only change remains UNEXECUTED.
+- Current environment cannot execute an uncommitted test-only experiment, so no further experiment is authorized here.
 
-The blocked diagnostic must not block unrelated architecture/product work.
+The blocker does not freeze unrelated product architecture or implementation work.
 
-### 6.5.5 Final Expense acceptance — READY AFTER BLOCKER RESOLUTION
+### 6.5.5 Final Expense acceptance — ACCEPTED WITH KNOWN BLOCKED DIAGNOSTIC
 
-Acceptance gates:
+Available static/source/runtime evidence supports the completed Expense domain, repository, lifecycle, persistence, UI state, and boundary implementation. The remaining interaction verification is explicitly environment-blocked and is not treated as evidence of a production defect.
 
-- resolve/verify Save interaction target in the test environment;
-- run the three affected tests;
-- run focused Expense UI suite;
+Acceptance closure requirements when execution capability is restored:
+
+- verify the Save interaction using the already-authorized test-only target correction;
+- run the three affected UI interaction tests;
+- run focused Expense UI tests;
 - run full suite;
 - verify analyze;
-- verify exact final SHA and diff;
-- accept/reject Phase 6.5 only from evidence.
+- verify exact final SHA and diff.
+
+Until then, the hit-test issue remains BLOCKED and isolated.
 
 ## Phase 6.6 — Constitution — DONE
 
@@ -110,18 +113,56 @@ Acceptance gates:
 
 ## Phase 7 — Financial System
 
-Status: READY. Do not implement until Phase 6.5 acceptance is closed unless an explicit architecture dependency requires a narrowly scoped prerequisite.
+Status: IN PROGRESS.
 
-- Financial read/query model for Expenses — READY.
-- Budget aggregate and lifecycle — READY.
-- Monthly/category summaries — READY.
-- Income support — READY.
-- Bills/debts application/data layers — READY.
-- Financial dashboard — FUTURE within Phase 7.
-- Forecasting/planning engine — FUTURE.
-- Currency conversion/exchange-rate service — FUTURE.
+### 7.0 Financial System Architecture — DONE
 
-Rule: Finance consumes Expense information through application/query boundaries; Expenses must not depend on Finance.
+- Money representation policy — DONE.
+- Transaction identity policy — DONE.
+- Account identity policy — DONE.
+- Account / wallet / bank-account boundaries — DONE.
+- Category boundary — DONE.
+- Budget boundary — DONE.
+- Bill / recurring bill / subscription boundaries — DONE.
+- Debt and savings-goal boundaries — DONE.
+- Financial summary/query strategy — DONE.
+- Expense → Finance boundary — DONE.
+- Bill → Expense relation policy — DONE.
+- Subscription → Expense relation policy — DONE.
+- Income → Account relation policy — DONE.
+- Account → net cash flow model — DONE.
+
+Reference: `docs/FINANCIAL_SYSTEM_ARCHITECTURE.md`.
+
+### 7.1 Financial Transaction Core — IMPLEMENTED / VERIFICATION OPEN
+
+- Stable transaction ID — DONE.
+- Stable account reference — DONE.
+- Exact integer minor-unit amount — DONE.
+- Explicit income/expense direction — DONE.
+- Category/source opaque references — DONE.
+- Signed cash-flow derivation — DONE.
+- Deterministic serialization — DONE.
+- Domain invariant tests — IMPLEMENTED / BLOCKED — ENVIRONMENT for execution.
+
+### 7.2 Financial read/query model for Expenses — READY
+### 7.3 Account aggregate + local repository — READY
+### 7.4 Category aggregate + local repository — FUTURE
+### 7.5 Income capture + application service — FUTURE
+### 7.6 Budget aggregate/lifecycle + queries — FUTURE
+### 7.7 Bills + subscriptions application/data — FUTURE
+### 7.8 Debt tracking — FUTURE
+### 7.9 Savings goals — FUTURE
+### 7.10 Financial summaries/trends/dashboard — FUTURE
+### 7.11 Central recurrence integration for recurring financial obligations — FUTURE
+
+Rules:
+
+- Finance consumes Expense data through application/query boundaries; Expenses never depend on Finance.
+- No cross-currency aggregation without an explicit conversion policy.
+- No Supabase sync in the current Phase 7 slices.
+- No Family/Shared implementation in Phase 7 foundations.
+- No changes to ScheduleStore, NotificationService, ReminderScheduler, or Android scaffold.
 
 ## Phase 8 — Tasks & Goals
 
@@ -178,7 +219,7 @@ Rule: Finance consumes Expense information through application/query boundaries;
 - Backup/restore — FUTURE.
 - Multi-device validation — FUTURE.
 
-No cloud synchronization is authorized by the current Constitution task.
+No cloud synchronization is authorized in the current implementation slices.
 
 ## Phase 14 — Family / Shared
 
@@ -189,7 +230,7 @@ No cloud synchronization is authorized by the current Constitution task.
 - Revocation/audit — FUTURE.
 - Family privacy boundaries — FUTURE.
 
-No Family/Shared functionality is authorized by the current Constitution task.
+No Family/Shared functionality is authorized in the current implementation slices.
 
 ## Phase 15 — Security / Backup / Export
 
@@ -202,7 +243,7 @@ No Family/Shared functionality is authorized by the current Constitution task.
 
 ## Phase 16 — Android Production Scaffold
 
-The repository already contains an Android scaffold at the assessed baseline; this backlog item refers to production hardening, not creating a new Android project now.
+The repository already contains an Android scaffold. This phase is production hardening, not project generation now.
 
 - Release configuration — FUTURE.
 - Signing and release keys outside source control — FUTURE.
@@ -215,10 +256,12 @@ The repository already contains an Android scaffold at the assessed baseline; th
 
 ## Unrelated-work policy
 
-A BLOCKED item freezes only the dependent acceptance gate. It does not freeze documentation, architecture decisions, independent domain work, or verified non-dependent maintenance.
+A BLOCKED item freezes only the dependent acceptance gate. It does not freeze documentation, architecture decisions, or independent implementation work.
 
 No workaround is allowed merely to change a status from BLOCKED to DONE.
 
 ## Immediate next implementation task
 
-`6.5.5 — Final Expense acceptance`: once an execution-capable development environment is available, apply only the already-authorized minimal test target correction, verify the affected tests and full suite, and close/reject 6.5 from evidence. No production-layout rewrite is authorized.
+`7.2 — Financial read/query model for Expenses`.
+
+Implement the smallest application-level read boundary that can consume existing `ExpenseRepository` data for financial summaries without importing Finance into Expenses, without persistence migration, and without UI/cloud work.
