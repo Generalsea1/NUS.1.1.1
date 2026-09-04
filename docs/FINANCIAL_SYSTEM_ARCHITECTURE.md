@@ -126,6 +126,40 @@ Account archive/rename operations do not rewrite or delete historical transactio
 
 The local transaction repository persists independently under `nus.finance.transactions.v1` and isolates malformed individual records.
 
+### 5.3 Phase 7.5 transaction mutation boundary
+
+Financial transaction creation and mutation are controlled by `FinancialTransactionMutationService` in the application layer.
+
+Creation follows this sequence:
+
+```text
+createTransaction input
+        ↓
+FinancialTransaction domain validation
+        ↓
+Account lookup by stable ID
+        ↓
+Reject missing / archived account
+        ↓
+Exact currency compatibility check
+        ↓
+Duplicate transaction ID check
+        ↓
+FinancialTransactionRepository.save
+```
+
+The use case never accesses `SharedPreferences` directly and never bypasses the repository boundary.
+
+New transactions may only target an active account. Updating an existing transaction preserves its stable transaction ID and existing account relationship; account-to-account movement is deliberately out of scope.
+
+Update operations revalidate account existence and currency compatibility before repository persistence. Historical correction of a transaction already linked to an archived account is allowed without changing its account identity, while creation against an archived account is rejected.
+
+Create requests that reuse an existing transaction ID are rejected with an explicit duplicate-ID exception rather than relying on repository upsert behavior. This prevents repeated create requests from silently replacing an existing financial record.
+
+Destructive transaction deletion is not exposed by the mutation use case. The repository's low-level CRUD delete capability remains an infrastructure contract, but financial application flows must use an explicit future reversal/void policy before destructive history mutation is authorized.
+
+Optional `categoryId` and `externalReference` values remain opaque references. No Category, Expense, Income, Bill, Subscription, or other future domain is coupled into the current mutation service.
+
 ## 6. Categories
 
 Categories are first-class financial identities.
@@ -273,18 +307,28 @@ Finance consumes existing Expense data through an application/query boundary. Ex
 - no stored mutable current balance;
 - account rename/archive preserves historical transaction references.
 
+### 17.5 Financial transaction creation / mutation use case — implemented / verification open
+
+- controlled application-layer mutation entry point;
+- account existence/active-state validation for creation;
+- exact currency compatibility validation;
+- duplicate-ID protection on create;
+- stable transaction ID and account preservation on update;
+- repository-only persistence;
+- opaque category/source references preserved;
+- destructive delete intentionally excluded pending an explicit reversal/void policy.
+
 No account UI, ledger UI, cloud sync, budgets dashboard, or migration of Expenses is included.
 
 ## 18. Future implementation order
 
-1. Financial transaction creation / mutation use case.
-2. Category aggregate + local repository.
-3. Income capture and transaction application service, if not covered by the transaction mutation slice.
-4. Budget aggregate/lifecycle and budget queries.
-5. Bill and subscription application/data layers.
-6. Debt tracking.
-7. Savings goals.
-8. Financial summaries/trends/dashboard.
-9. Shared recurrence integration for recurring bills/subscriptions.
+1. Financial categories + category repository.
+2. Income capture and transaction application service, if not covered by the transaction mutation slice.
+3. Budget aggregate/lifecycle and budget queries.
+4. Bill and subscription application/data layers.
+5. Debt tracking.
+6. Savings goals.
+7. Financial summaries/trends/dashboard.
+8. Shared recurrence integration for recurring bills/subscriptions.
 
 Each item receives its own inspect → plan → implement → test → verify → evidence gate.
