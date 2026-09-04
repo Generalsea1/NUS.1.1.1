@@ -304,8 +304,8 @@ void main() {
       final repository = _FakeShoppingRepository()..failSave = true;
       final service = ShoppingLifecycleService(repository: repository);
 
-      expect(
-        () => service.createList(name: 'Groceries'),
+      await expectLater(
+        service.createList(name: 'Groceries'),
         throwsA(isA<StateError>()),
       );
       expect(repository.saveCount, 1);
