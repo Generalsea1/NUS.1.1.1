@@ -80,10 +80,21 @@ Future<void> _openCreate(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
-Future<void> _tapSave(WidgetTester tester) async {
+Future<void> _revealSave(WidgetTester tester) async {
+  final formList = find.byKey(
+    const ValueKey<String>('expense-form-list'),
+  );
+  expect(formList, findsOneWidget);
+  await tester.drag(formList, const Offset(0, -500));
+  await tester.pumpAndSettle();
+
   final save = find.text('حفظ المصروف');
-  await tester.ensureVisible(save);
-  await tester.tap(save);
+  expect(save, findsOneWidget);
+}
+
+Future<void> _tapSave(WidgetTester tester) async {
+  await _revealSave(tester);
+  await tester.tap(find.text('حفظ المصروف'));
   await tester.pumpAndSettle();
 }
 
@@ -234,8 +245,8 @@ void main() {
       await tester.pumpWidget(_app(ExpenseLifecycleService(repository: repository)));
       await _openCreate(tester);
       await _fillMinimalValidExpense(tester);
+      await _revealSave(tester);
       final save = find.text('حفظ المصروف');
-      await tester.ensureVisible(save);
       await tester.tap(save);
       await tester.pump();
       expect(repository.saveCount, 1);
@@ -307,8 +318,8 @@ void main() {
       await tester.pumpWidget(_app(ExpenseLifecycleService(repository: repository)));
       await _openCreate(tester);
       await _fillMinimalValidExpense(tester);
+      await _revealSave(tester);
       final save = find.text('حفظ المصروف');
-      await tester.ensureVisible(save);
       await tester.tap(save);
       await tester.pump();
       Navigator.of(tester.element(find.text('مصروف جديد'))).pop();
