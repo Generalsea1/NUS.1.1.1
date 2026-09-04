@@ -81,10 +81,10 @@ Future<void> _openCreate(WidgetTester tester) async {
 }
 
 Finder _expenseFormScrollable() {
-  final saveLabel = find.text('حفظ المصروف');
-  expect(saveLabel, findsOneWidget);
-  final scrollable = find.ancestor(
-    of: saveLabel,
+  final form = find.byType(Form);
+  expect(form, findsOneWidget);
+  final scrollable = find.descendant(
+    of: form,
     matching: find.byType(Scrollable),
   );
   expect(scrollable, findsOneWidget);
