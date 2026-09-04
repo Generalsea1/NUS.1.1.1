@@ -10,6 +10,9 @@ import 'features/medications/application/medication_reminder_coordinator.dart';
 import 'features/medications/data/local_medication_repository.dart';
 import 'features/medications/data/medication_reminder_adapter.dart';
 import 'features/medications/presentation/medications_page.dart';
+import 'features/shopping/application/shopping_lifecycle_service.dart';
+import 'features/shopping/data/local_shopping_repository.dart';
+import 'features/shopping/presentation/shopping_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -26,14 +29,29 @@ Future<void> main() async {
       MedicationReminderAdapter(notifications),
     ),
   );
+  final shoppingService = ShoppingLifecycleService(
+    repository: LocalShoppingRepository(),
+  );
 
-  runApp(NosApp(store: store, medicationService: medicationService));
+  runApp(NosApp(
+    store: store,
+    medicationService: medicationService,
+    shoppingService: shoppingService,
+  ));
 }
 
 class NosApp extends StatefulWidget {
-  const NosApp({super.key, required this.store, this.medicationService});
+  const NosApp({
+    super.key,
+    required this.store,
+    this.medicationService,
+    this.shoppingService,
+  });
+
   final ScheduleStore store;
   final MedicationLifecycleService? medicationService;
+  final ShoppingLifecycleService? shoppingService;
+
   @override
   State<NosApp> createState() => _NosAppState();
 }
@@ -57,6 +75,7 @@ class _NosAppState extends State<NosApp> {
         child: HomePage(
           store: widget.store,
           medicationService: widget.medicationService,
+          shoppingService: widget.shoppingService,
           isArabic: isArabic,
           onToggleLanguage: () => setState(() => isArabic = !isArabic),
         ),
@@ -203,12 +222,14 @@ class HomePage extends StatefulWidget {
     super.key,
     required this.store,
     this.medicationService,
+    this.shoppingService,
     required this.isArabic,
     required this.onToggleLanguage,
   });
 
   final ScheduleStore store;
   final MedicationLifecycleService? medicationService;
+  final ShoppingLifecycleService? shoppingService;
   final bool isArabic;
   final VoidCallback onToggleLanguage;
 
@@ -342,6 +363,24 @@ class _HomePageState extends State<HomePage> {
               label: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 13),
                 child: Text(t('Medications', 'الأدوية'), style: const TextStyle(fontWeight: FontWeight.w900)),
+              ),
+            ),
+            const SizedBox(height: 10),
+            OutlinedButton.icon(
+              onPressed: widget.shoppingService == null
+                  ? null
+                  : () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => ShoppingPage(
+                          service: widget.shoppingService!,
+                          isArabic: widget.isArabic,
+                        ),
+                      ),
+                    ),
+              icon: const Icon(Icons.shopping_cart_outlined),
+              label: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 13),
+                child: Text(t('Shopping', 'المشتريات'), style: const TextStyle(fontWeight: FontWeight.w900)),
               ),
             ),
             const SizedBox(height: 28),
