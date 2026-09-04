@@ -80,18 +80,9 @@ Future<void> _openCreate(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
-Finder _expenseFormScrollable() {
-  final list = find.byKey(
-    const ValueKey<String>('expense-form-list'),
-  );
-  expect(list, findsOneWidget);
-  return list;
-}
-
 Future<void> _tapSave(WidgetTester tester) async {
   final save = find.text('حفظ المصروف');
-  final scrollable = _expenseFormScrollable();
-  await tester.scrollUntilVisible(save, 500, scrollable: scrollable);
+  await tester.ensureVisible(save);
   await tester.tap(save);
   await tester.pumpAndSettle();
 }
@@ -244,8 +235,7 @@ void main() {
       await _openCreate(tester);
       await _fillMinimalValidExpense(tester);
       final save = find.text('حفظ المصروف');
-      final scrollable = _expenseFormScrollable();
-      await tester.scrollUntilVisible(save, 500, scrollable: scrollable);
+      await tester.ensureVisible(save);
       await tester.tap(save);
       await tester.pump();
       expect(repository.saveCount, 1);
@@ -318,8 +308,7 @@ void main() {
       await _openCreate(tester);
       await _fillMinimalValidExpense(tester);
       final save = find.text('حفظ المصروف');
-      final scrollable = _expenseFormScrollable();
-      await tester.scrollUntilVisible(save, 500, scrollable: scrollable);
+      await tester.ensureVisible(save);
       await tester.tap(save);
       await tester.pump();
       Navigator.of(tester.element(find.text('مصروف جديد'))).pop();
