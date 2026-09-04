@@ -302,15 +302,8 @@ void main() {
     );
   });
 
-  test('repository contract is explicit and storage remains below application layer', () {
+  test('repository contracts remain explicit application dependencies', () {
     expect(accounts, isA<DomainRepository<Account>>());
     expect(transactions, isA<DomainRepository<FinancialTransaction>>());
-    expect(
-      FinancialTransactionMutationService,
-      isNot(const TypeMatcher<LocalFinancialTransactionRepositoryMarker>()),
-    );
   });
 }
-
-/// Compile-time-only marker used to keep this test independent of data adapters.
-class LocalFinancialTransactionRepositoryMarker {}
