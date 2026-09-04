@@ -80,6 +80,24 @@ An account owns no transaction persistence directly in the domain; transactions 
 
 Future balances are derived from transactions and opening/adjustment entries rather than copied into unrelated feature records.
 
+### 5.1 Phase 7.3 account aggregate baseline
+
+The implemented Account aggregate establishes the minimum production foundation for bank accounts, wallets, and cash:
+
+- stable opaque `id`;
+- non-empty normalized display `name`;
+- `AccountType.bank`, `AccountType.wallet`, or `AccountType.cash`;
+- uppercase three-letter `currencyCode`;
+- exact integer `openingBalanceMinorUnits`, including negative opening balances when required by the account state;
+- explicit `isArchived` state;
+- deterministic JSON serialization;
+- value equality and `copyWith` semantics;
+- archive operation that preserves identity.
+
+The local repository persists accounts under `nus.finance.accounts.v1`. `deleteById` uses archive semantics rather than physically removing the account, preserving stable identity for future transaction history.
+
+No current account balance is stored in the Account aggregate. Balance computation remains a future transaction-integration concern.
+
 ## 6. Categories
 
 Categories are first-class financial identities.
@@ -190,6 +208,8 @@ Finance persistence must not reuse:
 - `nus.shopping.v1`;
 - `nus.expenses.v1`.
 
+The Phase 7.3 Account repository uses `nus.finance.accounts.v1`.
+
 No Supabase synchronization is part of the first Finance slice.
 
 ## 17. First implementation slice
@@ -210,13 +230,14 @@ No account UI, ledger UI, cloud sync, budgets dashboard, or migration of Expense
 
 1. Financial transaction query/read boundary for Expense data.
 2. Account aggregate + local repository.
-3. Category aggregate + local repository.
-4. Income capture and transaction application service.
-5. Budget aggregate/lifecycle and budget queries.
-6. Bill and subscription application/data layers.
-7. Debt tracking.
-8. Savings goals.
-9. Financial summaries/trends/dashboard.
-10. Shared recurrence integration for recurring bills/subscriptions.
+3. Account balance / transaction integration.
+4. Category aggregate + local repository.
+5. Income capture and transaction application service.
+6. Budget aggregate/lifecycle and budget queries.
+7. Bill and subscription application/data layers.
+8. Debt tracking.
+9. Savings goals.
+10. Financial summaries/trends/dashboard.
+11. Shared recurrence integration for recurring bills/subscriptions.
 
 Each item receives its own inspect → plan → implement → test → verify → evidence gate.
