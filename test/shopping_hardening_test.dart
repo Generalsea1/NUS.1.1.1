@@ -132,7 +132,7 @@ void main() {
     await tester.enterText(find.byKey(const Key('shopping_list_name_field')), 'Blocked save');
     await _hideKeyboard(tester);
     await tester.tap(find.byKey(const Key('shopping_list_editor_save')));
-    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
 
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
     expect(find.text('Blocked save'), findsNothing);
@@ -156,8 +156,9 @@ void main() {
     await tester.enterText(find.byKey(const Key('shopping_item_name_field')), 'Milk');
     await _hideKeyboard(tester);
     await tester.tap(find.byKey(const Key('shopping_item_editor_save')));
-    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
 
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
     expect(find.text('جارٍ الحفظ'), findsOneWidget);
     expect(find.text('Milk'), findsNothing);
 
@@ -216,10 +217,16 @@ void main() {
     await _pumpShoppingPage(tester, _service(repository));
     await _openList(tester, 'Groceries');
 
-    await tester.tap(find.byIcon(Icons.more_vert).first);
+    final itemActions = find.descendant(
+      of: find.byType(ListTile).first,
+      matching: find.byType(PopupMenuButton<String>),
+    );
+    expect(itemActions, findsOneWidget);
+    await tester.tap(itemActions);
     await tester.pumpAndSettle();
     await tester.tap(find.text('حذف').first);
     await tester.pumpAndSettle();
+    expect(find.text('تحذف العنصر؟'), findsOneWidget);
     await tester.tap(find.text('إلغاء'));
     await tester.pumpAndSettle();
 
@@ -279,13 +286,17 @@ void main() {
     await tester.tap(find.byKey(const Key('shopping_item_editor_save')));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byIcon(Icons.more_vert).first);
+    final listActions = find.descendant(
+      of: find.byType(AppBar),
+      matching: find.byType(PopupMenuButton<String>),
+    );
+    expect(listActions, findsOneWidget);
+    await tester.tap(listActions);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('حذف').first);
+    await tester.tap(find.text('حذف القائمة').first);
     await tester.pumpAndSettle();
+    expect(find.text('تحذف قائمة المشتريات؟'), findsOneWidget);
     await tester.tap(find.text('حذف').last);
-    await tester.pumpAndSettle();
-    await tester.pageBack();
     await tester.pumpAndSettle();
 
     final reloadedRepository = LocalShoppingRepository();
