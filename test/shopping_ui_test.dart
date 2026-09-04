@@ -252,7 +252,7 @@ void main() {
       ..data['l1'] = _list(
         'l1',
         'Groceries',
-        items: const [ShoppingItem(id: 'i1', name: 'Milk')],
+        items: [ShoppingItem(id: 'i1', name: 'Milk')],
       );
     final service = _service(repository);
     await _pumpPage(tester, service);
@@ -275,7 +275,7 @@ void main() {
       ..data['l1'] = _list(
         'l1',
         'Groceries',
-        items: const [ShoppingItem(id: 'i1', name: 'Milk')],
+        items: [ShoppingItem(id: 'i1', name: 'Milk')],
       );
     final service = _service(repository);
     await _pumpPage(tester, service);
@@ -295,7 +295,7 @@ void main() {
       ..data['l1'] = _list(
         'l1',
         'Groceries',
-        items: const [ShoppingItem(id: 'i1', name: 'Milk')],
+        items: [ShoppingItem(id: 'i1', name: 'Milk')],
       );
     await _pumpPage(tester, _service(repository));
     await _openList(tester, 'Groceries');
@@ -317,7 +317,7 @@ void main() {
       ..data['l1'] = _list(
         'l1',
         'Groceries',
-        items: const [ShoppingItem(id: 'i1', name: 'Apples', quantity: '3 bags')],
+        items: [ShoppingItem(id: 'i1', name: 'Apples', quantity: '3 bags')],
       );
     await _pumpPage(tester, _service(repository));
     await _openList(tester, 'Groceries');
