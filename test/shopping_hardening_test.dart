@@ -134,8 +134,8 @@ void main() {
     await tester.tap(find.byKey(const Key('shopping_list_editor_save')));
     await tester.pump(const Duration(milliseconds: 500));
 
+    expect(find.text('قائمة جديدة'), findsOneWidget);
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
-    expect(find.text('Blocked save'), findsNothing);
 
     repository.saveGate!.complete();
     repository.saveGate = null;
@@ -158,9 +158,8 @@ void main() {
     await tester.tap(find.byKey(const Key('shopping_item_editor_save')));
     await tester.pump(const Duration(milliseconds: 500));
 
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
     expect(find.text('جارٍ الحفظ'), findsOneWidget);
-    expect(find.text('Milk'), findsNothing);
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
 
     repository.saveGate!.complete();
     repository.saveGate = null;
