@@ -212,7 +212,7 @@ void main() {
       id: 'appointment-1',
       title: 'Appointment',
       type: AppointmentType.personal,
-      startsAt: _now.add(const Duration(hours: 2)),
+      startsAt: DateTime.now().add(const Duration(hours: 2)),
       reminder: AppointmentReminder.atTime,
       recurrence: AppointmentRecurrence.none,
       status: AppointmentStatus.upcoming,
