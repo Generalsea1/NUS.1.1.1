@@ -12,32 +12,29 @@ import 'package:nus/features/expenses/presentation/expense_page.dart';
 
 class _FakeExpenseRepository implements ExpenseRepository {
   final Map<String, Expense> _store = <String, Expense>{};
-  Object? listFailure;
-  Object? saveFailure;
-  Object? deleteFailure;
-  final List<String> deletedIds = <String>[];
   int saveCount = 0;
-  bool blockSave = false;
+  StateError? listFailure;
+  StateError? saveFailure;
+  StateError? deleteFailure;
   Completer<void>? saveCompleter;
-
-  @override
-  Future<Expense?> getById(String id) async => _store[id];
+  bool blockSave = false;
+  final List<String> deletedIds = <String>[];
 
   @override
   Future<List<Expense>> list() async {
     if (listFailure != null) throw listFailure!;
-    return List<Expense>.of(_store.values);
+    return _store.values.toList();
   }
 
   @override
-  Future<void> save(Expense entity) async {
+  Future<void> save(Expense expense) async {
     saveCount++;
     if (saveFailure != null) throw saveFailure!;
     if (blockSave) {
-      saveCompleter ??= Completer<void>();
+      saveCompleter = Completer<void>();
       await saveCompleter!.future;
     }
-    _store[entity.id] = entity;
+    _store[expense.id] = expense;
   }
 
   @override
@@ -82,7 +79,8 @@ Future<void> _openCreate(WidgetTester tester) async {
 
 Future<void> _tapSave(WidgetTester tester) async {
   final save = find.text('حفظ المصروف');
-  await tester.scrollUntilVisible(save, 500, scrollable: find.byType(Scrollable));
+  final scrollable = find.byType(ListView);
+  await tester.scrollUntilVisible(save, 500, scrollable: scrollable);
   await tester.tap(save);
   await tester.pumpAndSettle();
 }
@@ -235,7 +233,8 @@ void main() {
       await _openCreate(tester);
       await _fillMinimalValidExpense(tester);
       final save = find.text('حفظ المصروف');
-      await tester.scrollUntilVisible(save, 500, scrollable: find.byType(Scrollable));
+      final scrollable = find.byType(ListView);
+      await tester.scrollUntilVisible(save, 500, scrollable: scrollable);
       await tester.tap(save);
       await tester.pump();
       expect(repository.saveCount, 1);
@@ -308,7 +307,8 @@ void main() {
       await _openCreate(tester);
       await _fillMinimalValidExpense(tester);
       final save = find.text('حفظ المصروف');
-      await tester.scrollUntilVisible(save, 500, scrollable: find.byType(Scrollable));
+      final scrollable = find.byType(ListView);
+      await tester.scrollUntilVisible(save, 500, scrollable: scrollable);
       await tester.tap(save);
       await tester.pump();
       Navigator.of(tester.element(find.text('مصروف جديد'))).pop();
