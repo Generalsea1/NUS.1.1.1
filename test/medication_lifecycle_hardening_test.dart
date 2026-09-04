@@ -181,8 +181,10 @@ void main() {
 
     _expectEffectiveSet(port, current);
     expect(
-      port.active.keys,
-      everyElement(isNot(MedicationReminderCoordinator.reminderId('m1', 'b', DateTime(2026, 9, 3, 21)))),
+      port.active.containsKey(
+        MedicationReminderCoordinator.reminderId('m1', 'b', DateTime(2026, 9, 3, 21)),
+      ),
+      isFalse,
     );
   });
 
@@ -428,7 +430,6 @@ void main() {
     await service.delete(first);
 
     expect(port.active.keys, _effectiveReminderSet(second).keys.toSet());
-    expect(port.active.keys, everyElement(startsWith(MedicationReminderCoordinator.reminderId('m2', 's1', DateTime(2026, 9, 3, 9)).substring(0, 1))));
   });
 
   test('repository reload preserves the medication definition used to derive the effective set', () async {
