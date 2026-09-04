@@ -2,14 +2,14 @@ name: NUS Expense UI Verification
 
 on:
   push:
-    branches: [ fix/expense-ui-6.5.4 ]
+    branches: [ fix/expense-ui-6.5.4-test-correction ]
 
 concurrency:
   group: nus-expense-ui-verification
   cancel-in-progress: true
 
 env:
-  APPLICATION_VERIFICATION_SHA: 596263b63a4f9a2bfb68bba235d7a02bcb41fdc5
+  APPLICATION_VERIFICATION_SHA: 1ad41960aeb0f008f2d646b095df8afd7f62a1ab
 
 jobs:
   verify-expense-ui:
