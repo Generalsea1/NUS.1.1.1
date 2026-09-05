@@ -170,6 +170,25 @@ A transaction stores `categoryId` rather than embedding category objects.
 
 Category deletion must be explicit: either archive the category or migrate references before destructive deletion is authorized.
 
+### 6.1 Phase 7.6 category aggregate + local repository
+
+The implemented category foundation uses `FinancialCategory` with:
+
+- stable opaque `id`;
+- normalized non-empty display `name`;
+- explicit `FinancialCategoryDirection.income` or `.expense` scope;
+- explicit `isArchived` state;
+- deterministic JSON serialization;
+- value equality, `copyWith`, and archive semantics.
+
+The `FinancialCategoryRepository` extends the shared `DomainRepository<FinancialCategory>` boundary and adds `archiveById`. The local adapter uses the dedicated versioned namespace `nus.finance.categories.v1` and does not access or reuse Expense storage.
+
+Reads isolate malformed individual records and return healthy categories. Writes reject malformed collection roots rather than silently destroying or replacing unknown stored data. `deleteById` uses archive semantics to preserve category identity for transaction history.
+
+Category identity is intentionally independent from transaction identity. Transactions continue to store the opaque `categoryId` reference; the category aggregate itself is not embedded in transaction records.
+
+No category UI, transaction migration, Supabase synchronization, Family/Shared behavior, analytics, or dashboard is part of this slice.
+
 ## 7. Income and Expense
 
 Income and Expense are transaction directions, not separate money representations.
@@ -272,6 +291,7 @@ Finance persistence must not reuse:
 
 The Phase 7.3 Account repository uses `nus.finance.accounts.v1`.
 The Phase 7.4 transaction repository uses `nus.finance.transactions.v1`.
+The Phase 7.6 Category repository uses `nus.finance.categories.v1`.
 
 No Supabase synchronization is part of the current Finance foundation slices.
 
@@ -318,17 +338,28 @@ Finance consumes existing Expense data through an application/query boundary. Ex
 - opaque category/source references preserved;
 - destructive delete intentionally excluded pending an explicit reversal/void policy.
 
+### 17.6 Financial categories + category repository — implemented / verification open
+
+- stable category identity;
+- income/expense direction scope;
+- active/archived state;
+- deterministic serialization;
+- shared repository boundary;
+- dedicated `nus.finance.categories.v1` local persistence;
+- malformed individual-record isolation;
+- archive semantics for delete;
+- no direct dependency from Expense to Finance.
+
 No account UI, ledger UI, cloud sync, budgets dashboard, or migration of Expenses is included.
 
 ## 18. Future implementation order
 
-1. Financial categories + category repository.
-2. Income capture and transaction application service, if not covered by the transaction mutation slice.
-3. Budget aggregate/lifecycle and budget queries.
-4. Bill and subscription application/data layers.
-5. Debt tracking.
-6. Savings goals.
-7. Financial summaries/trends/dashboard.
-8. Shared recurrence integration for recurring bills/subscriptions.
+1. Income capture and transaction application service, if not covered by the transaction mutation slice.
+2. Budget aggregate/lifecycle and budget queries.
+3. Bill and subscription application/data layers.
+4. Debt tracking.
+5. Savings goals.
+6. Financial summaries/trends/dashboard.
+7. Shared recurrence integration for recurring bills/subscriptions.
 
 Each item receives its own inspect → plan → implement → test → verify → evidence gate.
