@@ -25,6 +25,19 @@ class DebtArchivedException implements Exception {
   String toString() => 'Debt is archived: $id';
 }
 
+class DebtPrincipalBelowSettledException implements Exception {
+  const DebtPrincipalBelowSettledException({
+    required this.principalMinorUnits,
+    required this.settledMinorUnits,
+  });
+  final int principalMinorUnits;
+  final int settledMinorUnits;
+
+  @override
+  String toString() =>
+      'Debt principal $principalMinorUnits is below settled amount $settledMinorUnits.';
+}
+
 class DebtSettlementDuplicateIdException implements Exception {
   const DebtSettlementDuplicateIdException(this.id);
   final String id;
@@ -79,6 +92,14 @@ class DebtMutationService {
   Future<void> updateDebt(Debt debt) async {
     final existing = await _debtRepository.getById(debt.id);
     if (existing == null) throw DebtNotFoundException(debt.id);
+
+    final settled = await _settledMinorUnitsFor(existing);
+    if (debt.principalMinorUnits < settled) {
+      throw DebtPrincipalBelowSettledException(
+        principalMinorUnits: debt.principalMinorUnits,
+        settledMinorUnits: settled,
+      );
+    }
     await _debtRepository.save(debt);
   }
 
@@ -126,21 +147,15 @@ class DebtMutationService {
       );
     }
 
-    final existingSettlements = await _settlementRepository.list();
-    var settledMinorUnits = 0;
-    for (final existingRecord in existingSettlements) {
-      if (existingRecord.debtId != cleanDebtId) continue;
-      if (existingRecord.currencyCode != debt.currencyCode) {
-        throw DebtSettlementCurrencyMismatchException(
-          debtCurrency: debt.currencyCode,
-          settlementCurrency: existingRecord.currencyCode,
-        );
-      }
-      settledMinorUnits += existingRecord.amountMinorUnits;
-    }
-
+    final settledMinorUnits = await _settledMinorUnitsFor(debt);
     final outstandingMinorUnits =
         debt.principalMinorUnits - settledMinorUnits;
+    if (outstandingMinorUnits < 0) {
+      throw DebtPrincipalBelowSettledException(
+        principalMinorUnits: debt.principalMinorUnits,
+        settledMinorUnits: settledMinorUnits,
+      );
+    }
     if (amountMinorUnits > outstandingMinorUnits) {
       throw DebtSettlementExceedsOutstandingException(
         requestedMinorUnits: amountMinorUnits,
@@ -171,5 +186,19 @@ class DebtMutationService {
     return List.unmodifiable(
       settlements.where((settlement) => settlement.debtId == cleanDebtId),
     );
+  }
+
+  Future<int> _settledMinorUnits(Debt debt) async {
+    var total = 0;
+    for (final settlement in await settlementsForDebt(debt.id)) {
+      if (settlement.currencyCode != debt.currencyCode) {
+        throw DebtSettlementCurrencyMismatchException(
+          debtCurrency: debt.currencyCode,
+          settlementCurrency: settlement.currencyCode,
+        );
+      }
+      total += settlement.amountMinorUnits;
+    }
+    return total;
   }
 }
