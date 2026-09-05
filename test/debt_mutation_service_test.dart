@@ -86,7 +86,7 @@ void main() {
     );
   });
 
-  test('update requires an existing debt and does not accept settlement state',
+  test('update requires an existing debt and rejects principal below settlements',
       () async {
     expect(
       () => service.updateDebt(debt()),
@@ -94,8 +94,20 @@ void main() {
     );
 
     await service.createDebt(debt());
-    await service.updateDebt(debt(principal: 12000));
+    await service.settleDebt(
+      settlementId: 's1',
+      debtId: 'd1',
+      amountMinorUnits: 7000,
+      currencyCode: 'EGP',
+      settledAt: DateTime.utc(2026, 9, 1),
+    );
 
+    expect(
+      () => service.updateDebt(debt(principal: 6000)),
+      throwsA(isA<DebtPrincipalBelowSettledException>()),
+    );
+
+    await service.updateDebt(debt(principal: 12000));
     expect(debts.items['d1']!.principalMinorUnits, 12000);
   });
 
@@ -192,6 +204,22 @@ void main() {
     expect(
       () => query.outstandingMinorUnits('d1'),
       throwsA(isA<DebtSettlementRecordCurrencyMismatchException>()),
+    );
+  });
+
+  test('excess settlement history is detected rather than clamped', () async {
+    await service.createDebt(debt(principal: 100));
+    settlements.items['s1'] = DebtSettlement(
+      id: 's1',
+      debtId: 'd1',
+      amountMinorUnits: 101,
+      currencyCode: 'EGP',
+      settledAt: DateTime.utc(2026, 9, 1),
+    );
+
+    expect(
+      () => query.outstandingMinorUnits('d1'),
+      throwsA(isA<DebtSettlementRecordsExceedPrincipalException>()),
     );
   });
 }
