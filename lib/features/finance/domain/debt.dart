@@ -9,9 +9,9 @@ enum DebtDirection {
 
 /// Aggregate representing a personal debt obligation/receivable.
 ///
-/// Money is stored exactly in integer minor units. Settlement entries are
-/// persisted separately so this aggregate does not contain an embedded,
-/// independently editable settlement history.
+/// Settlement history is intentionally stored outside this aggregate. The
+/// authoritative settled amount is derived by summing immutable settlement
+/// records for this debt.
 class Debt implements DomainEntity {
   factory Debt({
     required String id,
@@ -21,7 +21,6 @@ class Debt implements DomainEntity {
     required String currencyCode,
     String? counterparty,
     DateTime? dueAt,
-    int settledMinorUnits = 0,
     bool isArchived = false,
   }) {
     final cleanId = id.trim();
@@ -44,13 +43,6 @@ class Debt implements DomainEntity {
         principalMinorUnits,
         'principalMinorUnits',
         'Debt principal must be greater than zero.',
-      );
-    }
-    if (settledMinorUnits < 0 || settledMinorUnits > principalMinorUnits) {
-      throw ArgumentError.value(
-        settledMinorUnits,
-        'settledMinorUnits',
-        'Settled amount must be between zero and the principal.',
       );
     }
     if (!RegExp(r'^[A-Z]{3}$').hasMatch(cleanCurrency)) {
@@ -76,7 +68,6 @@ class Debt implements DomainEntity {
       currencyCode: cleanCurrency,
       counterparty: cleanCounterparty,
       dueAt: dueAt,
-      settledMinorUnits: settledMinorUnits,
       isArchived: isArchived,
     );
   }
@@ -89,7 +80,6 @@ class Debt implements DomainEntity {
     required this.currencyCode,
     required this.counterparty,
     required this.dueAt,
-    required this.settledMinorUnits,
     required this.isArchived,
   });
 
@@ -101,13 +91,7 @@ class Debt implements DomainEntity {
   final String currencyCode;
   final String? counterparty;
   final DateTime? dueAt;
-  final int settledMinorUnits;
   final bool isArchived;
-
-  int get outstandingMinorUnits =>
-      principalMinorUnits - settledMinorUnits;
-
-  bool get isSettled => outstandingMinorUnits == 0;
 
   Debt copyWith({
     String? id,
@@ -117,7 +101,6 @@ class Debt implements DomainEntity {
     String? currencyCode,
     Object? counterparty = _unset,
     Object? dueAt = _unset,
-    int? settledMinorUnits,
     bool? isArchived,
   }) => Debt(
         id: id ?? this.id,
@@ -130,7 +113,6 @@ class Debt implements DomainEntity {
             ? this.counterparty
             : counterparty as String?,
         dueAt: identical(dueAt, _unset) ? this.dueAt : dueAt as DateTime?,
-        settledMinorUnits: settledMinorUnits ?? this.settledMinorUnits,
         isArchived: isArchived ?? this.isArchived,
       );
 
@@ -144,7 +126,6 @@ class Debt implements DomainEntity {
         'currencyCode': currencyCode,
         if (counterparty != null) 'counterparty': counterparty,
         if (dueAt != null) 'dueAt': dueAt!.toIso8601String(),
-        'settledMinorUnits': settledMinorUnits,
         'isArchived': isArchived,
       };
 
@@ -156,7 +137,6 @@ class Debt implements DomainEntity {
     final currency = json['currencyCode'];
     final counterparty = json['counterparty'];
     final dueAt = json['dueAt'];
-    final settled = json['settledMinorUnits'];
     final archived = json['isArchived'];
 
     if (id is! String ||
@@ -164,7 +144,6 @@ class Debt implements DomainEntity {
         direction is! String ||
         principal is! int ||
         currency is! String ||
-        settled is! int ||
         archived is! bool) {
       throw const FormatException('Invalid Debt record.');
     }
@@ -195,7 +174,6 @@ class Debt implements DomainEntity {
         currencyCode: currency,
         counterparty: counterparty as String?,
         dueAt: parsedDueAt,
-        settledMinorUnits: settled,
         isArchived: archived,
       );
     } on ArgumentError catch (error) {
@@ -213,7 +191,6 @@ class Debt implements DomainEntity {
       other.currencyCode == currencyCode &&
       other.counterparty == counterparty &&
       other.dueAt == dueAt &&
-      other.settledMinorUnits == settledMinorUnits &&
       other.isArchived == isArchived;
 
   @override
@@ -225,7 +202,6 @@ class Debt implements DomainEntity {
         currencyCode,
         counterparty,
         dueAt,
-        settledMinorUnits,
         isArchived,
       );
 }
