@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:nus/features/finance/application/debt_mutation_service.dart';
+import 'package:nus/features/finance/application/debt_query_service.dart';
 import 'package:nus/features/finance/domain/debt.dart';
 import 'package:nus/features/finance/domain/debt_settlement.dart';
 
@@ -47,6 +48,7 @@ void main() {
   late FakeDebtRepository debts;
   late FakeDebtSettlementRepository settlements;
   late DebtMutationService service;
+  late DebtQueryService query;
 
   setUp(() {
     debts = FakeDebtRepository();
@@ -55,12 +57,15 @@ void main() {
       debtRepository: debts,
       settlementRepository: settlements,
     );
+    query = DebtQueryService(
+      debtRepository: debts,
+      settlementRepository: settlements,
+    );
   });
 
   Debt debt({
     String id = 'd1',
     int principal = 10000,
-    int settled = 0,
     String currency = 'EGP',
     bool archived = false,
   }) => Debt(
@@ -69,7 +74,6 @@ void main() {
         direction: DebtDirection.owedByUser,
         principalMinorUnits: principal,
         currencyCode: currency,
-        settledMinorUnits: settled,
         isArchived: archived,
       );
 
@@ -82,7 +86,7 @@ void main() {
     );
   });
 
-  test('update requires an existing debt and preserves repository boundary',
+  test('update requires an existing debt and does not accept settlement state',
       () async {
     expect(
       () => service.updateDebt(debt()),
@@ -90,12 +94,9 @@ void main() {
     );
 
     await service.createDebt(debt());
-    await service.updateDebt(
-      debt(principal: 12000, settled: 1000),
-    );
+    await service.updateDebt(debt(principal: 12000));
 
     expect(debts.items['d1']!.principalMinorUnits, 12000);
-    expect(debts.items['d1']!.settledMinorUnits, 1000);
   });
 
   test('settlement validates currency, duplicate ID and outstanding amount',
@@ -132,8 +133,8 @@ void main() {
       settledAt: DateTime.utc(2026, 9, 1),
     );
 
-    expect(debts.items['d1']!.settledMinorUnits, 4000);
-    expect(debts.items['d1']!.outstandingMinorUnits, 6000);
+    expect(await query.settledMinorUnits('d1'), 4000);
+    expect(await query.outstandingMinorUnits('d1'), 6000);
 
     expect(
       () => service.settleDebt(
@@ -166,7 +167,8 @@ void main() {
       settledAt: DateTime.utc(2026, 9, 5),
     );
 
-    expect(debts.items['d1']!.isSettled, isTrue);
+    expect(await query.outstandingMinorUnits('d1'), 0);
+    expect(await query.isSettled('d1'), isTrue);
     expect(await service.settlementsForDebt('d1'), hasLength(2));
   });
 
@@ -175,5 +177,21 @@ void main() {
     await service.archiveDebt('d1');
 
     expect(debts.items['d1']!.isArchived, isTrue);
+  });
+
+  test('existing settlement with incompatible currency fails closed', () async {
+    await service.createDebt(debt());
+    settlements.items['s-corrupt'] = DebtSettlement(
+      id: 's-corrupt',
+      debtId: 'd1',
+      amountMinorUnits: 100,
+      currencyCode: 'USD',
+      settledAt: DateTime.utc(2026, 9, 1),
+    );
+
+    expect(
+      () => query.outstandingMinorUnits('d1'),
+      throwsA(isA<DebtSettlementRecordCurrencyMismatchException>()),
+    );
   });
 }
