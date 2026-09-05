@@ -17,11 +17,10 @@ class RecurrenceRule {
 
   const RecurrenceRule.weekly() : this._(frequency: RecurrenceFrequency.weekly);
 
-  const RecurrenceRule.selectedWeekdays(Set<int> weekdays)
-      : this._(
-          frequency: RecurrenceFrequency.selectedWeekdays,
-          selectedWeekdays: weekdays,
-        );
+  factory RecurrenceRule.selectedWeekdays(Set<int> weekdays) => RecurrenceRule._(
+        frequency: RecurrenceFrequency.selectedWeekdays,
+        selectedWeekdays: Set.unmodifiable(weekdays),
+      );
 
   final RecurrenceFrequency frequency;
   final Set<int> selectedWeekdays;
