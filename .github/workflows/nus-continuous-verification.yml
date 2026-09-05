@@ -1,0 +1,97 @@
+name: NUS Continuous Verification
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - docs/nus-master-constitution
+
+permissions:
+  contents: read
+
+env:
+  FLUTTER_CHANNEL: stable
+
+concurrency:
+  group: nus-continuous-verification-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify-and-build:
+    name: Analyze, test, build and verify NUS APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout exact commit
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: ${{ env.FLUTTER_CHANNEL }}
+          cache: true
+
+      - name: Show toolchain
+        run: |
+          flutter --version
+          dart --version
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Static analysis
+        run: flutter analyze
+
+      - name: Full test suite
+        run: flutter test
+
+      - name: Build debug APK
+        run: flutter build apk --debug
+
+      - name: Verify APK exists and is non-empty
+        run: |
+          set -euo pipefail
+          APK="build/app/outputs/flutter-apk/app-debug.apk"
+          test -s "$APK"
+          stat -c '%n %s bytes' "$APK"
+
+      - name: Verify packaged Android identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="build/app/outputs/flutter-apk/app-debug.apk"
+          AAPT2="$(find "$ANDROID_HOME/build-tools" -type f -name aapt2 -print | sort -V | tail -n 1)"
+          test -x "$AAPT2"
+          BADGING="$($AAPT2 dump badging "$APK")"
+          printf '%s\n' "$BADGING" | grep -F "application-label:'NUS'"
+          printf '%s\n' "$BADGING" | grep -E 'application-icon(-[0-9]+)?:'
+
+      - name: Verify launcher resources are packaged
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="build/app/outputs/flutter-apk/app-debug.apk"
+          unzip -l "$APK" | grep -E 'res/mipmap-(mdpi|hdpi|xhdpi|xxhdpi|xxxhdpi)(-v[0-9]+)?/ic_launcher(_round)?\.(png|webp)$'
+
+      - name: Generate APK SHA-256 evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="build/app/outputs/flutter-apk/app-debug.apk"
+          sha256sum "$APK" | tee build/app/outputs/flutter-apk/app-debug.apk.sha256
+          printf 'Commit: %s\n' "$GITHUB_SHA" | tee build/app/outputs/flutter-apk/build-evidence.txt
+          printf 'Ref: %s\n' "$GITHUB_REF" | tee -a build/app/outputs/flutter-apk/build-evidence.txt
+
+      - name: Upload verified APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nus-debug-apk-${{ github.sha }}
+          path: |
+            build/app/outputs/flutter-apk/app-debug.apk
+            build/app/outputs/flutter-apk/app-debug.apk.sha256
+            build/app/outputs/flutter-apk/build-evidence.txt
+          if-no-files-found: error
+          retention-days: 14
