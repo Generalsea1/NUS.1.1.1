@@ -1,3 +1,4 @@
+# NUS CI execution probe: behavior-neutral commit to verify GitHub Actions execution.
 name: NUS Continuous Verification
 
 on:
