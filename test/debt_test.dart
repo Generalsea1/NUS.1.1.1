@@ -7,7 +7,7 @@ void main() {
   group('Debt', () {
     final dueAt = DateTime.utc(2026, 9, 30, 12);
 
-    test('normalizes identity, title, currency and derives outstanding', () {
+    test('normalizes identity, title, currency and preserves core state', () {
       final debt = Debt(
         id: ' debt-1 ',
         title: '  Car repair  ',
@@ -16,18 +16,27 @@ void main() {
         currencyCode: 'egp',
         counterparty: ' Ahmed ',
         dueAt: dueAt,
-        settledMinorUnits: 25000,
       );
 
       expect(debt.id, 'debt-1');
       expect(debt.title, 'Car repair');
       expect(debt.currencyCode, 'EGP');
       expect(debt.counterparty, 'Ahmed');
-      expect(debt.outstandingMinorUnits, 75000);
-      expect(debt.isSettled, isFalse);
+      expect(debt.principalMinorUnits, 100000);
+      expect(debt.isArchived, isFalse);
     });
 
-    test('rejects invalid money and settlement state', () {
+    test('rejects invalid identity, principal and currency', () {
+      expect(
+        () => Debt(
+          id: ' ',
+          title: 'Debt',
+          direction: DebtDirection.owedToUser,
+          principalMinorUnits: 100,
+          currencyCode: 'EGP',
+        ),
+        throwsArgumentError,
+      );
       expect(
         () => Debt(
           id: 'd1',
@@ -44,14 +53,13 @@ void main() {
           title: 'Debt',
           direction: DebtDirection.owedToUser,
           principalMinorUnits: 100,
-          currencyCode: 'EGP',
-          settledMinorUnits: 101,
+          currencyCode: 'EGP1',
         ),
         throwsArgumentError,
       );
     });
 
-    test('round trips deterministically', () {
+    test('round trips deterministically and preserves archive identity', () {
       final debt = Debt(
         id: 'd1',
         title: 'Debt',
@@ -62,7 +70,22 @@ void main() {
       );
 
       expect(Debt.fromJson(debt.toJson()), debt);
-      expect(debt.toJson(), containsPair('principalMinorUnits', 150000));
+      expect(debt.archive().id, debt.id);
+      expect(debt.archive().isArchived, isTrue);
+    });
+
+    test('supports nullable optional fields without fake defaults', () {
+      final debt = Debt(
+        id: 'd1',
+        title: 'Debt',
+        direction: DebtDirection.owedToUser,
+        principalMinorUnits: 150000,
+        currencyCode: 'EGP',
+      );
+
+      expect(debt.counterparty, isNull);
+      expect(debt.dueAt, isNull);
+      expect(Debt.fromJson(debt.toJson()), debt);
     });
   });
 
