@@ -13,15 +13,15 @@ void main() {
 
     test('selected weekdays require valid ISO weekdays', () {
       expect(
-        const RecurrenceRule.selectedWeekdays(<int>{}).validate(),
+        RecurrenceRule.selectedWeekdays(<int>{}).validate(),
         contains('weekdays_required'),
       );
       expect(
-        const RecurrenceRule.selectedWeekdays(<int>{0}).validate(),
+        RecurrenceRule.selectedWeekdays(<int>{0}).validate(),
         contains('invalid_weekday'),
       );
       expect(
-        const RecurrenceRule.selectedWeekdays(<int>{1, 3, 7}).validate(),
+        RecurrenceRule.selectedWeekdays(<int>{1, 3, 7}).validate(),
         isEmpty,
       );
     });
@@ -68,7 +68,7 @@ void main() {
       final values = engine
           .occurrences(
             start: DateTime(2026, 9, 1, 8),
-            rule: const RecurrenceRule.selectedWeekdays(<int>{1, 3, 5}),
+            rule: RecurrenceRule.selectedWeekdays(<int>{1, 3, 5}),
             windowStart: DateTime(2026, 9, 1),
             windowEnd: DateTime(2026, 9, 8),
           )
@@ -104,7 +104,7 @@ void main() {
       final values = engine
           .occurrences(
             start: DateTime(2026, 9, 1),
-            rule: const RecurrenceRule.selectedWeekdays(<int>{}),
+            rule: RecurrenceRule.selectedWeekdays(<int>{}),
             windowStart: DateTime(2026, 9, 1),
             windowEnd: DateTime(2026, 9, 10),
           )
