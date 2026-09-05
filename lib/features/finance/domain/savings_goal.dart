@@ -16,7 +16,7 @@ class SavingsGoal {
     if (this.id.isEmpty) throw const FormatException('Savings goal ID is required.');
     if (this.name.isEmpty) throw const FormatException('Savings goal name is required.');
     if (targetMinorUnits <= 0) throw const FormatException('Savings goal target must be positive.');
-    if (!RegExp(r'^[A-Z]{3}\$').hasMatch(this.currencyCode)) {
+    if (!RegExp(r'^[A-Z]{3}$').hasMatch(this.currencyCode)) {
       throw const FormatException('Currency must be a three-letter code.');
     }
     if (this.progressAccountId.isEmpty) {
