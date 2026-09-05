@@ -17,6 +17,22 @@ class DebtSettlementRecordCurrencyMismatchException implements Exception {
       'Debt $debtId contains a settlement in $settlementCurrency; expected $debtCurrency.';
 }
 
+class DebtSettlementRecordsExceedPrincipalException implements Exception {
+  const DebtSettlementRecordsExceedPrincipalException({
+    required this.debtId,
+    required this.principalMinorUnits,
+    required this.settledMinorUnits,
+  });
+
+  final String debtId;
+  final int principalMinorUnits;
+  final int settledMinorUnits;
+
+  @override
+  String toString() =>
+      'Debt $debtId has settlements totaling $settledMinorUnits above principal $principalMinorUnits.';
+}
+
 /// Read/query boundary for debt exposure and settlement-derived balances.
 class DebtQueryService {
   const DebtQueryService({
@@ -58,13 +74,21 @@ class DebtQueryService {
     final debt = await getById(debtId);
     if (debt == null) return 0;
     final settled = await settledMinorUnits(debt.id);
-    final outstanding = debt.principalMinorUnits - settled;
-    return outstanding < 0 ? 0 : outstanding;
+    if (settled > debt.principalMinorUnits) {
+      throw DebtSettlementRecordsExceedPrincipalException(
+        debtId: debt.id,
+        principalMinorUnits: debt.principalMinorUnits,
+        settledMinorUnits: settled,
+      );
+    }
+    return debt.principalMinorUnits - settled;
   }
 
-  Future<bool> isSettled(String debtId) async =>
-      await outstandingMinorUnits(debtId) == 0 &&
-      (await getById(debtId)) != null;
+  Future<bool> isSettled(String debtId) async {
+    final debt = await getById(debtId);
+    if (debt == null) return false;
+    return await outstandingMinorUnits(debt.id) == 0;
+  }
 
   int _settledMinorUnitsFor(
     Debt debt,
