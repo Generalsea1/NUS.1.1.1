@@ -19,7 +19,7 @@ Status vocabulary: `DONE` / `IN PROGRESS` / `BLOCKED` / `BLOCKED — ENVIRONMENT
 | 6.4 — Shopping | DONE | Shopping lifecycle + local repository + UI |
 | 6.5 — Expenses | ACCEPTED WITH KNOWN BLOCKED DIAGNOSTIC | Expense implementation accepted; final Save interaction verification remains isolated and environment-blocked |
 | 6.6 — Master Architecture Constitution | DONE | Constitution + master backlog |
-| 7 — Financial System | IN PROGRESS | Financial architecture + transaction core + Expense read/query + Account + balance + controlled mutation + categories foundations |
+| 7 — Financial System | IN PROGRESS | Financial architecture + ledger/account/category foundations + income/budget/bills/subscriptions/debt implementation, with runtime verification gates still open |
 | 8 — Tasks & Goals | FUTURE | Tasks, projects, goals, progress and recurrence composition |
 | 9 — Notes & Universal Search | FUTURE | Notes, indexing, unified search and navigation |
 | 10 — Home Manager | FUTURE | Household assets, maintenance, utilities and service records |
@@ -244,10 +244,90 @@ Slice includes:
 
 No category UI, transaction migration, Supabase sync, Family/Shared, analytics, dashboard, or budget behavior was introduced.
 
-### 7.7 Income capture + application service — FUTURE
-### 7.8 Budget aggregate/lifecycle + queries — FUTURE
-### 7.9 Bills + subscriptions application/data — FUTURE
-### 7.10 Debt tracking — FUTURE
+### 7.7 Income capture + application service — IMPLEMENTED / VERIFICATION OPEN
+
+Implemented in `lib/features/finance/application/income_capture_service.dart` with focused tests.
+
+- Positive exact minor-unit income capture — DONE.
+- Active account validation — DONE.
+- Exact currency compatibility validation — DONE.
+- Optional income-category validation and direction enforcement — DONE.
+- Stable transaction mutation boundary reuse — DONE.
+- External reference preservation — DONE.
+- No Expense dependency or Expense mutation — DONE.
+- Focused tests — IMPLEMENTED / BLOCKED — ENVIRONMENT for execution.
+
+### 7.8 Budget aggregate/lifecycle + queries — IMPLEMENTED / VERIFICATION OPEN
+
+Implemented in the Finance domain/query layer with focused tests.
+
+- Exact integer budget limits — DONE.
+- Currency normalization and boundary preservation — DONE.
+- Inclusive start / exclusive end period semantics — DONE.
+- Optional category scope — DONE.
+- Signed expense/income transaction qualification — DONE.
+- Consumption and remaining amount queries — DONE.
+- Exceeded-state query — DONE.
+- No duplicated mutable spending counter — DONE.
+- Focused tests — IMPLEMENTED / BLOCKED — ENVIRONMENT for execution.
+
+### 7.9 Bills + subscriptions application/data — IMPLEMENTED / VERIFICATION OPEN
+
+Implemented with local-first repositories and mutation boundaries.
+
+- Bill aggregate + deterministic persistence — DONE.
+- Bill archive/lifecycle mutation boundary — IMPLEMENTED.
+- Subscription aggregate with cadence and stable identity — DONE.
+- Subscription local repository — DONE.
+- Subscription mutation/archive lifecycle — DONE.
+- Recurrence calculation remains outside the subscription domain — DONE.
+- No automatic historical transaction or Expense mutation — DONE.
+- Focused tests — IMPLEMENTED / BLOCKED — ENVIRONMENT for execution.
+
+### 7.10 Debt tracking — IMPLEMENTED / VERIFICATION OPEN — CI EVIDENCE PENDING
+
+Implemented on `feat/finance-7-10-debt` and submitted as PR #12 against `docs/nus-master-constitution`.
+
+Implementation:
+
+- `lib/features/finance/domain/debt.dart`
+- `lib/features/finance/domain/debt_settlement.dart`
+- `lib/features/finance/data/local_debt_repository.dart`
+- `lib/features/finance/data/local_debt_settlement_repository.dart`
+- `lib/features/finance/application/debt_mutation_service.dart`
+- `lib/features/finance/application/debt_query_service.dart`
+- `test/debt_test.dart`
+- `test/debt_mutation_service_test.dart`
+- `test/local_debt_repository_test.dart`
+
+Slice includes:
+
+- Stable opaque Debt identity — DONE.
+- Exact integer principal minor units — DONE.
+- Explicit owed-by-user / owed-to-user direction — DONE.
+- Counterparty and optional due expectation — DONE.
+- Archive lifecycle preserving identity — DONE.
+- Dedicated `DebtSettlement` immutable history records — DONE.
+- Settlement history as the source of truth for settled/outstanding amounts — DONE.
+- Dedicated namespaces `nus.finance.debts.v1` and `nus.finance.debt_settlements.v1` — DONE.
+- Malformed individual-record isolation — DONE.
+- Root-storage write protection — DONE.
+- Duplicate debt/settlement ID protection — DONE.
+- Settlement currency compatibility enforcement — DONE.
+- Over-settlement rejection — DONE.
+- Principal-reduction-below-settled protection — DONE.
+- Debt balance/query boundary — DONE.
+- No mutation of Expense rows — DONE.
+- No reminder/ScheduleStore/Android/Supabase changes — DONE.
+
+Verification state:
+
+- Source/architecture review — PASS.
+- PR graph/mergeability — PASS (currently mergeable).
+- GitHub Actions runtime result — NOT AVAILABLE through the current GitHub connector surface.
+- Local Flutter runtime — UNAVAILABLE (`flutter` is not installed in the execution environment).
+- Therefore the slice is not marked ACCEPTED and is not merged.
+
 ### 7.11 Savings goals — FUTURE
 ### 7.12 Financial summaries/trends/dashboard — FUTURE
 ### 7.13 Central recurrence integration for recurring financial obligations — FUTURE
@@ -357,6 +437,6 @@ No workaround is allowed merely to change a status from BLOCKED to DONE.
 
 ## Immediate next implementation task
 
-`7.7 — Income capture + application service`.
+`7.10 — GitHub Actions runtime verification and acceptance of the Debt slice`.
 
-7.6 runtime verification remains open until an execution-capable Flutter environment is available.
+After 7.10 is accepted, proceed sequentially to `7.11 — Savings goals`.

@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - docs/nus-master-constitution
+      - 'feat/finance/**'
 
 permissions:
   contents: read
