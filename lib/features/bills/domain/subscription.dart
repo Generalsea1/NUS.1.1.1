@@ -105,7 +105,13 @@ class Subscription implements DomainEntity {
         archived is! bool) {
       throw const FormatException('Invalid Subscription record.');
     }
-    final cadence = SubscriptionCadence.values.where((value) => value.name == cadenceValue).firstOrNull;
+    SubscriptionCadence? cadence;
+    for (final value in SubscriptionCadence.values) {
+      if (value.name == cadenceValue) {
+        cadence = value;
+        break;
+      }
+    }
     final parsedNextDueAt = DateTime.tryParse(nextDueAt);
     if (cadence == null) throw const FormatException('Invalid Subscription cadence.');
     if (parsedNextDueAt == null) throw const FormatException('Invalid Subscription nextDueAt.');
