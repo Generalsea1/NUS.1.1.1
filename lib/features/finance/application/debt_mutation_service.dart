@@ -104,6 +104,13 @@ class DebtMutationService {
     if (debt == null) throw DebtNotFoundException(cleanDebtId);
     if (debt.isArchived) throw DebtArchivedException(cleanDebtId);
 
+    final cleanSettlementId = settlementId.trim();
+    final existingSettlement =
+        await _settlementRepository.getById(cleanSettlementId);
+    if (existingSettlement != null) {
+      throw DebtSettlementDuplicateIdException(cleanSettlementId);
+    }
+
     final normalizedCurrency = currencyCode.trim().toUpperCase();
     if (normalizedCurrency != debt.currencyCode) {
       throw DebtSettlementCurrencyMismatchException(
@@ -118,21 +125,31 @@ class DebtMutationService {
         'Settlement amount must be greater than zero.',
       );
     }
-    if (amountMinorUnits > debt.outstandingMinorUnits) {
+
+    final existingSettlements = await _settlementRepository.list();
+    var settledMinorUnits = 0;
+    for (final existingRecord in existingSettlements) {
+      if (existingRecord.debtId != cleanDebtId) continue;
+      if (existingRecord.currencyCode != debt.currencyCode) {
+        throw DebtSettlementCurrencyMismatchException(
+          debtCurrency: debt.currencyCode,
+          settlementCurrency: existingRecord.currencyCode,
+        );
+      }
+      settledMinorUnits += existingRecord.amountMinorUnits;
+    }
+
+    final outstandingMinorUnits =
+        debt.principalMinorUnits - settledMinorUnits;
+    if (amountMinorUnits > outstandingMinorUnits) {
       throw DebtSettlementExceedsOutstandingException(
         requestedMinorUnits: amountMinorUnits,
-        outstandingMinorUnits: debt.outstandingMinorUnits,
+        outstandingMinorUnits: outstandingMinorUnits,
       );
     }
 
-    final existingSettlement =
-        await _settlementRepository.getById(settlementId.trim());
-    if (existingSettlement != null) {
-      throw DebtSettlementDuplicateIdException(settlementId.trim());
-    }
-
     final settlement = DebtSettlement(
-      id: settlementId,
+      id: cleanSettlementId,
       debtId: cleanDebtId,
       amountMinorUnits: amountMinorUnits,
       currencyCode: normalizedCurrency,
@@ -141,12 +158,9 @@ class DebtMutationService {
       financialTransactionId: financialTransactionId,
     );
 
-    final updatedDebt = debt.copyWith(
-      settledMinorUnits: debt.settledMinorUnits + amountMinorUnits,
-    );
-
+    // The settlement record is the source of truth. The Debt aggregate is
+    // deliberately not mutated with a duplicated settled counter.
     await _settlementRepository.save(settlement);
-    await _debtRepository.save(updatedDebt);
     return settlement;
   }
 
