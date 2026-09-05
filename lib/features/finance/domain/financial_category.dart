@@ -76,9 +76,13 @@ class FinancialCategory implements DomainEntity {
       throw const FormatException('Financial category isArchived must be a boolean.');
     }
 
-    final parsedDirection = FinancialCategoryDirection.values
-        .where((value) => value.name == direction)
-        .firstOrNull;
+    FinancialCategoryDirection? parsedDirection;
+    for (final value in FinancialCategoryDirection.values) {
+      if (value.name == direction) {
+        parsedDirection = value;
+        break;
+      }
+    }
     if (parsedDirection == null) {
       throw const FormatException('Unknown financial category direction.');
     }
