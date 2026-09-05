@@ -19,7 +19,7 @@ Status vocabulary: `DONE` / `IN PROGRESS` / `BLOCKED` / `BLOCKED — ENVIRONMENT
 | 6.4 — Shopping | DONE | Shopping lifecycle + local repository + UI |
 | 6.5 — Expenses | ACCEPTED WITH KNOWN BLOCKED DIAGNOSTIC | Expense implementation accepted; final Save interaction verification remains isolated and environment-blocked |
 | 6.6 — Master Architecture Constitution | DONE | Constitution + master backlog |
-| 7 — Financial System | IN PROGRESS | Financial architecture + transaction core + Expense read/query + Account + balance + controlled mutation foundations |
+| 7 — Financial System | IN PROGRESS | Financial architecture + transaction core + Expense read/query + Account + balance + controlled mutation + categories foundations |
 | 8 — Tasks & Goals | FUTURE | Tasks, projects, goals, progress and recurrence composition |
 | 9 — Notes & Universal Search | FUTURE | Notes, indexing, unified search and navigation |
 | 10 — Home Manager | FUTURE | Household assets, maintenance, utilities and service records |
@@ -218,7 +218,32 @@ Slice includes:
 
 No Expense dependency, Expense storage change, reminder infrastructure change, Supabase sync, Family/Shared, or Android change was introduced.
 
-### 7.6 Financial Categories + Category Repository — READY
+### 7.6 Financial Categories + Category Repository — IMPLEMENTED / VERIFICATION OPEN
+
+Implemented in:
+
+- `lib/features/finance/domain/financial_category.dart`
+- `lib/features/finance/data/local_financial_category_repository.dart`
+- `test/financial_category_test.dart`
+
+Slice includes:
+
+- Stable category ID — DONE.
+- Non-empty normalized category name — DONE.
+- Explicit income/expense direction scope — DONE.
+- Active/archived state — DONE.
+- Deterministic serialization and equality/copy semantics — DONE.
+- `FinancialCategoryRepository` using the shared `DomainRepository` contract — DONE.
+- Dedicated local storage `nus.finance.categories.v1` — DONE.
+- Malformed individual-record isolation — DONE.
+- Malformed storage-root protection on write — DONE.
+- Archive semantics for `deleteById` — DONE.
+- Transaction category references remain opaque IDs — DONE.
+- No direct Expense → Finance dependency — DONE.
+- Focused tests — IMPLEMENTED / BLOCKED — ENVIRONMENT for execution.
+
+No category UI, transaction migration, Supabase sync, Family/Shared, analytics, dashboard, or budget behavior was introduced.
+
 ### 7.7 Income capture + application service — FUTURE
 ### 7.8 Budget aggregate/lifecycle + queries — FUTURE
 ### 7.9 Bills + subscriptions application/data — FUTURE
@@ -332,6 +357,6 @@ No workaround is allowed merely to change a status from BLOCKED to DONE.
 
 ## Immediate next implementation task
 
-`7.6 — Financial Categories + Category Repository`.
+`7.7 — Income capture + application service`.
 
-7.5 runtime verification remains open until an execution-capable Flutter environment is available.
+7.6 runtime verification remains open until an execution-capable Flutter environment is available.
