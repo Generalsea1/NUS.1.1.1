@@ -1,7 +1,10 @@
+# NUS CI execution probe: behavior-neutral commit to verify GitHub Actions execution.
 name: NUS Continuous Verification
 
 on:
   workflow_dispatch:
+  pull_request:
+    types: [opened, synchronize, reopened]
   push:
     branches:
       - docs/nus-master-constitution
