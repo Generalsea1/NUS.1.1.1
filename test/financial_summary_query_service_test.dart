@@ -27,7 +27,6 @@ void main() {
     transactions.data['income'] = FinancialTransaction(id: 'income', accountId: 'a1', amountMinorUnits: 5000, currencyCode: 'EGP', occurredOn: DateTime.utc(2026, 9, 2), categoryId: 'salary');
     transactions.data['food'] = FinancialTransaction(id: 'food', accountId: 'a1', amountMinorUnits: -1200, currencyCode: 'EGP', occurredOn: DateTime.utc(2026, 9, 3), categoryId: 'food');
     transactions.data['other'] = FinancialTransaction(id: 'other', accountId: 'a1', amountMinorUnits: -300, currencyCode: 'EGP', occurredOn: DateTime.utc(2026, 8, 31), categoryId: 'food');
-    transactions.data['usd'] = FinancialTransaction(id: 'usd', accountId: 'a1', amountMinorUnits: 9000, currencyCode: 'USD', occurredOn: DateTime.utc(2026, 9, 4));
     query = FinancialSummaryQueryService(transactionRepository: transactions, accountRepository: accounts);
   });
 
@@ -61,8 +60,7 @@ void main() {
   });
 
   test('transaction currency corruption fails closed for account balance', () async {
-    expect(() => query.accountBalance('a1'), returnsNormally);
-    // The USD transaction is deliberately attached to the EGP account and must fail.
+    transactions.data['usd'] = FinancialTransaction(id: 'usd', accountId: 'a1', amountMinorUnits: 9000, currencyCode: 'USD', occurredOn: DateTime.utc(2026, 9, 4));
     await expectLater(query.accountBalance('a1'), throwsA(isA<FinancialSummaryCurrencyMismatchException>()));
   });
 }
