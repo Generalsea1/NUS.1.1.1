@@ -2,6 +2,10 @@ name: NUS Continuous Verification
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches:
+      - docs/nus-master-constitution
+    types: [opened, synchronize, reopened]
   push:
     branches:
       - docs/nus-master-constitution
