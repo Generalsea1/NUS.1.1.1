@@ -19,7 +19,7 @@ Status vocabulary: `DONE` / `IN PROGRESS` / `BLOCKED` / `BLOCKED — ENVIRONMENT
 | 6.4 — Shopping | DONE | Shopping lifecycle + local repository + UI |
 | 6.5 — Expenses | ACCEPTED WITH KNOWN BLOCKED DIAGNOSTIC | Expense implementation accepted; final Save interaction verification remains isolated and environment-blocked |
 | 6.6 — Master Architecture Constitution | DONE | Constitution + master backlog |
-| 7 — Financial System | IN PROGRESS | Financial architecture + ledger/account/category foundations + income/budget/bills/subscriptions/debt/savings/summaries, with runtime verification gates still open |
+| 7 — Financial System | IN PROGRESS | Financial architecture + ledger/account/category foundations + income/budget/bills/subscriptions/debt implementation, with runtime verification gates still open |
 | 8 — Tasks & Goals | FUTURE | Tasks, projects, goals, progress and recurrence composition |
 | 9 — Notes & Universal Search | FUTURE | Notes, indexing, unified search and navigation |
 | 10 — Home Manager | FUTURE | Household assets, maintenance, utilities and service records |
@@ -220,44 +220,223 @@ No Expense dependency, Expense storage change, reminder infrastructure change, S
 
 ### 7.6 Financial Categories + Category Repository — IMPLEMENTED / VERIFICATION OPEN
 
-Implemented with exact category identity, lifecycle, local-first versioned persistence, deterministic ordering, malformed-record isolation, and application mutation/query boundaries.
+Implemented in:
 
-### 7.7 Income Capture — IMPLEMENTED / VERIFICATION OPEN
+- `lib/features/finance/domain/financial_category.dart`
+- `lib/features/finance/data/local_financial_category_repository.dart`
+- `test/financial_category_test.dart`
 
-Implemented as a bounded Finance application/domain slice with exact integer money, account linkage, currency compatibility, lifecycle rules, and focused tests.
+Slice includes:
 
-### 7.8 Budget — IMPLEMENTED / VERIFICATION OPEN
+- Stable category ID — DONE.
+- Non-empty normalized category name — DONE.
+- Explicit income/expense direction scope — DONE.
+- Active/archived state — DONE.
+- Deterministic serialization and equality/copy semantics — DONE.
+- `FinancialCategoryRepository` using the shared `DomainRepository` contract — DONE.
+- Dedicated local storage `nus.finance.categories.v1` — DONE.
+- Malformed individual-record isolation — DONE.
+- Malformed storage-root protection on write — DONE.
+- Archive semantics for `deleteById` — DONE.
+- Transaction category references remain opaque IDs — DONE.
+- No direct Expense → Finance dependency — DONE.
+- Focused tests — IMPLEMENTED / BLOCKED — ENVIRONMENT for execution.
 
-Implemented as a bounded Finance slice with exact integer limits, canonical currency, period semantics, category scope, lifecycle, local-first persistence, and focused tests.
+No category UI, transaction migration, Supabase sync, Family/Shared, analytics, dashboard, or budget behavior was introduced.
 
-### 7.9 Bills + Subscriptions — IMPLEMENTED / VERIFICATION OPEN
+### 7.7 Income capture + application service — IMPLEMENTED / VERIFICATION OPEN
 
-Implemented as bounded Finance slices with exact money, stable identity, lifecycle, local-first repositories, and application boundaries. Recurrence integration is intentionally deferred to the central recurrence foundation.
+Implemented in `lib/features/finance/application/income_capture_service.dart` with focused tests.
 
-### 7.10 Debt — IMPLEMENTED / VERIFICATION OPEN
+- Positive exact minor-unit income capture — DONE.
+- Active account validation — DONE.
+- Exact currency compatibility validation — DONE.
+- Optional income-category validation and direction enforcement — DONE.
+- Stable transaction mutation boundary reuse — DONE.
+- External reference preservation — DONE.
+- No Expense dependency or Expense mutation — DONE.
+- Focused tests — IMPLEMENTED / BLOCKED — ENVIRONMENT for execution.
 
-Implemented on PR #12. Debt outstanding is derived from immutable settlement history; no mutable settled counter is persisted. Runtime verification remains open.
+### 7.8 Budget aggregate/lifecycle + queries — IMPLEMENTED / VERIFICATION OPEN
 
-### 7.11 Savings Goals — IMPLEMENTED / VERIFICATION OPEN
+Implemented in the Finance domain/query layer with focused tests.
 
-Implemented on PR #16. Goal progress is derived from compatible signed account transactions and is not persisted as mutable goal state. Runtime verification remains open.
+- Exact integer budget limits — DONE.
+- Currency normalization and boundary preservation — DONE.
+- Inclusive start / exclusive end period semantics — DONE.
+- Optional category scope — DONE.
+- Signed expense/income transaction qualification — DONE.
+- Consumption and remaining amount queries — DONE.
+- Exceeded-state query — DONE.
+- No duplicated mutable spending counter — DONE.
+- Focused tests — IMPLEMENTED / BLOCKED — ENVIRONMENT for execution.
 
-### 7.12 Financial Summaries — IMPLEMENTED / VERIFICATION OPEN
+### 7.9 Bills + subscriptions application/data — IMPLEMENTED / VERIFICATION OPEN
 
-Implemented on PR #17. Summary, category-spending, account-balance, and monthly-trend queries are derived from existing financial boundaries without persisted summary state. Runtime verification remains open.
+Implemented with local-first repositories and mutation boundaries.
 
-### 7.13 Central Recurrence Foundation — IMPLEMENTED / VERIFICATION OPEN
+- Bill aggregate + deterministic persistence — DONE.
+- Bill archive/lifecycle mutation boundary — IMPLEMENTED.
+- Subscription aggregate with cadence and stable identity — DONE.
+- Subscription local repository — DONE.
+- Subscription mutation/archive lifecycle — DONE.
+- Recurrence calculation remains outside the subscription domain — DONE.
+- No automatic historical transaction or Expense mutation — DONE.
+- Focused tests — IMPLEMENTED / BLOCKED — ENVIRONMENT for execution.
 
-Implemented on PR #19 as a domain-neutral foundation:
+### 7.10 Debt tracking — IMPLEMENTED / VERIFICATION OPEN — CI EVIDENCE PENDING
 
-- `lib/core/recurrence/recurrence_rule.dart`
-- `lib/core/recurrence/recurrence_engine.dart`
-- `test/recurrence_engine_test.dart`
+Implemented on `feat/finance-7-10-debt` and submitted as PR #12 against `docs/nus-master-constitution`.
 
-The engine supports daily, weekly, and selected-weekday occurrence generation with explicit windows and optional past-occurrence reconciliation. It owns no persistence, notifications, or feature state.
+Implementation:
 
-Appointment and Medication coordinators remain unchanged. Migration requires runtime verification plus equivalence evidence for occurrence generation, cancellation semantics, stable IDs, horizons, and edge cases.
+- `lib/features/finance/domain/debt.dart`
+- `lib/features/finance/domain/debt_settlement.dart`
+- `lib/features/finance/data/local_debt_repository.dart`
+- `lib/features/finance/data/local_debt_settlement_repository.dart`
+- `lib/features/finance/application/debt_mutation_service.dart`
+- `lib/features/finance/application/debt_query_service.dart`
+- `test/debt_test.dart`
+- `test/debt_mutation_service_test.dart`
+- `test/local_debt_repository_test.dart`
 
-## Verification policy
+Slice includes:
 
-Runtime Flutter execution is currently environment-blocked in this session. No phase is marked accepted solely from static inspection. Every implemented phase must retain an explicit runtime verification gate until executable CI evidence is available.
+- Stable opaque Debt identity — DONE.
+- Exact integer principal minor units — DONE.
+- Explicit owed-by-user / owed-to-user direction — DONE.
+- Counterparty and optional due expectation — DONE.
+- Archive lifecycle preserving identity — DONE.
+- Dedicated `DebtSettlement` immutable history records — DONE.
+- Settlement history as the source of truth for settled/outstanding amounts — DONE.
+- Dedicated namespaces `nus.finance.debts.v1` and `nus.finance.debt_settlements.v1` — DONE.
+- Malformed individual-record isolation — DONE.
+- Root-storage write protection — DONE.
+- Duplicate debt/settlement ID protection — DONE.
+- Settlement currency compatibility enforcement — DONE.
+- Over-settlement rejection — DONE.
+- Principal-reduction-below-settled protection — DONE.
+- Debt balance/query boundary — DONE.
+- No mutation of Expense rows — DONE.
+- No reminder/ScheduleStore/Android/Supabase changes — DONE.
+
+Verification state:
+
+- Source/architecture review — PASS.
+- PR graph/mergeability — PASS (currently mergeable).
+- GitHub Actions runtime result — NOT AVAILABLE through the current GitHub connector surface.
+- Local Flutter runtime — UNAVAILABLE (`flutter` is not installed in the execution environment).
+- Therefore the slice is not marked ACCEPTED and is not merged.
+
+### 7.11 Savings goals — FUTURE
+### 7.12 Financial summaries/trends/dashboard — FUTURE
+### 7.13 Central recurrence integration for recurring financial obligations — FUTURE
+
+Rules:
+
+- Finance consumes Expense data through application/query boundaries; Expenses never depend on Finance.
+- No cross-currency aggregation without an explicit conversion policy.
+- No Supabase sync in the current Phase 7 slices.
+- No Family/Shared implementation in Phase 7 foundations.
+- No changes to ScheduleStore, NotificationService, ReminderScheduler, or Android scaffold.
+
+## Phase 8 — Tasks & Goals
+
+- Task aggregate — FUTURE.
+- Project/grouping model — FUTURE.
+- Goal aggregate — FUTURE.
+- Progress tracking — FUTURE.
+- Recurrence composition with central engine — FUTURE.
+- Task reminders through shared notification boundary — FUTURE.
+
+## Phase 9 — Notes & Universal Search
+
+- Note application/data layers — FUTURE.
+- Index/search contract — FUTURE.
+- Cross-domain search projection — FUTURE.
+- Universal search UI/navigation — FUTURE.
+- Attachments — FUTURE.
+
+## Phase 10 — Home Manager
+
+- Home/asset domain — FUTURE.
+- Maintenance records — FUTURE.
+- Utility/service records — FUTURE.
+- Household reminders — FUTURE.
+
+## Phase 11 — NUS Intelligence
+
+- AI Gateway runtime — FUTURE.
+- Context permission policy — FUTURE.
+- Provider adapters — FUTURE.
+- Local-model option — FUTURE.
+- Retrieval/query interfaces — FUTURE.
+- Audit and privacy controls — FUTURE.
+- Cost/quota controls — FUTURE.
+
+## Phase 12 — Automation Engine
+
+- Trigger contract — FUTURE.
+- Condition evaluation — FUTURE.
+- Action contract — FUTURE.
+- User-defined automation — FUTURE.
+- Execution history/audit — FUTURE.
+- Recurrence/event integration — FUTURE.
+
+## Phase 13 — Cloud / Sync
+
+- Supabase schema/migrations process — FUTURE.
+- User-owned row policy/RLS — FUTURE.
+- Local change log — FUTURE.
+- Sync queue — FUTURE.
+- Conflict resolution — FUTURE.
+- Tombstones/deletion sync — FUTURE.
+- Backup/restore — FUTURE.
+- Multi-device validation — FUTURE.
+
+No cloud synchronization is authorized in the current implementation slices.
+
+## Phase 14 — Family / Shared
+
+- Shared ownership model — FUTURE.
+- Membership/roles — FUTURE.
+- Permission matrix — FUTURE.
+- Shared record lifecycle — FUTURE.
+- Revocation/audit — FUTURE.
+- Family privacy boundaries — FUTURE.
+
+No Family/Shared functionality is authorized in the current implementation slices.
+
+## Phase 15 — Security / Backup / Export
+
+- Personal Vault domain — FUTURE.
+- Encryption/key-management design — FUTURE.
+- Secure export/import — FUTURE.
+- Recovery workflow — FUTURE.
+- Secret/credential scanning — FUTURE.
+- Security audit and threat model — FUTURE.
+
+## Phase 16 — Android Production Scaffold
+
+The repository already contains an Android scaffold. This phase is production hardening, not project generation now.
+
+- Release configuration — FUTURE.
+- Signing and release keys outside source control — FUTURE.
+- Backup policy — FUTURE.
+- Notification permission/exact-alarm compliance — FUTURE.
+- Deep links — FUTURE.
+- Background execution policy — FUTURE.
+- Production artifact verification — FUTURE.
+- Store-release readiness — FUTURE.
+
+## Unrelated-work policy
+
+A BLOCKED item freezes only the dependent acceptance gate. It does not freeze documentation, architecture decisions, or independent implementation work.
+
+No workaround is allowed merely to change a status from BLOCKED to DONE.
+
+## Immediate next implementation task
+
+`7.10 — GitHub Actions runtime verification and acceptance of the Debt slice`.
+
+After 7.10 is accepted, proceed sequentially to `7.11 — Savings goals`.
