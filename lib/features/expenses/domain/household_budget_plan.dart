@@ -121,7 +121,10 @@ HouseholdBudgetPlan buildHouseholdBudgetPlan(HouseholdBudgetInput input) {
     );
   }
 
-  final status = reserve / input.monthlyIncome < 0.05 ? BudgetStatus.tight : BudgetStatus.healthy;
+  // A reserve below roughly 3% of income indicates a genuinely tight plan.
+  // The default manager reserve is 10% of the remaining envelope, so modest
+  // incomes with a smaller absolute reserve can still be healthy.
+  final status = reserve / input.monthlyIncome < 0.03 ? BudgetStatus.tight : BudgetStatus.healthy;
   return HouseholdBudgetPlan(
     input: input,
     reserve: reserve,
