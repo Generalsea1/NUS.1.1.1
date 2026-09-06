@@ -107,7 +107,7 @@ class HouseholdBudgetPlan {
   bool get isAiPowered => input.aiRecommendation != null;
 }
 
-enum BudgetStatus { healthy, tight, overBudget }
+enum BudgetStatus { healthy, tight, overBudget, incomplete }
 
 HouseholdBudgetPlan buildHouseholdBudgetPlan(HouseholdBudgetInput input) {
   if (input.monthlyIncome <= 0) {
@@ -117,6 +117,17 @@ HouseholdBudgetPlan buildHouseholdBudgetPlan(HouseholdBudgetInput input) {
       weeklyAllowance: 0,
       recommendation: 'ابدأ بتسجيل الدخل الشهري أولاً حتى يقدر مدير المنزل يوزّع المصروفات بشكل صحيح.',
       status: BudgetStatus.overBudget,
+      management: _management(input, 0, 0),
+    );
+  }
+
+  if (!input.hasReadyPlan) {
+    return HouseholdBudgetPlan(
+      input: input,
+      reserve: 0,
+      weeklyAllowance: 0,
+      recommendation: 'الخطة لسه مش جاهزة: شغّل مدير المنزل بالذكاء الاصطناعي عشان يوزّع البنود الناقصة، أو كمّل إدخال أرقام مصروفاتك الفعلية.',
+      status: BudgetStatus.incomplete,
       management: _management(input, 0, 0),
     );
   }
@@ -143,9 +154,7 @@ HouseholdBudgetPlan buildHouseholdBudgetPlan(HouseholdBudgetInput input) {
   final status = reserve / input.monthlyIncome < 0.03 ? BudgetStatus.tight : BudgetStatus.healthy;
   final recommendation = input.aiRecommendation?.recommendation.isNotEmpty == true
       ? input.aiRecommendation!.recommendation
-      : input.hasMissingCategories
-          ? 'لسه في بنود مصروفات ناقصة. اكتب أرقامك الفعلية أو شغّل مدير المنزل بالذكاء الاصطناعي عشان يوزّعها على الدخل بدل ما البرنامج يفترض أرقام من عنده.'
-          : 'الخطة مبنية على الأرقام التي أدخلتها. المبلغ المتبقي يظل هامش حركة ولا يُعتبر إذنًا بإنفاقه كله.';
+      : 'الخطة مبنية على الأرقام التي أدخلتها. المبلغ المتبقي يظل هامش حركة ولا يُعتبر إذنًا بإنفاقه كله.';
 
   return HouseholdBudgetPlan(
     input: input,
