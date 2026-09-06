@@ -33,7 +33,9 @@ class CentralRecurrenceEngine {
         ? const Duration(days: 7)
         : const Duration(days: 1);
     final anchor = startsAt.isAfter(now) ? startsAt : now;
-    final windowEnd = anchor.add(step * _maxOccurrences);
+    final windowEnd = anchor.add(
+      step * (_maxOccurrences + (startsAt.isAfter(now) ? 0 : 1)),
+    );
 
     return _recurrenceEngine
         .occurrences(
