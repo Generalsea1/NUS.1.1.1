@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/auth/google_auth_repository.dart';
 import '../../../core/supabase_service.dart';
@@ -54,10 +55,10 @@ class AiHubPage extends StatelessWidget {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text('${_t('Google sign-in failed', 'فشل تسجيل الدخول بجوجل')}: ${error.message}')),
                   );
-                } catch (error) {
+                } catch (_) {
                   if (!context.mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(_t('تعذر بدء تسجيل الدخول حاليًا.', 'تعذر بدء تسجيل الدخول حاليًا.'))),
+                    SnackBar(content: Text(_t('Could not start sign-in right now.', 'تعذر بدء تسجيل الدخول حاليًا.'))),
                   );
                 }
               },
