@@ -25,13 +25,13 @@ void main() {
     SharedPreferences.setMockInitialValues(<String, Object>{});
   });
 
-  testWidgets('NUS renders the schedule home screen', (tester) async {
+  testWidgets('NUS renders the premium home shell', (tester) async {
     final store = ScheduleStore();
 
     await tester.pumpWidget(NosApp(store: store));
     await tester.pumpAndSettle();
 
-    expect(find.text('إيه اللي وراك؟'), findsOneWidget);
+    expect(find.text('NUS'), findsWidgets);
     expect(find.text('إضافة تذكير'), findsOneWidget);
     expect(find.text('النهارده'), findsOneWidget);
   });
