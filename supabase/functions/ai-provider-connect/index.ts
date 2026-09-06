@@ -144,17 +144,37 @@ Deno.serve(async (req) => {
 
   const user = await getUser(req);
   if (!user) return json({ ok: false, error: "Authentication required." }, 401);
-  if (!admin || !googleClientId || !callbackUrl) {
-    return json({ ok: false, error: "Gemini OAuth is not configured on the NUS server." }, 503);
-  }
+  if (!admin) return json({ ok: false, error: "AI connection server is not configured." }, 503);
 
   let body: Record<string, unknown> = {};
   try {
     body = await req.json();
   } catch (_) {}
 
-  if (body.provider !== "gemini" || body.action !== "start") {
+  if (body.provider !== "gemini") {
+    return json({ ok: false, error: "Unsupported AI provider." }, 400);
+  }
+
+  if (body.action === "disconnect") {
+    const { error } = await admin.from("user_ai_connections").update({
+      status: "disconnected",
+      access_token_encrypted: null,
+      refresh_token_encrypted: null,
+      token_expires_at: null,
+      metadata: {},
+      last_error: null,
+    }).eq("user_id", user.id).eq("provider", "gemini");
+
+    if (error) return json({ ok: false, error: "Could not disconnect Gemini." }, 500);
+    return json({ ok: true, disconnected: true });
+  }
+
+  if (body.action !== "start") {
     return json({ ok: false, error: "Unsupported AI provider action." }, 400);
+  }
+
+  if (!googleClientId || !callbackUrl || !encryptionKey) {
+    return json({ ok: false, error: "Gemini OAuth is not configured on the NUS server." }, 503);
   }
 
   const stateBytes = crypto.getRandomValues(new Uint8Array(24));
