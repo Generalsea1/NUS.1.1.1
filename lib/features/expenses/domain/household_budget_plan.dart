@@ -163,7 +163,9 @@ class HouseholdBudgetPlan {
 
 enum BudgetStatus { healthy, tight, overBudget, incomplete }
 
-HouseholdBudgetPlan buildHouseholdBudgetPlan(HouseholdBudgetInput input) {
+HouseholdBudgetPlan buildHouseholdBudgetPlan(HouseholdBudgetInput rawInput) {
+  final input = _sanitizeAiRecommendation(rawInput);
+
   if (input.monthlyIncome <= 0) {
     return HouseholdBudgetPlan(
       input: input,
@@ -215,6 +217,82 @@ HouseholdBudgetPlan buildHouseholdBudgetPlan(HouseholdBudgetInput input) {
     recommendation: recommendation,
     status: status,
     management: _management(input, reserve, weeklyAllowance),
+  );
+}
+
+HouseholdBudgetInput _sanitizeAiRecommendation(HouseholdBudgetInput input) {
+  final ai = input.aiRecommendation;
+  if (ai == null) return input;
+
+  final missing = <String>[
+    if (!input.isProvided('rent')) 'rent',
+    if (!input.isProvided('utilities')) 'utilities',
+    if (!input.isProvided('food')) 'food',
+    if (!input.isProvided('transport')) 'transport',
+    if (!input.isProvided('debt')) 'debt',
+    if (!input.isProvided('health')) 'health',
+    if (!input.isProvided('clothing')) 'clothing',
+    if (!input.isProvided('maintenance')) 'maintenance',
+    if (!input.isProvided('familyFun')) 'familyFun',
+    if (!input.isProvided('other')) 'other',
+  ];
+
+  int aiValue(String key) {
+    switch (key) {
+      case 'rent': return ai.rent;
+      case 'utilities': return ai.utilities;
+      case 'food': return ai.food;
+      case 'transport': return ai.transport;
+      case 'debt': return ai.debt;
+      case 'health': return ai.health;
+      case 'clothing': return ai.clothing;
+      case 'maintenance': return ai.maintenance;
+      case 'familyFun': return ai.familyFun;
+      case 'other': return ai.other;
+      default: return 0;
+    }
+  }
+
+  final available = (input.monthlyIncome - input.knownMandatoryTotal - input.knownFlexibleTotal)
+      .clamp(0, 0x7fffffffffffffff);
+  final safeReserve = ai.reserve.clamp(0, available);
+  final categoryCap = (available - safeReserve).clamp(0, 0x7fffffffffffffff);
+  final total = missing.fold<int>(0, (sum, key) => sum + aiValue(key));
+  final scale = total > categoryCap && total > 0 ? categoryCap / total : 1.0;
+
+  int bounded(String key) => (aiValue(key) * scale).floor().clamp(0, 0x7fffffffffffffff);
+
+  final safe = HouseholdBudgetAiRecommendation(
+    rent: input.isProvided('rent') ? ai.rent : bounded('rent'),
+    utilities: input.isProvided('utilities') ? ai.utilities : bounded('utilities'),
+    food: input.isProvided('food') ? ai.food : bounded('food'),
+    transport: input.isProvided('transport') ? ai.transport : bounded('transport'),
+    debt: input.isProvided('debt') ? ai.debt : bounded('debt'),
+    health: input.isProvided('health') ? ai.health : bounded('health'),
+    clothing: input.isProvided('clothing') ? ai.clothing : bounded('clothing'),
+    maintenance: input.isProvided('maintenance') ? ai.maintenance : bounded('maintenance'),
+    familyFun: input.isProvided('familyFun') ? ai.familyFun : bounded('familyFun'),
+    other: input.isProvided('other') ? ai.other : bounded('other'),
+    reserve: safeReserve,
+    managerMessage: ai.managerMessage,
+    recommendation: ai.recommendation,
+  );
+
+  return HouseholdBudgetInput(
+    monthlyIncome: input.monthlyIncome,
+    rent: input.rent,
+    utilities: input.utilities,
+    food: input.food,
+    transport: input.transport,
+    debt: input.debt,
+    health: input.health,
+    clothing: input.clothing,
+    maintenance: input.maintenance,
+    familyFun: input.familyFun,
+    other: input.other,
+    savingsTarget: input.savingsTarget,
+    providedFields: input.providedFields,
+    aiRecommendation: safe,
   );
 }
 
