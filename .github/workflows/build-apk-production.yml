@@ -128,7 +128,8 @@ jobs:
           test -x "$AAPT2"
           BADGING="$($AAPT2 dump badging "$APK")"
           printf '%s\n' "$BADGING" | grep -F "application-label:'NUS'"
-          unzip -l "$APK" | grep -E 'res/mipmap-(mdpi|hdpi|xhdpi|xxhdpi|xxxhdpi)/ic_launcher\.png$'
+          printf '%s\n' "$BADGING" | grep -Eq "application-icon-[^:]+:'res/(mipmap|drawable)[^:]*ic_launcher"
+          unzip -Z1 "$APK" | grep -Eq '(^|/)ic_launcher(_round)?\.png$'
           XML="$($AAPT2 dump xmltree "$APK" AndroidManifest.xml)"
           printf '%s\n' "$XML" | grep -F 'android.intent.action.VIEW'
           printf '%s\n' "$XML" | grep -F 'android.intent.category.BROWSABLE'
