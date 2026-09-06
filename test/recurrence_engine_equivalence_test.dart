@@ -6,7 +6,6 @@ import 'package:nus/features/appointments/domain/appointment.dart';
 import 'package:nus/features/appointments/domain/appointment_reminder_port.dart';
 import 'package:nus/features/medications/application/medication_reminder_coordinator.dart';
 import 'package:nus/features/medications/domain/medication.dart';
-import 'package:nus/features/medications/domain/medication_reminder_port.dart';
 
 class _AppointmentPort implements AppointmentReminderPort {
   final scheduled = <DateTime>[];
