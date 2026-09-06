@@ -22,7 +22,8 @@ class HouseholdBudgetAiProvider {
       );
     }
 
-    if (client.auth.currentSession == null) {
+    final session = client.auth.currentSession;
+    if (session == null) {
       throw const HouseholdBudgetAiException(
         'The AI budget manager requires an authenticated NUS session.',
       );
@@ -45,9 +46,10 @@ class HouseholdBudgetAiProvider {
           'other': input.other,
           'savingsTarget': input.savingsTarget,
           'actualThisMonth': actualThisMonth,
+          'providedFields': input.providedFields.toList(growable: false),
         },
         headers: {
-          'Authorization': 'Bearer ${client.auth.currentSession!.accessToken}',
+          'Authorization': 'Bearer ${session.accessToken}',
         },
       );
 
