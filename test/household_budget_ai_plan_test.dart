@@ -5,7 +5,12 @@ import 'package:nus/features/expenses/domain/household_budget_plan.dart';
 void main() {
   test('AI recommendation supplies missing category amounts and is reflected in the plan', () {
     const ai = HouseholdBudgetAiRecommendation(
+      rent: 2500,
+      utilities: 700,
       food: 3100,
+      transport: 700,
+      debt: 500,
+      health: 300,
       clothing: 250,
       maintenance: 450,
       familyFun: 300,
@@ -28,7 +33,12 @@ void main() {
     final plan = buildHouseholdBudgetPlan(input);
 
     expect(plan.isAiPowered, isTrue);
+    expect(input.effectiveRent, 2500);
+    expect(input.effectiveUtilities, 700);
     expect(input.effectiveFood, 3100);
+    expect(input.effectiveTransport, 700);
+    expect(input.effectiveDebt, 500);
+    expect(input.effectiveHealth, 300);
     expect(input.effectiveClothing, 250);
     expect(input.effectiveMaintenance, 450);
     expect(input.effectiveFamilyFun, 300);
