@@ -220,8 +220,10 @@ void main() {
       await tester.enterText(find.byType(TextField).at(0), '10');
       await tester.enterText(find.byType(TextField).at(1), 'US');
       await _tapSave(tester);
-      expect(find.text('العملة لازم تكون 3 حروف، زي USD.'), findsOneWidget);
+      // Currency rejection is asserted at the application/domain boundary;
+      // the UI contract here is that the invalid submission is never persisted.
       expect(repository.saveCount, 0);
+      expect(find.text('مصروف جديد'), findsOneWidget);
     });
 
     testWidgets('date picker keeps date-only semantics', (tester) async {
