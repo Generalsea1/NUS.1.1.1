@@ -1,0 +1,1 @@
+Startup auth is user-driven only.
