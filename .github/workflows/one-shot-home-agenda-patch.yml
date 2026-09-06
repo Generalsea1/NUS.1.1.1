@@ -99,3 +99,5 @@ jobs:
           git diff --cached --check
           git commit -m "fix: integrate appointments into home agenda [home-agenda-patched]"
           git push
+
+# Trigger note: this workflow is intentionally temporary and will be removed after the patch commit.
