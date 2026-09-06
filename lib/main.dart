@@ -6,7 +6,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'notification_service.dart';
 import 'features/appointments/presentation/appointments_page.dart';
 import 'features/expenses/application/expense_lifecycle_service.dart';
-import 'features/expenses/presentation/expense_page.dart';
 import 'features/expenses/presentation/household_expense_manager_page.dart';
 import 'features/medications/application/medication_lifecycle_service.dart';
 import 'features/medications/application/medication_reminder_coordinator.dart';
@@ -328,7 +327,7 @@ class _HomePageState extends State<HomePage> {
               color: Colors.grey.shade600, fontWeight: FontWeight.w700,
             )),
             const SizedBox(height: 8),
-            Text(t('What’s on your mind?', 'إيه اللي وراك?'), style: const TextStyle(
+            Text(t('What’s on your mind?', 'إيه اللي وراك؟'), style: const TextStyle(
               fontSize: 34, fontWeight: FontWeight.w900, height: 1.05,
             )),
             const SizedBox(height: 10),
