@@ -409,7 +409,7 @@ class _HomePageState extends State<HomePage> {
               if (value == 'history') await _openFeature(AiHistoryPage(isArabic: widget.isArabic));
             },
             itemBuilder: (_) => [
-              PopupMenuItem(value: 'language', child: Text(t('العربية', 'English'))),
+              PopupMenuItem(value: 'language', child: Text(t('English', 'العربية'))),
               PopupMenuItem(value: 'dark', child: Text(t('Dark mode', 'الوضع الداكن'))),
               PopupMenuItem(value: 'ai', child: Text(t('Google AI account', 'حساب Google للذكاء الاصطناعي'))),
               PopupMenuItem(value: 'history', child: Text(t('AI history', 'سجل الذكاء الاصطناعي'))),
@@ -431,7 +431,7 @@ class _HomePageState extends State<HomePage> {
                     onAi: () => _openFeature(AiSettingsPage(isArabic: widget.isArabic)),
                   ),
                   const SizedBox(height: 20),
-                  Text(t('لوحة التحكم', 'Control center'), style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
+                  Text(t('Control center', 'لوحة التحكم'), style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
                   const SizedBox(height: 12),
                   _QuickGrid(
                     isArabic: widget.isArabic,
@@ -454,7 +454,7 @@ class _HomePageState extends State<HomePage> {
                   ),
                   const SizedBox(height: 20),
                   _SectionTitle(
-                    title: t('النهارده', 'Today'),
+                    title: t('Today', 'النهارده'),
                     count: todays.length,
                     icon: Icons.today_rounded,
                   ),
@@ -462,16 +462,16 @@ class _HomePageState extends State<HomePage> {
                   if (todays.isEmpty)
                     _EmptyState(
                       icon: Icons.event_note_rounded,
-                      title: t('إيه اللي وراك؟', 'What is on your agenda?'),
-                      subtitle: t('خلي NUS ماسك يومك معاك من أول تذكير.', 'Let NUS keep your day organized from the first reminder.'),
+                      title: t('What is on your agenda?', 'إيه اللي وراك؟'),
+                      subtitle: t('Let NUS keep your day organized from the first reminder.', 'خلي NUS ماسك يومك معاك من أول تذكير.'),
                       action: _showAddSheet,
-                      actionLabel: t('إضافة تذكير', 'Add reminder'),
+                      actionLabel: t('Add reminder', 'إضافة تذكير'),
                     )
                   else
                     ...todays.map(_buildItemCard),
                   const SizedBox(height: 24),
                   _SectionTitle(
-                    title: t('القادم', 'Upcoming'),
+                    title: t('Upcoming', 'القادم'),
                     count: upcoming.length,
                     icon: Icons.upcoming_rounded,
                   ),
@@ -482,7 +482,7 @@ class _HomePageState extends State<HomePage> {
                       title: t('لا يوجد شيء معلّق', 'Nothing waiting'),
                       subtitle: t('مواعيدك القادمة ستظهر هنا تلقائياً.', 'Your next plans will appear here automatically.'),
                       action: _showAddSheet,
-                      actionLabel: t('إضافة تذكير', 'Add reminder'),
+                      actionLabel: t('Add reminder', 'إضافة تذكير'),
                     )
                   else
                     ...upcoming.map(_buildItemCard),
@@ -495,7 +495,7 @@ class _HomePageState extends State<HomePage> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _showAddSheet,
         icon: const Icon(Icons.add_rounded),
-        label: Text(t('إضافة', 'Add')),
+        label: Text(t('Add', 'إضافة')),
       ),
     );
   }
@@ -573,7 +573,7 @@ class _HomePageState extends State<HomePage> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
-                    t('تذكير جديد', 'New reminder'),
+                    t('New reminder', 'تذكير جديد'),
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900),
                   ),
                   const SizedBox(height: 14),
@@ -582,8 +582,8 @@ class _HomePageState extends State<HomePage> {
                     autofocus: true,
                     textInputAction: TextInputAction.done,
                     decoration: InputDecoration(
-                      labelText: t('اكتب التذكير', 'Reminder title'),
-                      hintText: t('مثلاً: دفع فاتورة الكهرباء', 'Example: Pay the electricity bill'),
+                      labelText: t('Reminder title', 'اكتب التذكير'),
+                      hintText: t('Example: Pay the electricity bill', 'مثلاً: دفع فاتورة الكهرباء'),
                       prefixIcon: const Icon(Icons.edit_note_rounded),
                     ),
                   ),
@@ -591,7 +591,7 @@ class _HomePageState extends State<HomePage> {
                   Card(
                     child: ListTile(
                       leading: const Icon(Icons.schedule_rounded),
-                      title: Text(t('التاريخ والوقت', 'Date & time')),
+                      title: Text(t('Date & time', 'التاريخ والوقت')),
                       subtitle: Text(MaterialLocalizations.of(context).formatFullDate(selected)),
                       trailing: Text(TimeOfDay.fromDateTime(selected).format(context)),
                       onTap: () async {
@@ -621,7 +621,7 @@ class _HomePageState extends State<HomePage> {
                       Expanded(
                         child: OutlinedButton(
                           onPressed: () => Navigator.of(sheetContext).pop(),
-                          child: Text(t('إلغاء', 'Cancel')),
+                          child: Text(t('Cancel', 'إلغاء')),
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -632,7 +632,7 @@ class _HomePageState extends State<HomePage> {
                             Navigator.of(sheetContext).pop(selected);
                           },
                           icon: const Icon(Icons.check_rounded),
-                          label: Text(t('احفظ التذكير', 'Save reminder')),
+                          label: Text(t('Save reminder', 'احفظ التذكير')),
                         ),
                       ),
                     ],
