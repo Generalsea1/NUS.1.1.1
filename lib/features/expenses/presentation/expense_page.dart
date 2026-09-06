@@ -180,7 +180,7 @@ class _ExpensePageState extends State<ExpensePage> {
         subtitle: widget.isArabic
             ? 'سجّل أول مصروف علشان يظهر هنا.'
             : 'Add your first expense to see it here.',
-        actionLabel: widget.isArabic ? 'إضافة مصروف' : 'Add expense',
+        actionLabel: widget.isArabic ? 'سجّل أول مصروف' : 'Add your first expense',
         onAction: () => _openForm(),
       );
     }
