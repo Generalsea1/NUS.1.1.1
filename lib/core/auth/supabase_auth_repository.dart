@@ -7,15 +7,10 @@ import 'auth_repository.dart';
 import 'auth_state.dart';
 
 /// Supabase-backed authentication infrastructure.
-///
-/// This class owns the translation between Supabase Auth state and the NUS
-/// application-level authentication contract. It does not implement login
-/// providers and does not perform database operations.
 class SupabaseAuthRepository implements AuthRepository {
   AuthState _state = const UnauthenticatedAuthState();
   StreamSubscription<supabase.AuthState>? _subscription;
-  final StreamController<AuthState> _controller =
-      StreamController<AuthState>.broadcast();
+  final StreamController<AuthState> _controller = StreamController<AuthState>.broadcast();
   bool _initialized = false;
   bool _disposed = false;
 
@@ -27,48 +22,45 @@ class SupabaseAuthRepository implements AuthRepository {
 
   @override
   Future<AuthState> initialize() async {
-    if (_disposed) {
-      throw StateError('SupabaseAuthRepository has been disposed.');
-    }
+    if (_disposed) throw StateError('SupabaseAuthRepository has been disposed.');
     if (_initialized) return _state;
-
     _initialized = true;
     await SupabaseService.initialize();
-
     final client = SupabaseService.client;
     if (client == null) {
       _setState(const UnauthenticatedAuthState());
       return _state;
     }
-
     _setState(_mapSession(client.auth.currentSession));
-    _subscription = client.auth.onAuthStateChange.listen(
-      (event) {
-        if (_disposed) return;
-        _setState(_mapSession(event.session));
-      },
-      onError: (Object error, StackTrace stackTrace) {
-        if (_disposed) return;
-        // Authentication errors do not invalidate local-first application data.
-        // Keep the last known authentication state and avoid an unhandled stream
-        // error that could crash the application.
-      },
-    );
-
+    _subscription = client.auth.onAuthStateChange.listen((event) {
+      if (!_disposed) _setState(_mapSession(event.session));
+    });
     return _state;
+  }
+
+  @override
+  Future<void> signInWithGoogle() async {
+    await initialize();
+    final client = SupabaseService.client;
+    if (client == null) {
+      throw StateError('Supabase is not configured for this build.');
+    }
+    await client.auth.signInWithOAuth(
+      supabase.OAuthProvider.google,
+      redirectTo: 'io.supabase.nus://login-callback/',
+      authScreenLaunchMode: supabase.LaunchMode.externalApplication,
+    );
   }
 
   @override
   Future<void> signOut() async {
     if (_disposed) return;
     await initialize();
-
     final client = SupabaseService.client;
     if (client == null) {
       _setState(const UnauthenticatedAuthState());
       return;
     }
-
     await client.auth.signOut();
   }
 
@@ -83,25 +75,19 @@ class SupabaseAuthRepository implements AuthRepository {
 
   void _setState(AuthState next) {
     _state = next;
-    if (!_controller.isClosed) {
-      _controller.add(next);
-    }
+    if (!_controller.isClosed) _controller.add(next);
   }
 
   AuthState _mapSession(supabase.Session? session) {
     final user = session?.user;
-    if (user == null) {
-      return const UnauthenticatedAuthState();
-    }
-
+    if (user == null) return const UnauthenticatedAuthState();
     final metadata = user.userMetadata;
-    final displayName = _readDisplayName(metadata);
     return AuthenticatedAuthState(
       AuthSession(
         user: AuthUser(
           id: user.id,
           email: user.email,
-          displayName: displayName,
+          displayName: _readDisplayName(metadata),
         ),
       ),
     );
