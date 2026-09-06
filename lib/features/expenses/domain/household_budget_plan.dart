@@ -1,23 +1,19 @@
 import 'household_budget_management.dart';
 
 /// Domain model for the "Household Expense Manager" experience.
-///
-/// The planner is deterministic and provider-agnostic. It uses user-entered
-/// values when available and provisionally allocates missing categories from
-/// the remaining household envelope.
 class HouseholdBudgetInput {
   const HouseholdBudgetInput({
     required this.monthlyIncome,
-    required this.rent,
-    required this.utilities,
-    required this.food,
-    required this.transport,
-    required this.debt,
-    required this.health,
-    required this.clothing,
-    required this.maintenance,
-    required this.familyFun,
-    required this.other,
+    this.rent = 0,
+    this.utilities = 0,
+    this.food = 0,
+    this.transport = 0,
+    this.debt = 0,
+    this.health = 0,
+    this.clothing = 0,
+    this.maintenance = 0,
+    this.familyFun = 0,
+    this.other = 0,
     this.savingsTarget = 0,
   });
 
@@ -37,18 +33,15 @@ class HouseholdBudgetInput {
   int get knownMandatoryTotal => rent + utilities + transport + debt + health;
   int get knownFlexibleTotal => food + clothing + maintenance + familyFun + other;
   int get mandatoryTotal => knownMandatoryTotal + effectiveFood;
-  int get flexibleTotal =>
-      effectiveClothing + effectiveMaintenance + effectiveFamilyFun + effectiveOther;
+  int get flexibleTotal => effectiveClothing + effectiveMaintenance + effectiveFamilyFun + effectiveOther;
   int get plannedTotal => mandatoryTotal + flexibleTotal + effectiveReserve;
   int get unallocated => monthlyIncome - plannedTotal;
 
-  bool get isOverBudget =>
-      knownMandatoryTotal + knownFlexibleTotal + savingsTarget > monthlyIncome;
+  bool get isOverBudget => knownMandatoryTotal + knownFlexibleTotal + savingsTarget > monthlyIncome;
 
   int get effectiveFood => food > 0 ? food : _autoFood;
   int get effectiveClothing => clothing > 0 ? clothing : _autoClothing;
-  int get effectiveMaintenance =>
-      maintenance > 0 ? maintenance : _autoMaintenance;
+  int get effectiveMaintenance => maintenance > 0 ? maintenance : _autoMaintenance;
   int get effectiveFamilyFun => familyFun > 0 ? familyFun : _autoFamilyFun;
   int get effectiveOther => other > 0 ? other : _autoOther;
 
@@ -61,23 +54,15 @@ class HouseholdBudgetInput {
 
   int get _autoEnvelope {
     final base = monthlyIncome - knownMandatoryTotal - knownFlexibleTotal;
-    final reserve = savingsTarget > 0
-        ? savingsTarget
-        : (base > 0 ? (base * 0.10).round() : 0);
+    final reserve = savingsTarget > 0 ? savingsTarget : (base > 0 ? (base * 0.10).round() : 0);
     return base - reserve;
   }
 
-  // Fallback weights are planning envelopes, not universal spending rules.
-  // Twenty percent of the post-reserve envelope stays deliberately free.
   int get _autoFood => food > 0 ? 0 : _shareForMissing(_autoEnvelope, 0.50);
-  int get _autoClothing =>
-      clothing > 0 ? 0 : _shareForMissing(_autoEnvelope, 0.08);
-  int get _autoMaintenance =>
-      maintenance > 0 ? 0 : _shareForMissing(_autoEnvelope, 0.08);
-  int get _autoFamilyFun =>
-      familyFun > 0 ? 0 : _shareForMissing(_autoEnvelope, 0.08);
-  int get _autoOther =>
-      other > 0 ? 0 : _shareForMissing(_autoEnvelope, 0.06);
+  int get _autoClothing => clothing > 0 ? 0 : _shareForMissing(_autoEnvelope, 0.08);
+  int get _autoMaintenance => maintenance > 0 ? 0 : _shareForMissing(_autoEnvelope, 0.08);
+  int get _autoFamilyFun => familyFun > 0 ? 0 : _shareForMissing(_autoEnvelope, 0.08);
+  int get _autoOther => other > 0 ? 0 : _shareForMissing(_autoEnvelope, 0.06);
 
   int _shareForMissing(int envelope, double weight) {
     if (envelope <= 0 || weight <= 0) return 0;
@@ -114,82 +99,40 @@ HouseholdBudgetPlan buildHouseholdBudgetPlan(HouseholdBudgetInput input) {
       input: input,
       reserve: 0,
       weeklyAllowance: 0,
-      recommendation:
-          'ابدأ بتسجيل الدخل الشهري أولاً حتى يقدر مدير المنزل يوزّع المصروفات بشكل صحيح.',
+      recommendation: 'ابدأ بتسجيل الدخل الشهري أولاً حتى يقدر مدير المنزل يوزّع المصروفات بشكل صحيح.',
       status: BudgetStatus.overBudget,
       management: _management(input, 0, 0),
     );
   }
 
-  if (input.isOverBudget) {
-    return HouseholdBudgetPlan(
-      input: input,
-      reserve: input.savingsTarget,
-      weeklyAllowance: 0,
-      recommendation:
-          'الخطة أعلى من الدخل. ابدأ بالالتزامات الأساسية، ثم خفّض البنود المرنة والمشتريات غير الضرورية قبل المساس بالأساسيات.',
-      status: BudgetStatus.overBudget,
-      management: _management(input, input.savingsTarget, 0),
-    );
-  }
-
-  final remaining = input.remaining;
   final reserve = input.effectiveReserve;
+  final remaining = input.unallocated;
   final weeklyAllowance = remaining > 0 ? (remaining / 4.33).round() : 0;
-  final hasMissingPlanningInputs = input.food == 0 ||
-      input.clothing == 0 ||
-      input.maintenance == 0 ||
-      input.familyFun == 0 ||
-      input.other == 0;
-  final management = _management(input, reserve, weeklyAllowance);
+  final hasMissing = input.food == 0 || input.clothing == 0 || input.maintenance == 0 || input.familyFun == 0 || input.other == 0;
 
-  if (remaining < 0) {
+  if (input.isOverBudget || remaining < 0) {
     return HouseholdBudgetPlan(
       input: input,
       reserve: reserve,
       weeklyAllowance: 0,
-      recommendation:
-          'الخطة أعلى من الدخل بعد إضافة الاحتياطي. خفّض المصروفات المرنة أو هدف الادخار قبل اعتماد الشهر.',
+      recommendation: 'الخطة أعلى من الدخل. ابدأ بالالتزامات الأساسية، ثم خفّض البنود المرنة والمشتريات غير الضرورية قبل المساس بالأساسيات.',
       status: BudgetStatus.overBudget,
       management: _management(input, reserve, 0),
     );
   }
 
-  final reserveRatio = input.monthlyIncome == 0 ? 0 : reserve / input.monthlyIncome;
-  if (reserveRatio < 0.05) {
-    return HouseholdBudgetPlan(
-      input: input,
-      reserve: reserve,
-      weeklyAllowance: weeklyAllowance,
-      recommendation: _balancedRecommendation(
-        input,
-        reserve,
-        hasMissingPlanningInputs,
-      ),
-      status: BudgetStatus.tight,
-      management: management,
-    );
-  }
-
+  final status = reserve / input.monthlyIncome < 0.05 ? BudgetStatus.tight : BudgetStatus.healthy;
   return HouseholdBudgetPlan(
     input: input,
     reserve: reserve,
     weeklyAllowance: weeklyAllowance,
-    recommendation: _balancedRecommendation(
-      input,
-      reserve,
-      hasMissingPlanningInputs,
-    ),
-    status: BudgetStatus.healthy,
-    management: management,
+    recommendation: _balancedRecommendation(input, reserve, hasMissing),
+    status: status,
+    management: _management(input, reserve, weeklyAllowance),
   );
 }
 
-HouseholdBudgetManagement _management(
-  HouseholdBudgetInput input,
-  int reserve,
-  int weeklyAllowance,
-) {
+HouseholdBudgetManagement _management(HouseholdBudgetInput input, int reserve, int weeklyAllowance) {
   return buildHouseholdBudgetManagement(
     rent: input.rent,
     utilities: input.utilities,
@@ -211,17 +154,9 @@ HouseholdBudgetManagement _management(
   );
 }
 
-String _balancedRecommendation(
-  HouseholdBudgetInput input,
-  int reserve,
-  bool hasMissingPlanningInputs,
-) {
-  final prefix = hasMissingPlanningInputs
+String _balancedRecommendation(HouseholdBudgetInput input, int reserve, bool hasMissing) {
+  final prefix = hasMissing
       ? 'مدير المنزل عمل لك توزيعًا مبدئيًا للبنود التي لم تدخل لها رقمًا. '
       : 'الخطة مبنية على الأرقام التي أدخلتها. ';
-  return '$prefix'
-      'السقف المقترح: أغذية ${input.effectiveFood} جنيه، ملابس ${input.effectiveClothing}، '
-      'صيانة ${input.effectiveMaintenance}، فسحة ${input.effectiveFamilyFun}، '
-      'ومتفرقات ${input.effectiveOther}. احتياطي الشهر $reserve جنيه. '
-      'المبلغ المتبقي بعد الخطة يظل هامش حركة للأسبوع، ولا يُعتبر إذنًا بإنفاقه كله.';
+  return '$prefixالسقف المقترح: أغذية ${input.effectiveFood} جنيه، ملابس ${input.effectiveClothing}، صيانة ${input.effectiveMaintenance}، فسحة ${input.effectiveFamilyFun}، ومتفرقات ${input.effectiveOther}. احتياطي الشهر $reserve جنيه. المبلغ المتبقي يظل هامش حركة ولا يُعتبر إذنًا بإنفاقه كله.';
 }
