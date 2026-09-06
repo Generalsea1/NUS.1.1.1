@@ -49,11 +49,13 @@ class _AiSettingsPageState extends State<AiSettingsPage> with WidgetsBindingObse
     final client = SupabaseService.client;
     final user = client?.auth.currentUser;
     if (client == null || user == null) {
-      if (mounted) setState(() {
-        _loading = false;
-        _connected = false;
-        _model = null;
-      });
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _connected = false;
+          _model = null;
+        });
+      }
       return;
     }
 
@@ -108,17 +110,21 @@ class _AiSettingsPageState extends State<AiSettingsPage> with WidgetsBindingObse
     try {
       final started = await const GoogleAuthRepository().signIn();
       if (!started && mounted) {
-        setState(() => _error = _t(
-              'Google sign-in is not configured for this NUS build.',
-              'تسجيل دخول Google مش متظبط لنسخة NUS دي لسه.',
-            ));
+        setState(() {
+          _error = _t(
+            'Google sign-in is not configured for this NUS build.',
+            'تسجيل دخول Google مش متظبط لنسخة NUS دي لسه.',
+          );
+        });
       }
     } catch (error) {
       if (mounted) {
         setState(() => _error = error.toString());
       }
     } finally {
-      if (mounted) setState(() => _signingIn = false);
+      if (mounted) {
+        setState(() => _signingIn = false);
+      }
     }
   }
 
@@ -126,10 +132,12 @@ class _AiSettingsPageState extends State<AiSettingsPage> with WidgetsBindingObse
     final client = SupabaseService.client;
     final user = client?.auth.currentUser;
     if (client == null || user == null) {
-      if (mounted) setState(() => _error = _t(
-            'Sign in to NUS before connecting an AI provider.',
-            'سجّل دخولك في NUS الأول قبل ربط مزود الذكاء الاصطناعي.',
-          ));
+      if (mounted) {
+        setState(() => _error = _t(
+              'Sign in to NUS before connecting an AI provider.',
+              'سجّل دخولك في NUS الأول قبل ربط مزود الذكاء الاصطناعي.',
+            ));
+      }
       return;
     }
 
@@ -165,11 +173,17 @@ class _AiSettingsPageState extends State<AiSettingsPage> with WidgetsBindingObse
             ));
       }
     } on FunctionException catch (error) {
-      if (mounted) setState(() => _error = error.reasonPhrase ?? error.toString());
+      if (mounted) {
+        setState(() => _error = error.reasonPhrase ?? error.toString());
+      }
     } catch (error) {
-      if (mounted) setState(() => _error = error.toString());
+      if (mounted) {
+        setState(() => _error = error.toString());
+      }
     } finally {
-      if (mounted) setState(() => _connecting = false);
+      if (mounted) {
+        setState(() => _connecting = false);
+      }
     }
   }
 
