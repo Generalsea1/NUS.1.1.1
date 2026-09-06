@@ -85,7 +85,7 @@ Medication _medication({
     );
 
 Map<String, DateTime> _effectiveReminderSet(Medication medication) => {
-      for (final item in MedicationReminderCoordinator.occurrences(
+      for (final item in MedicationReminderCoordinator(_ActiveReminderPort(), clock: () => _now).occurrences(
         medication,
         now: _now,
         horizon: const Duration(days: 30),
