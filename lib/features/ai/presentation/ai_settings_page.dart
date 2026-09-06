@@ -72,7 +72,9 @@ class _AiSettingsPageState extends State<AiSettingsPage> with WidgetsBindingObse
             orElse: () => <String, dynamic>{},
           );
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _connected = row['status'] == 'connected';
         _model = row['model'] as String?;
@@ -112,7 +114,9 @@ class _AiSettingsPageState extends State<AiSettingsPage> with WidgetsBindingObse
             ));
       }
     } catch (error) {
-      if (mounted) setState(() => _error = error.toString());
+      if (mounted) {
+        setState(() => _error = error.toString());
+      }
     } finally {
       if (mounted) setState(() => _signingIn = false);
     }
