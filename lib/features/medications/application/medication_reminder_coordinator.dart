@@ -1,3 +1,5 @@
+import '../../../core/recurrence/recurrence_engine.dart';
+import '../../../core/recurrence/recurrence_rule.dart';
 import '../domain/medication.dart';
 import '../domain/medication_reminder_port.dart';
 
@@ -6,11 +8,14 @@ class MedicationReminderCoordinator {
     this.port, {
     DateTime Function()? clock,
     this.horizon = const Duration(days: 30),
-  }) : _clock = clock ?? DateTime.now;
+    RecurrenceEngine recurrenceEngine = const RecurrenceEngine(),
+  })  : _clock = clock ?? DateTime.now,
+        _recurrenceEngine = recurrenceEngine;
 
   final MedicationReminderPort port;
   final DateTime Function() _clock;
   final Duration horizon;
+  final RecurrenceEngine _recurrenceEngine;
 
   Future<void> sync(Medication medication, {Medication? previous}) async {
     await cancel(previous ?? medication);
@@ -49,7 +54,7 @@ class MedicationReminderCoordinator {
     }
   }
 
-  static Iterable<({MedicationSchedule schedule, DateTime dateTime})> occurrences(
+  Iterable<({MedicationSchedule schedule, DateTime dateTime})> occurrences(
     Medication medication, {
     required DateTime now,
     Duration horizon = const Duration(days: 30),
@@ -60,32 +65,39 @@ class MedicationReminderCoordinator {
 
     final windowStart = _dateOnly(now);
     final horizonEnd = now.add(horizon);
-    var date = medication.startDate.isAfter(windowStart) ? medication.startDate : windowStart;
+    var startDate = medication.startDate.isAfter(windowStart)
+        ? medication.startDate
+        : windowStart;
 
-    while (!date.isAfter(horizonEnd)) {
-      if (medication.endDate != null && date.isAfter(medication.endDate!)) break;
+    if (medication.endDate != null && startDate.isAfter(medication.endDate!)) return;
 
-      for (final schedule in medication.schedules) {
-        if ((!includeNoReminderSchedules && schedule.reminder == MedicationReminder.none) ||
-            !_appliesOn(schedule, date)) {
-          continue;
-        }
-        final occurrence = date.add(Duration(minutes: schedule.minutesSinceMidnight));
-        if (occurrence.isAfter(horizonEnd)) continue;
-        if (!includePastOccurrences && !occurrence.isAfter(now)) continue;
-        yield (schedule: schedule, dateTime: occurrence);
+    for (final schedule in medication.schedules) {
+      if (!includeNoReminderSchedules && schedule.reminder == MedicationReminder.none) continue;
+
+      final recurrenceRule = switch (schedule.frequency) {
+        MedicationFrequency.daily => const RecurrenceRule.daily(),
+        MedicationFrequency.selectedWeekdays =>
+          RecurrenceRule.selectedWeekdays(schedule.selectedWeekdays),
+      };
+
+      final scheduleStart = startDate.add(Duration(minutes: schedule.minutesSinceMidnight));
+      final scheduleWindowEnd = medication.endDate == null
+          ? horizonEnd
+          : (() {
+              final end = _dateOnly(medication.endDate!).add(const Duration(days: 1));
+              return end.isBefore(horizonEnd) ? end : horizonEnd;
+            })();
+
+      for (final dateTime in _recurrenceEngine.occurrences(
+        start: scheduleStart,
+        rule: recurrenceRule,
+        windowStart: includePastOccurrences ? scheduleStart : now,
+        windowEnd: scheduleWindowEnd,
+        includePastOccurrences: includePastOccurrences,
+      )) {
+        if (dateTime.isAfter(horizonEnd)) continue;
+        yield (schedule: schedule, dateTime: dateTime);
       }
-
-      date = date.add(const Duration(days: 1));
-    }
-  }
-
-  static bool _appliesOn(MedicationSchedule schedule, DateTime date) {
-    switch (schedule.frequency) {
-      case MedicationFrequency.daily:
-        return true;
-      case MedicationFrequency.selectedWeekdays:
-        return schedule.selectedWeekdays.contains(date.weekday);
     }
   }
 
