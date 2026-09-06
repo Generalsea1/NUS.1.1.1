@@ -1,5 +1,6 @@
 name: Build NUS Android APK
 
+# Final Android gate: analyze, test, build, inspect, archive, and preserve the original NUS app icon.
 on:
   workflow_dispatch:
   pull_request:
@@ -33,11 +34,13 @@ jobs:
       - name: Generate Android project files
         run: flutter create --platforms=android --project-name=nus .
 
-      - name: Configure Android integration
+      - name: Configure Android integration and restore original NUS icon
         shell: python3 {0}
         run: |
           from pathlib import Path
           import re
+          import shutil
+          import subprocess
 
           manifest = Path('android/app/src/main/AndroidManifest.xml')
           text = manifest.read_text(encoding='utf-8')
@@ -117,12 +120,37 @@ jobs:
 
           manifest.write_text(final_manifest, encoding='utf-8')
 
+          icon_source = Path('Neural_network_brain_app_icon_202609031742.jpeg')
+          if not icon_source.is_file():
+              raise SystemExit(f'ERROR: Original NUS icon not found: {icon_source}')
+          if shutil.which('convert') is None:
+              raise SystemExit('ERROR: ImageMagick convert is required to restore the original icon.')
+
+          densities = {
+              'mipmap-mdpi': 48,
+              'mipmap-hdpi': 72,
+              'mipmap-xhdpi': 96,
+              'mipmap-xxhdpi': 144,
+              'mipmap-xxxhdpi': 192,
+          }
+          for folder, size in densities.items():
+              target = Path('android/app/src/main/res') / folder
+              target.mkdir(parents=True, exist_ok=True)
+              for filename in ('ic_launcher.png', 'ic_launcher_round.png'):
+                  output = target / filename
+                  subprocess.run(
+                      ['convert', str(icon_source), '-auto-orient', '-resize', f'{size}x{size}^',
+                       '-gravity', 'center', '-extent', f'{size}x{size}', 'png32:' + str(output)],
+                      check=True,
+                  )
+
           assert 'android:label="NUS"' in final_manifest
           assert 'android:scheme="nus"' in final_manifest
           assert all(permission in final_manifest for permission in permissions)
           assert 'ScheduledNotificationReceiver' in final_manifest
           assert dependency in gradle.read_text(encoding='utf-8')
-          print('Android configuration verified.')
+          assert all((Path('android/app/src/main/res') / folder / 'ic_launcher.png').is_file() for folder in densities)
+          print('Android configuration and original NUS icon verified.')
 
       - name: Get dependencies
         run: flutter pub get
