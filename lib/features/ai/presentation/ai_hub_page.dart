@@ -36,9 +36,29 @@ class AiHubPage extends StatelessWidget {
           if (user == null)
             FilledButton.icon(
               onPressed: () async {
-                final started = await const GoogleAuthRepository().signIn();
-                if (!started && context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_t('Google sign-in is not configured yet.', 'تسجيل دخول جوجل مش متظبط على المشروع لسه.'))));
+                try {
+                  final started = await const GoogleAuthRepository().signIn();
+                  if (!started && context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_t('Google sign-in is not configured yet.', 'تسجيل دخول جوجل مش متظبط على المشروع لسه.'))));
+                  }
+                } on GoogleProviderDisabledException catch (error) {
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      duration: const Duration(seconds: 7),
+                      content: Text(error.message(isArabic)),
+                    ),
+                  );
+                } on AuthException catch (error) {
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('${_t('Google sign-in failed', 'فشل تسجيل الدخول بجوجل')}: ${error.message}')),
+                  );
+                } catch (error) {
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(_t('تعذر بدء تسجيل الدخول حاليًا.', 'تعذر بدء تسجيل الدخول حاليًا.'))),
+                  );
                 }
               },
               icon: const Icon(Icons.account_circle_outlined),
