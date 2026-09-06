@@ -8,6 +8,9 @@ import '../domain/household_budget_plan.dart';
 ///
 /// The mobile app never receives or stores the LLM secret. It invokes the
 /// authenticated Supabase Edge Function, which owns the provider credential.
+/// The user's latest household budget context is also persisted against the
+/// authenticated account before the AI request, so the plan is not anonymous
+/// or tied only to one device.
 class HouseholdBudgetAiProvider {
   const HouseholdBudgetAiProvider();
 
@@ -30,6 +33,8 @@ class HouseholdBudgetAiProvider {
     }
 
     try {
+      await _persistHouseholdContext(client, session.user.id, input);
+
       final response = await client.functions.invoke(
         'household-budget-ai',
         body: {
@@ -81,7 +86,44 @@ class HouseholdBudgetAiProvider {
       throw HouseholdBudgetAiException(
         error.reasonPhrase ?? 'The household AI service is unavailable.',
       );
+    } on HouseholdBudgetAiException {
+      rethrow;
+    } catch (error) {
+      throw HouseholdBudgetAiException(
+        'The household AI service failed: $error',
+      );
     }
+  }
+
+  Future<void> _persistHouseholdContext(
+    SupabaseClient client,
+    String userId,
+    HouseholdBudgetInput input,
+  ) async {
+    final snapshot = <String, dynamic>{
+      'income': input.monthlyIncome,
+      'rent': input.rent,
+      'utilities': input.utilities,
+      'food': input.food,
+      'transport': input.transport,
+      'debt': input.debt,
+      'health': input.health,
+      'clothing': input.clothing,
+      'maintenance': input.maintenance,
+      'familyFun': input.familyFun,
+      'other': input.other,
+      'savingsTarget': input.savingsTarget,
+      'providedFields': input.providedFields.toList(growable: false),
+    };
+
+    await client.from('household_profiles').upsert({
+      'user_id': userId,
+      'monthly_income': input.monthlyIncome,
+      'recurring_debt': input.debt,
+      'emergency_target': input.savingsTarget,
+      'budget_snapshot': snapshot,
+      'updated_at': DateTime.now().toUtc().toIso8601String(),
+    });
   }
 }
 
