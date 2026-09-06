@@ -2,11 +2,19 @@ name: Build NUS Android APK
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - '**/*.dart'
+      - 'pubspec.yaml'
+      - 'pubspec.lock'
+      - '.github/workflows/build-apk.yml'
+      - 'Neural_network_brain_app_icon_202609031742.jpeg'
   push:
-    branches: [ main ]
+    branches: [main]
 
 concurrency:
-  group: nus-android-build
+  group: nus-android-build-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -25,180 +33,96 @@ jobs:
       - name: Generate Android project files
         run: flutter create --platforms=android --project-name=nus .
 
-      - name: Configure NUS OAuth deep link
-        shell: python
+      - name: Configure Android integration
+        shell: python3 {0}
         run: |
           from pathlib import Path
+          import re
 
           manifest = Path('android/app/src/main/AndroidManifest.xml')
-          text = manifest.read_text()
-          marker = 'android:scheme="nus"'
-          if marker not in text:
+          text = manifest.read_text(encoding='utf-8')
+
+          if 'android:scheme="nus"' not in text:
               activity_marker = 'android:name=".MainActivity"'
               activity_index = text.find(activity_marker)
               if activity_index < 0:
-                  raise SystemExit('ERROR: Flutter MainActivity was not found in AndroidManifest.xml.')
+                  raise SystemExit('ERROR: Flutter MainActivity was not found.')
               activity_end = text.find('</activity>', activity_index)
               if activity_end < 0:
                   raise SystemExit('ERROR: MainActivity closing tag was not found.')
-              deep_link = '''
-              <intent-filter>
-                  <action android:name="android.intent.action.VIEW" />
-                  <category android:name="android.intent.category.DEFAULT" />
-                  <category android:name="android.intent.category.BROWSABLE" />
-                  <data android:scheme="nus" />
-              </intent-filter>
-'''
-              text = text[:activity_end] + deep_link + text[activity_end:]
-              manifest.write_text(text)
-
-          final_manifest = manifest.read_text()
-          assert 'android:scheme="nus"' in final_manifest
-          assert 'android.intent.action.VIEW' in final_manifest
-          assert 'android.intent.category.BROWSABLE' in final_manifest
-          print('NUS OAuth deep link configuration verified.')
-
-      - name: Configure NUS branding and launcher icon
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          ICON_SOURCE='Neural_network_brain_app_icon_202609031742.jpeg'
-          test -s "$ICON_SOURCE"
-
-          sudo apt-get update
-          sudo apt-get install -y imagemagick
-
-          command -v identify
-          command -v convert
-
-          identify_output="$(identify -format '%m %wx%h %[channels]' "$ICON_SOURCE")"
-          printf 'NUS icon source: %s\n' "$identify_output"
-
-          case "$identify_output" in
-            JPEG\ *x*\ *) ;;
-            *) echo 'ERROR: NUS launcher source must be a JPEG image.' >&2; exit 1 ;;
-          esac
-
-          for spec in \
-            'mdpi:48' \
-            'hdpi:72' \
-            'xhdpi:96' \
-            'xxhdpi:144' \
-            'xxxhdpi:192'; do
-            density="${spec%%:*}"
-            size="${spec##*:}"
-            target="android/app/src/main/res/mipmap-${density}"
-            mkdir -p "$target"
-            convert "$ICON_SOURCE" \
-              -auto-orient \
-              -resize "${size}x${size}^" \
-              -gravity center \
-              -extent "${size}x${size}" \
-              -strip \
-              -define png:color-type=6 \
-              "$target/ic_launcher.png"
-            cp "$target/ic_launcher.png" "$target/ic_launcher_round.png"
-          done
-
-          rm -f \
-            android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml \
-            android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
-
-          manifest='android/app/src/main/AndroidManifest.xml'
-          python3 - "$manifest" <<'PY'
-          from pathlib import Path
-          import re
-          import sys
-
-          manifest = Path(sys.argv[1])
-          text = manifest.read_text()
-          updated, count = re.subn(r'android:label="[^"]*"', 'android:label="NUS"', text, count=1)
-          if count != 1:
-              raise SystemExit('ERROR: Could not normalize Android application label.')
-          manifest.write_text(updated)
-          PY
-
-          grep -q 'android:label="NUS"' "$manifest"
-          test -s android/app/src/main/res/mipmap-mdpi/ic_launcher.png
-          test -s android/app/src/main/res/mipmap-hdpi/ic_launcher.png
-          test -s android/app/src/main/res/mipmap-xhdpi/ic_launcher.png
-          test -s android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
-          test -s android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
-          test ! -e android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
-          echo 'NUS branding and launcher icon configuration verified.'
-
-      - name: Configure Android notification scheduling
-        shell: python
-        run: |
-          from pathlib import Path
-          import re
-
-          manifest = Path('android/app/src/main/AndroidManifest.xml')
-          text = manifest.read_text()
-
-          permission_block = '''    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-              <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
-              <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />'''
-          if 'android.permission.POST_NOTIFICATIONS' not in text:
-              text = text.replace(
-                  '<manifest xmlns:android="http://schemas.android.com/apk/res/android">',
-                  '<manifest xmlns:android="http://schemas.android.com/apk/res/android">\n'
-                  + permission_block,
-                  1,
+              deep_link = (
+                  '            <intent-filter>\n'
+                  '                <action android:name="android.intent.action.VIEW" />\n'
+                  '                <category android:name="android.intent.category.DEFAULT" />\n'
+                  '                <category android:name="android.intent.category.BROWSABLE" />\n'
+                  '                <data android:scheme="nus" />\n'
+                  '            </intent-filter>\n'
               )
+              text = text[:activity_end] + deep_link + text[activity_end:]
 
-          receiver_name = 'com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver'
-          if receiver_name not in text:
-              receiver_block = '''\n        <receiver\n            android:exported="false"\n            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />\n        <receiver\n            android:exported="false"\n            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver">\n            <intent-filter>\n                <action android:name="android.intent.action.BOOT_COMPLETED" />\n                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />\n                <action android:name="android.intent.action.PACKAGE_REPLACED" />\n                <action android:name="android.intent.action.QUICKBOOT_POWERON" />\n                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON" />\n            </intent-filter>\n        </receiver>\n'''
-              text = text.replace('</application>', receiver_block + '    </application>', 1)
-          manifest.write_text(text)
+          text, count = re.subn(r'android:label="[^"]*"', 'android:label="NUS"', text, count=1)
+          if count != 1:
+              raise SystemExit('ERROR: Could not set Android application label.')
+          manifest.write_text(text, encoding='utf-8')
 
           gradle = Path('android/app/build.gradle.kts')
-          text = gradle.read_text()
+          gradle_text = gradle.read_text(encoding='utf-8')
+          if 'isCoreLibraryDesugaringEnabled = true' not in gradle_text:
+              marker = 'android {\n'
+              if marker not in gradle_text:
+                  raise SystemExit('ERROR: Android Gradle android block was not found.')
+              gradle_text = gradle_text.replace(
+                  marker,
+                  'android {\n    compileOptions {\n        isCoreLibraryDesugaringEnabled = true\n    }\n',
+                  1,
+              )
+          dependency = 'coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")'
+          if dependency not in gradle_text:
+              gradle_text += f'\n\ndependencies {{\n    {dependency}\n}}\n'
+          gradle.write_text(gradle_text, encoding='utf-8')
 
-          if 'isCoreLibraryDesugaringEnabled = true' not in text:
-              if re.search(r'(?m)^\s*compileOptions\s*\{', text):
-                  text = re.sub(
-                      r'(?m)^(\s*compileOptions\s*\{\n)',
-                      r'\1        isCoreLibraryDesugaringEnabled = true\n',
-                      text,
-                      count=1,
-                  )
-              else:
-                  text = text.replace(
-                      'android {\n',
-                      'android {\n    compileOptions {\n'
-                      '        isCoreLibraryDesugaringEnabled = true\n'
-                      '    }\n',
+          permissions = [
+              'android.permission.POST_NOTIFICATIONS',
+              'android.permission.SCHEDULE_EXACT_ALARM',
+              'android.permission.RECEIVE_BOOT_COMPLETED',
+          ]
+          final_manifest = manifest.read_text(encoding='utf-8')
+          for permission in permissions:
+              if permission not in final_manifest:
+                  final_manifest = final_manifest.replace(
+                      '<manifest xmlns:android="http://schemas.android.com/apk/res/android">',
+                      '<manifest xmlns:android="http://schemas.android.com/apk/res/android">\n'
+                      f'    <uses-permission android:name="{permission}" />',
                       1,
                   )
 
-          dependency = 'coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")'
-          if dependency not in text:
-              text += '\n\ndependencies {\n    ' + dependency + '\n}\n'
+          if 'ScheduledNotificationReceiver' not in final_manifest:
+              receiver_block = (
+                  '        <receiver\n'
+                  '            android:exported="false"\n'
+                  '            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />\n'
+                  '        <receiver\n'
+                  '            android:exported="false"\n'
+                  '            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver">\n'
+                  '            <intent-filter>\n'
+                  '                <action android:name="android.intent.action.BOOT_COMPLETED" />\n'
+                  '                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />\n'
+                  '                <action android:name="android.intent.action.PACKAGE_REPLACED" />\n'
+                  '                <action android:name="android.intent.action.QUICKBOOT_POWERON" />\n'
+                  '                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON" />\n'
+                  '            </intent-filter>\n'
+                  '        </receiver>\n'
+              )
+              final_manifest = final_manifest.replace('</application>', receiver_block + '    </application>', 1)
 
-          gradle.write_text(text)
+          manifest.write_text(final_manifest, encoding='utf-8')
 
-          final_gradle = gradle.read_text()
-          assert 'isCoreLibraryDesugaringEnabled = true' in final_gradle
-          assert dependency in final_gradle
-          print('Android notification Gradle configuration verified.')
-
-          final_manifest = manifest.read_text()
-          assert 'ScheduledNotificationReceiver' in final_manifest
-          assert 'ScheduledNotificationBootReceiver' in final_manifest
-          assert 'android.permission.POST_NOTIFICATIONS' in final_manifest
-          assert 'android.permission.SCHEDULE_EXACT_ALARM' in final_manifest
-          assert 'android.permission.RECEIVE_BOOT_COMPLETED' in final_manifest
           assert 'android:label="NUS"' in final_manifest
           assert 'android:scheme="nus"' in final_manifest
-          print('Android notification manifest configuration verified.')
-
-      - name: Restore repository tests after Flutter scaffolding
-        run: |
-          git checkout -- test/widget_test.dart
-          test -f test/schedule_store_test.dart
+          assert all(permission in final_manifest for permission in permissions)
+          assert 'ScheduledNotificationReceiver' in final_manifest
+          assert dependency in gradle.read_text(encoding='utf-8')
+          print('Android configuration verified.')
 
       - name: Get dependencies
         run: flutter pub get
@@ -215,37 +139,21 @@ jobs:
       - name: Verify APK exists
         run: test -s build/app/outputs/flutter-apk/app-debug.apk
 
-      - name: Verify Android application label and launcher icon in APK
+      - name: Verify packaged Android metadata
         shell: bash
         run: |
           set -euo pipefail
-
           APK='build/app/outputs/flutter-apk/app-debug.apk'
-          test -s "$APK"
-
           AAPT2="$(find "$ANDROID_HOME/build-tools" -type f -name aapt2 -print | sort -V | tail -n 1)"
           test -x "$AAPT2"
-
           BADGING="$($AAPT2 dump badging "$APK")"
           printf '%s\n' "$BADGING" | grep -F "application-label:'NUS'"
           printf '%s\n' "$BADGING" | grep -E 'application-icon(-[0-9]+)?:'
-
-          unzip -l "$APK" | grep -E 'res/mipmap-(mdpi|hdpi|xhdpi|xxhdpi|xxxhdpi)(-v[0-9]+)?/ic_launcher(_round)?\.png$'
-          echo 'Packaged Android label and launcher icon resources verified.'
-
-      - name: Verify NUS OAuth deep link in APK manifest
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          APK='build/app/outputs/flutter-apk/app-debug.apk'
-          AAPT2="$(find "$ANDROID_HOME/build-tools" -type f -name aapt2 -print | sort -V | tail -n 1)"
-          test -x "$AAPT2"
-          BADGING="$($AAPT2 dump xmltree "$APK" AndroidManifest.xml)"
-          printf '%s\n' "$BADGING" | grep -F 'android.intent.action.VIEW'
-          printf '%s\n' "$BADGING" | grep -F 'android.intent.category.BROWSABLE'
-          printf '%s\n' "$BADGING" | grep -F 'nus'
-          echo 'Packaged NUS OAuth deep link verified.'
+          XMLTREE="$($AAPT2 dump xmltree "$APK" AndroidManifest.xml)"
+          printf '%s\n' "$XMLTREE" | grep -F 'android.intent.action.VIEW'
+          printf '%s\n' "$XMLTREE" | grep -F 'android.intent.category.BROWSABLE'
+          printf '%s\n' "$XMLTREE" | grep -F 'nus'
+          echo 'Packaged NUS Android metadata verified.'
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
