@@ -446,7 +446,7 @@ class _HouseholdExpenseManagerPageState extends State<HouseholdExpenseManagerPag
           padding: const EdgeInsets.all(18),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(
-              plan.status == BudgetStatus.healthy ? 'الخطة متوازنة' : plan.status == BudgetStatus.tight ? 'الخطة محتاجة حذر' : 'الخطة أعلى من الدخل',
+              plan.status == BudgetStatus.healthy ? 'الخطة متوازنة' : plan.status == BudgetStatus.tight ? 'الخطة محتاجة حذر' : plan.status == BudgetStatus.incomplete ? 'الخطة لسه محتاجة بيانات' : 'الخطة أعلى من الدخل',
               style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w900),
             ),
             const SizedBox(height: 8),
