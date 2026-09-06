@@ -1,0 +1,48 @@
+name: NUS Recurrence Verification
+
+on:
+  push:
+    branches:
+      - 'feat/finance-7-13-recurrence'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  recurrence:
+    name: Recurrence runtime and equivalence tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout exact commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.2'
+          channel: stable
+          cache: true
+
+      - name: Show toolchain
+        run: |
+          flutter --version
+          dart --version
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Run recurrence runtime tests
+        run: |
+          set -euo pipefail
+          flutter test test/recurrence_engine_test.dart test/recurrence_engine_equivalence_test.dart
+
+      - name: Verify repository workspace is clean
+        run: |
+          set -euo pipefail
+          git status --short
+          test -z "$(git status --porcelain)"
