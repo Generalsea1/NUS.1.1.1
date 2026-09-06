@@ -3,7 +3,9 @@ import 'household_budget_management.dart';
 
 /// Inputs collected by the household manager.
 ///
-/// `providedFields` distinguishes an empty/unknown cost from a real zero.
+/// A positive value typed by the user is considered provided even when an
+/// older caller does not yet send `providedFields`. Empty fields remain
+/// unknown and may be planned by AI.
 class HouseholdBudgetInput {
   const HouseholdBudgetInput({
     required this.monthlyIncome,
@@ -50,7 +52,25 @@ class HouseholdBudgetInput {
     'other',
   ];
 
-  bool isProvided(String key) => providedFields.contains(key);
+  int valueFor(String key) {
+    switch (key) {
+      case 'rent': return rent;
+      case 'utilities': return utilities;
+      case 'food': return food;
+      case 'transport': return transport;
+      case 'debt': return debt;
+      case 'health': return health;
+      case 'clothing': return clothing;
+      case 'maintenance': return maintenance;
+      case 'familyFun': return familyFun;
+      case 'other': return other;
+      case 'savingsTarget': return savingsTarget;
+      default: return 0;
+    }
+  }
+
+  bool isProvided(String key) =>
+      providedFields.contains(key) || valueFor(key) > 0;
 
   int get knownMandatoryTotal =>
       (isProvided('rent') ? rent : 0) +
@@ -92,7 +112,7 @@ class HouseholdBudgetInput {
   int get effectiveOther => _effective('other', other, aiRecommendation?.other);
 
   int get effectiveReserve {
-    if (isProvided('savingsTarget') && savingsTarget > 0) return savingsTarget;
+    if (savingsTarget > 0) return savingsTarget;
     return aiRecommendation?.reserve.clamp(0, _availableBeforeAiReserve) ?? 0;
   }
 
