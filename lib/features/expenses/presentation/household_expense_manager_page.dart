@@ -8,6 +8,7 @@ import '../domain/household_budget_ai_recommendation.dart';
 import '../domain/household_budget_management.dart';
 import '../domain/household_budget_plan.dart';
 import 'expense_page.dart';
+import '../../ai/presentation/ai_settings_page.dart';
 
 class HouseholdExpenseManagerPage extends StatefulWidget {
   const HouseholdExpenseManagerPage({super.key, required this.service, this.isArabic = true});
@@ -74,10 +75,7 @@ class _HouseholdExpenseManagerPageState extends State<HouseholdExpenseManagerPag
       final expenses = await widget.service.list();
       final now = DateTime.now();
       _actualThisMonth = expenses
-          .where((e) =>
-              e.date.year == now.year &&
-              e.date.month == now.month &&
-              e.amount.currencyCode == 'EGP')
+          .where((e) => e.date.year == now.year && e.date.month == now.month && e.amount.currencyCode == 'EGP')
           .fold<int>(0, (sum, e) => sum + e.amount.minorUnits ~/ 100);
     } catch (_) {
       _actualThisMonth = 0;
@@ -111,10 +109,7 @@ class _HouseholdExpenseManagerPageState extends State<HouseholdExpenseManagerPag
 
   HouseholdBudgetActualComparison _actualComparison(HouseholdBudgetPlan plan) {
     final plannedSpending = (plan.plannedTotal - plan.reserve).clamp(0, 0x7fffffffffffffff);
-    return HouseholdBudgetActualComparison(
-      plannedAmount: plannedSpending,
-      actualAmount: _actualThisMonth,
-    );
+    return HouseholdBudgetActualComparison(plannedAmount: plannedSpending, actualAmount: _actualThisMonth);
   }
 
   Future<void> _saveAndPlan() async {
@@ -140,10 +135,7 @@ class _HouseholdExpenseManagerPageState extends State<HouseholdExpenseManagerPag
         await prefs.setInt('$_storageKey.$key', _value(key));
       }
 
-      final recommendation = await _aiProvider.generate(
-        input: _input(),
-        actualThisMonth: _actualThisMonth,
-      );
+      final recommendation = await _aiProvider.generate(input: _input(), actualThisMonth: _actualThisMonth);
 
       if (!mounted) return;
       setState(() {
@@ -192,21 +184,25 @@ class _HouseholdExpenseManagerPageState extends State<HouseholdExpenseManagerPag
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
+    if (_loading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
     final plan = _plan ?? _buildPlan();
     final comparison = _actualComparison(plan);
+
     return Scaffold(
       appBar: AppBar(
         title: Text(_t('Household Expense Manager', 'مصروفات مدير المنزل')),
         actions: [
           IconButton(
+            tooltip: _t('My AI connection', 'اتصال الذكاء الاصطناعي'),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => AiSettingsPage(isArabic: widget.isArabic)),
+            ),
+            icon: const Icon(Icons.auto_awesome_rounded),
+          ),
+          IconButton(
             tooltip: _t('Expense ledger', 'سجل المصروفات'),
             onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => ExpensePage(service: widget.service, isArabic: widget.isArabic),
-              ),
+              MaterialPageRoute(builder: (_) => ExpensePage(service: widget.service, isArabic: widget.isArabic)),
             ),
             icon: const Icon(Icons.receipt_long_outlined),
           ),
@@ -285,37 +281,20 @@ class _HouseholdExpenseManagerPageState extends State<HouseholdExpenseManagerPag
 
   Widget _heroCard(HouseholdBudgetPlan plan) => Card(
         elevation: 0,
-        color: plan.status == BudgetStatus.overBudget
-            ? Theme.of(context).colorScheme.errorContainer
-            : Theme.of(context).colorScheme.primaryContainer,
+        color: plan.status == BudgetStatus.overBudget ? Theme.of(context).colorScheme.errorContainer : Theme.of(context).colorScheme.primaryContainer,
         child: Padding(
           padding: const EdgeInsets.all(20),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
               const CircleAvatar(radius: 24, child: Icon(Icons.account_balance_wallet_outlined)),
               const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  _t('Your home has a financial manager now', 'بيتك بقى له مدير مالي جوّه البرنامج'),
-                  style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w900),
-                ),
-              ),
+              Expanded(child: Text(_t('Your home has a financial manager now', 'بيتك بقى له مدير مالي جوّه البرنامج'), style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w900))),
             ]),
             const SizedBox(height: 12),
-            Text(
-              _t(
-                'Enter what you know. AI analyzes your income, obligations and recent spending, then builds the missing envelopes.',
-                'إنت تدخل اللي تعرفه، والذكاء الاصطناعي يحلل دخلك والتزاماتك ومصروفاتك الأخيرة، وبعدين يبني البنود الناقصة.',
-              ),
-              style: const TextStyle(height: 1.45),
-            ),
+            Text(_t('Enter what you know. AI analyzes your income, obligations and recent spending, then builds the missing envelopes.', 'إنت تدخل اللي تعرفه، والذكاء الاصطناعي يحلل دخلك والتزاماتك ومصروفاتك الأخيرة، وبعدين يبني البنود الناقصة.'), style: const TextStyle(height: 1.45)),
             const SizedBox(height: 14),
-            Text(
-              plan.input.monthlyIncome > 0 ? _money(plan.input.monthlyIncome) : _t('Enter monthly income', 'لسه ما دخلتش الدخل الشهري'),
-              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900),
-            ),
-            if (plan.input.monthlyIncome > 0)
-              Text(_actualThisMonth > 0 ? '${_money(_actualThisMonth)} ${_t('recorded this month', 'مصروف مسجل هذا الشهر')}' : _t('No expenses recorded this month yet.', 'لسه مفيش مصروفات مسجلة الشهر ده.')),
+            Text(plan.input.monthlyIncome > 0 ? _money(plan.input.monthlyIncome) : _t('Enter monthly income', 'لسه ما دخلتش الدخل الشهري'), style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900)),
+            if (plan.input.monthlyIncome > 0) Text(_actualThisMonth > 0 ? '${_money(_actualThisMonth)} ${_t('recorded this month', 'مصروف مسجل هذا الشهر')}' : _t('No expenses recorded this month yet.', 'لسه مفيش مصروفات مسجلة الشهر ده.')),
           ]),
         ),
       );
@@ -351,9 +330,7 @@ class _HouseholdExpenseManagerPageState extends State<HouseholdExpenseManagerPag
 
   Widget _actualVsPlanCard(HouseholdBudgetActualComparison comparison) {
     final overPlan = comparison.isOverPlan;
-    final tone = overPlan
-        ? Theme.of(context).colorScheme.errorContainer
-        : Theme.of(context).colorScheme.secondaryContainer;
+    final tone = overPlan ? Theme.of(context).colorScheme.errorContainer : Theme.of(context).colorScheme.secondaryContainer;
     final varianceLabel = overPlan ? 'متجاوز الخطة' : 'متبقي من الخطة';
     return Card(
       elevation: 0,
@@ -381,17 +358,11 @@ class _HouseholdExpenseManagerPageState extends State<HouseholdExpenseManagerPag
     );
   }
 
-  Widget _comparisonMetric(String title, String value) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
-          const SizedBox(height: 4),
-          FittedBox(
-            alignment: AlignmentDirectional.centerStart,
-            child: Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
-          ),
-        ],
-      );
+  Widget _comparisonMetric(String title, String value) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(title, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+        const SizedBox(height: 4),
+        FittedBox(alignment: AlignmentDirectional.centerStart, child: Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900))),
+      ]);
 
   Widget _managementCard(HouseholdBudgetManagement management) {
     const labels = <HouseholdBudgetPriority, String>{
@@ -405,43 +376,27 @@ class _HouseholdExpenseManagerPageState extends State<HouseholdExpenseManagerPag
       child: Padding(
         padding: const EdgeInsets.all(18),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            const Expanded(child: Text('خطة مدير المنزل', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900))),
-            if (management == planManagementPlaceholder(context))
-              const SizedBox.shrink(),
-          ]),
+          const Text('خطة مدير المنزل', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900)),
           const SizedBox(height: 10),
           Text(management.managerMessage, style: const TextStyle(height: 1.45)),
           const Divider(height: 28),
-          ...management.lines.map(
-            (line) => ListTile(
-              dense: true,
-              contentPadding: EdgeInsets.zero,
-              leading: Icon(_priorityIcon(line.priority)),
-              title: Text(line.title, style: const TextStyle(fontWeight: FontWeight.w800)),
-              subtitle: Text('${labels[line.priority]}${line.autoAllocated ? ' • تقدير المدير' : ''}'),
-              trailing: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.end, children: [
-                Text(_money(line.amount), style: const TextStyle(fontWeight: FontWeight.w900)),
-                if (line.weeklyCap > 0) Text('${_money(line.weeklyCap)} / أسبوع', style: const TextStyle(fontSize: 11)),
-              ]),
-            ),
-          ),
+          ...management.lines.map((line) => ListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(_priorityIcon(line.priority)),
+                title: Text(line.title, style: const TextStyle(fontWeight: FontWeight.w800)),
+                subtitle: Text('${labels[line.priority]}${line.autoAllocated ? ' • تقدير المدير' : ''}'),
+                trailing: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.end, children: [
+                  Text(_money(line.amount), style: const TextStyle(fontWeight: FontWeight.w900)),
+                  if (line.weeklyCap > 0) Text('${_money(line.weeklyCap)} / أسبوع', style: const TextStyle(fontSize: 11)),
+                ]),
+              )),
           const Divider(height: 24),
           Text('ترتيب التخفيض عند الضيق: ${management.cutOrder.join(' ← ')}', style: const TextStyle(fontWeight: FontWeight.w800)),
         ]),
       ),
     );
   }
-
-  // Keeps the management card layout independent from the plan lifecycle.
-  HouseholdBudgetManagement planManagementPlaceholder(BuildContext _) => const HouseholdBudgetManagement(
-        lines: <HouseholdBudgetLine>[],
-        protectedAmount: 0,
-        flexibleRoom: 0,
-        weeklyRoom: 0,
-        cutOrder: <String>[],
-        managerMessage: '',
-      );
 
   IconData _priorityIcon(HouseholdBudgetPriority priority) {
     switch (priority) {
@@ -463,10 +418,7 @@ class _HouseholdExpenseManagerPageState extends State<HouseholdExpenseManagerPag
             width: 30,
             height: 30,
             alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.secondaryContainer,
-              borderRadius: BorderRadius.circular(10),
-            ),
+            decoration: BoxDecoration(color: Theme.of(context).colorScheme.secondaryContainer, borderRadius: BorderRadius.circular(10)),
             child: Text(number, style: const TextStyle(fontWeight: FontWeight.w900)),
           ),
           const SizedBox(width: 10),
@@ -484,13 +436,7 @@ class _HouseholdExpenseManagerPageState extends State<HouseholdExpenseManagerPag
             _aiError = null;
             _plan = _buildPlan();
           }),
-          decoration: InputDecoration(
-            prefixIcon: Icon(icon),
-            labelText: _fields[key],
-            suffixText: _t('EGP', 'جنيه'),
-            border: const OutlineInputBorder(),
-            filled: emphasized,
-          ),
+          decoration: InputDecoration(prefixIcon: Icon(icon), labelText: _fields[key], suffixText: _t('EGP', 'جنيه'), border: const OutlineInputBorder(), filled: emphasized),
         ),
       );
 
@@ -500,11 +446,7 @@ class _HouseholdExpenseManagerPageState extends State<HouseholdExpenseManagerPag
           padding: const EdgeInsets.all(18),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(
-              plan.status == BudgetStatus.healthy
-                  ? 'الخطة متوازنة'
-                  : plan.status == BudgetStatus.tight
-                      ? 'الخطة محتاجة حذر'
-                      : 'الخطة أعلى من الدخل',
+              plan.status == BudgetStatus.healthy ? 'الخطة متوازنة' : plan.status == BudgetStatus.tight ? 'الخطة محتاجة حذر' : 'الخطة أعلى من الدخل',
               style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w900),
             ),
             const SizedBox(height: 8),
