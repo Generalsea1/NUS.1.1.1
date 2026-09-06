@@ -1,10 +1,11 @@
 import 'household_budget_ai_recommendation.dart';
 import 'household_budget_management.dart';
 
-/// Domain model for the "Household Expense Manager" experience.
+/// Inputs collected by the household manager.
 ///
-/// A missing category is deliberately left unplanned until the user supplies
-/// a value or the connected AI provider creates an explicit recommendation.
+/// `providedFields` is important: an empty field means "unknown, let the
+/// manager plan it", while a typed 0 means the household really has no cost
+/// for that item. This prevents AI from silently overwriting user intent.
 class HouseholdBudgetInput {
   const HouseholdBudgetInput({
     required this.monthlyIncome,
@@ -19,6 +20,7 @@ class HouseholdBudgetInput {
     this.familyFun = 0,
     this.other = 0,
     this.savingsTarget = 0,
+    this.providedFields = const <String>{},
     this.aiRecommendation,
   });
 
@@ -34,36 +36,65 @@ class HouseholdBudgetInput {
   final int familyFun;
   final int other;
   final int savingsTarget;
+  final Set<String> providedFields;
   final HouseholdBudgetAiRecommendation? aiRecommendation;
 
-  int get knownMandatoryTotal => rent + utilities + transport + debt + health;
-  int get knownFlexibleTotal => food + clothing + maintenance + familyFun + other;
-  int get mandatoryTotal => knownMandatoryTotal + effectiveFood;
+  static const managedCategories = <String>[
+    'rent',
+    'utilities',
+    'food',
+    'transport',
+    'debt',
+    'health',
+    'clothing',
+    'maintenance',
+    'familyFun',
+    'other',
+  ];
+
+  bool isProvided(String key) => providedFields.contains(key);
+
+  int get knownMandatoryTotal =>
+      (isProvided('rent') ? rent : 0) +
+      (isProvided('utilities') ? utilities : 0) +
+      (isProvided('transport') ? transport : 0) +
+      (isProvided('debt') ? debt : 0) +
+      (isProvided('health') ? health : 0);
+
+  int get knownFlexibleTotal =>
+      (isProvided('food') ? food : 0) +
+      (isProvided('clothing') ? clothing : 0) +
+      (isProvided('maintenance') ? maintenance : 0) +
+      (isProvided('familyFun') ? familyFun : 0) +
+      (isProvided('other') ? other : 0);
+
+  int get mandatoryTotal => effectiveRent + effectiveUtilities + effectiveFood + effectiveTransport + effectiveDebt + effectiveHealth;
   int get flexibleTotal => effectiveClothing + effectiveMaintenance + effectiveFamilyFun + effectiveOther;
   int get plannedTotal => mandatoryTotal + flexibleTotal + effectiveReserve;
 
-  /// Income is not spendable while any AI-managed category is still missing.
-  /// This prevents the UI from presenting the unallocated remainder as if it
-  /// were a safe amount available for discretionary spending.
   int get unallocated => hasMissingCategories && aiRecommendation == null
       ? 0
       : monthlyIncome - plannedTotal;
 
-  bool get isOverBudget => knownMandatoryTotal + knownFlexibleTotal + savingsTarget > monthlyIncome;
+  bool get isOverBudget => monthlyIncome > 0 && plannedTotal > monthlyIncome;
 
-  bool get hasMissingCategories =>
-      food == 0 || clothing == 0 || maintenance == 0 || familyFun == 0 || other == 0;
+  bool get hasMissingCategories => managedCategories.any((key) => !isProvided(key));
 
   bool get hasReadyPlan => monthlyIncome > 0 && (!hasMissingCategories || aiRecommendation != null);
 
-  int get effectiveFood => _effective(food, aiRecommendation?.food);
-  int get effectiveClothing => _effective(clothing, aiRecommendation?.clothing);
-  int get effectiveMaintenance => _effective(maintenance, aiRecommendation?.maintenance);
-  int get effectiveFamilyFun => _effective(familyFun, aiRecommendation?.familyFun);
-  int get effectiveOther => _effective(other, aiRecommendation?.other);
+  int get effectiveRent => _effective('rent', rent, aiRecommendation?.rent);
+  int get effectiveUtilities => _effective('utilities', utilities, aiRecommendation?.utilities);
+  int get effectiveFood => _effective('food', food, aiRecommendation?.food);
+  int get effectiveTransport => _effective('transport', transport, aiRecommendation?.transport);
+  int get effectiveDebt => _effective('debt', debt, aiRecommendation?.debt);
+  int get effectiveHealth => _effective('health', health, aiRecommendation?.health);
+  int get effectiveClothing => _effective('clothing', clothing, aiRecommendation?.clothing);
+  int get effectiveMaintenance => _effective('maintenance', maintenance, aiRecommendation?.maintenance);
+  int get effectiveFamilyFun => _effective('familyFun', familyFun, aiRecommendation?.familyFun);
+  int get effectiveOther => _effective('other', other, aiRecommendation?.other);
 
   int get effectiveReserve {
-    if (savingsTarget > 0) return savingsTarget;
+    if (isProvided('savingsTarget') && savingsTarget > 0) return savingsTarget;
     return aiRecommendation?.reserve.clamp(0, _availableBeforeAiReserve) ?? 0;
   }
 
@@ -72,15 +103,20 @@ class HouseholdBudgetInput {
           .clamp(0, 0x7fffffffffffffff);
 
   int get _aiMissingCategoryTotal => [
-        if (food == 0) aiRecommendation?.food ?? 0,
-        if (clothing == 0) aiRecommendation?.clothing ?? 0,
-        if (maintenance == 0) aiRecommendation?.maintenance ?? 0,
-        if (familyFun == 0) aiRecommendation?.familyFun ?? 0,
-        if (other == 0) aiRecommendation?.other ?? 0,
+        if (!isProvided('rent')) aiRecommendation?.rent ?? 0,
+        if (!isProvided('utilities')) aiRecommendation?.utilities ?? 0,
+        if (!isProvided('food')) aiRecommendation?.food ?? 0,
+        if (!isProvided('transport')) aiRecommendation?.transport ?? 0,
+        if (!isProvided('debt')) aiRecommendation?.debt ?? 0,
+        if (!isProvided('health')) aiRecommendation?.health ?? 0,
+        if (!isProvided('clothing')) aiRecommendation?.clothing ?? 0,
+        if (!isProvided('maintenance')) aiRecommendation?.maintenance ?? 0,
+        if (!isProvided('familyFun')) aiRecommendation?.familyFun ?? 0,
+        if (!isProvided('other')) aiRecommendation?.other ?? 0,
       ].fold<int>(0, (sum, value) => sum + value.clamp(0, 0x7fffffffffffffff));
 
-  int _effective(int known, int? ai) {
-    if (known > 0) return known;
+  int _effective(String key, int known, int? ai) {
+    if (isProvided(key)) return known;
     return (ai ?? 0).clamp(0, 0x7fffffffffffffff);
   }
 }
@@ -115,8 +151,8 @@ HouseholdBudgetPlan buildHouseholdBudgetPlan(HouseholdBudgetInput input) {
       input: input,
       reserve: 0,
       weeklyAllowance: 0,
-      recommendation: 'ابدأ بتسجيل الدخل الشهري أولاً حتى يقدر مدير المنزل يوزّع المصروفات بشكل صحيح.',
-      status: BudgetStatus.overBudget,
+      recommendation: 'ابدأ بالدخل الشهري أولًا عشان مدير المنزل يقدر يبني خطة على رقم حقيقي.',
+      status: BudgetStatus.incomplete,
       management: _management(input, 0, 0),
     );
   }
@@ -126,7 +162,7 @@ HouseholdBudgetPlan buildHouseholdBudgetPlan(HouseholdBudgetInput input) {
       input: input,
       reserve: 0,
       weeklyAllowance: 0,
-      recommendation: 'الخطة لسه مش جاهزة: شغّل مدير المنزل بالذكاء الاصطناعي عشان يوزّع البنود الناقصة، أو كمّل إدخال أرقام مصروفاتك الفعلية.',
+      recommendation: 'لسه في بنود غير معروفة. شغّل مدير المنزل بالذكاء الاصطناعي عشان يضع لها خطة، أو أدخل أرقامك الفعلية.',
       status: BudgetStatus.incomplete,
       management: _management(input, 0, 0),
     );
@@ -134,9 +170,7 @@ HouseholdBudgetPlan buildHouseholdBudgetPlan(HouseholdBudgetInput input) {
 
   final reserve = input.effectiveReserve;
   final remaining = input.unallocated;
-  final weeklyAllowance = remaining > 0 && !input.hasMissingCategories
-      ? (remaining / 4.33).round()
-      : 0;
+  final weeklyAllowance = remaining > 0 ? (remaining / 4.33).round() : 0;
 
   if (input.isOverBudget || remaining < 0) {
     return HouseholdBudgetPlan(
@@ -145,7 +179,7 @@ HouseholdBudgetPlan buildHouseholdBudgetPlan(HouseholdBudgetInput input) {
       weeklyAllowance: 0,
       recommendation: input.aiRecommendation?.recommendation.isNotEmpty == true
           ? input.aiRecommendation!.recommendation
-          : 'الخطة أعلى من الدخل. ابدأ بالالتزامات الأساسية، ثم خفّض البنود المرنة والمشتريات غير الضرورية قبل المساس بالأساسيات.',
+          : 'الخطة أعلى من الدخل. ابدأ بالالتزامات الأساسية، ثم خفّض البنود المرنة قبل المساس بالاحتياجات الضرورية.',
       status: BudgetStatus.overBudget,
       management: _management(input, reserve, 0),
     );
@@ -154,7 +188,7 @@ HouseholdBudgetPlan buildHouseholdBudgetPlan(HouseholdBudgetInput input) {
   final status = reserve / input.monthlyIncome < 0.03 ? BudgetStatus.tight : BudgetStatus.healthy;
   final recommendation = input.aiRecommendation?.recommendation.isNotEmpty == true
       ? input.aiRecommendation!.recommendation
-      : 'الخطة مبنية على الأرقام التي أدخلتها. المبلغ المتبقي يظل هامش حركة ولا يُعتبر إذنًا بإنفاقه كله.';
+      : 'الخطة محسوبة من الأرقام التي أدخلتها. المتبقي ليس دعوة لإنفاقه كله؛ حافظ على هامش أمان.',
 
   return HouseholdBudgetPlan(
     input: input,
@@ -169,23 +203,23 @@ HouseholdBudgetPlan buildHouseholdBudgetPlan(HouseholdBudgetInput input) {
 HouseholdBudgetManagement _management(HouseholdBudgetInput input, int reserve, int weeklyAllowance) {
   final aiMessage = input.aiRecommendation?.managerMessage;
   return buildHouseholdBudgetManagement(
-    rent: input.rent,
-    utilities: input.utilities,
+    rent: input.effectiveRent,
+    utilities: input.effectiveUtilities,
     food: input.effectiveFood,
-    transport: input.transport,
-    debt: input.debt,
-    health: input.health,
+    transport: input.effectiveTransport,
+    debt: input.effectiveDebt,
+    health: input.effectiveHealth,
     clothing: input.effectiveClothing,
     maintenance: input.effectiveMaintenance,
     familyFun: input.effectiveFamilyFun,
     other: input.effectiveOther,
     reserve: reserve,
     weeklyRoom: weeklyAllowance,
-    knownFood: input.food,
-    knownClothing: input.clothing,
-    knownMaintenance: input.maintenance,
-    knownFamilyFun: input.familyFun,
-    knownOther: input.other,
+    knownFood: input.isProvided('food') ? input.food : 0,
+    knownClothing: input.isProvided('clothing') ? input.clothing : 0,
+    knownMaintenance: input.isProvided('maintenance') ? input.maintenance : 0,
+    knownFamilyFun: input.isProvided('familyFun') ? input.familyFun : 0,
+    knownOther: input.isProvided('other') ? input.other : 0,
     managerMessageOverride: aiMessage?.isNotEmpty == true ? aiMessage : null,
   );
 }
