@@ -36,6 +36,28 @@ jobs:
       - name: Generate Android project files
         run: flutter create --platforms=android --project-name=nus .
 
+      - name: Configure Android build compatibility
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+          path = Path('android/app/build.gradle.kts')
+          text = path.read_text()
+          if 'isCoreLibraryDesugaringEnabled = true' not in text:
+              marker = 'android {'
+              index = text.find(marker)
+              if index < 0:
+                  raise SystemExit('android block not found')
+              block = '''android {\n    compileOptions {\n        isCoreLibraryDesugaringEnabled = true\n    }'''
+              text = text[:index] + text[index:].replace(marker, block, 1)
+          if 'coreLibraryDesugaring("com.android.tools:desugar_jdk_libs' not in text:
+              marker = 'dependencies {'
+              index = text.find(marker)
+              if index < 0:
+                  raise SystemExit('dependencies block not found')
+              text = text[:index] + text[index:].replace(marker, 'dependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")', 1)
+          path.write_text(text)
+
       - name: Configure NUS deep link and notifications
         shell: python
         run: |
