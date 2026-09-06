@@ -28,12 +28,14 @@ class SupabaseConfig {
 
 /// Owns the single application-level Supabase initialization boundary.
 ///
-/// This foundation does not perform authentication or data access. When
-/// runtime configuration is absent, NUS remains fully local-first.
+/// This foundation initializes Supabase once. For the production mobile app,
+/// an unauthenticated first launch immediately starts the NUS Google sign-in
+/// flow so the application does not silently operate as an anonymous user.
 class SupabaseService {
   const SupabaseService._();
 
   static bool _initialized = false;
+  static bool _startupGoogleFlowStarted = false;
 
   static bool get isInitialized => _initialized;
 
@@ -61,11 +63,50 @@ class SupabaseService {
       );
       _initialized = true;
       debugPrint('Supabase foundation: initialized successfully.');
-    } catch (_) {
+
+      await _requestStartupGoogleSignInIfNeeded();
+    } catch (error) {
       debugPrint(
         'Supabase foundation: initialization failed; '
-        'continuing in local-first mode.',
+        'continuing in local-first mode. $error',
       );
+    }
+  }
+
+  /// Starts Google authentication on the first unauthenticated mobile launch.
+  ///
+  /// Existing Supabase sessions are preserved and do not trigger another
+  /// browser flow. `signInWithOAuth` returns after the browser flow starts;
+  /// the persisted Supabase session is then restored when Google redirects
+  /// back through `nus://auth-callback`.
+  static Future<void> _requestStartupGoogleSignInIfNeeded() async {
+    if (_startupGoogleFlowStarted || kIsWeb) return;
+
+    final platform = defaultTargetPlatform;
+    final isMobile = platform == TargetPlatform.android ||
+        platform == TargetPlatform.iOS;
+    if (!isMobile) return;
+
+    final auth = Supabase.instance.client.auth;
+    if (auth.currentSession != null) return;
+
+    _startupGoogleFlowStarted = true;
+
+    try {
+      final started = await auth.signInWithOAuth(
+        OAuthProvider.google,
+        redirectTo: 'nus://auth-callback',
+        authScreenLaunchMode: LaunchMode.externalApplication,
+      );
+      debugPrint(
+        started
+            ? 'NUS startup auth: Google sign-in flow started.'
+            : 'NUS startup auth: Google sign-in flow was not started.',
+      );
+    } on AuthException catch (error) {
+      debugPrint('NUS startup auth: Google sign-in failed: ${error.message}');
+    } catch (error) {
+      debugPrint('NUS startup auth: unexpected Google sign-in error: $error');
     }
   }
 }
