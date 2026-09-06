@@ -25,6 +25,39 @@ jobs:
       - name: Generate Android project files
         run: flutter create --platforms=android --project-name=nus .
 
+      - name: Configure NUS OAuth deep link
+        shell: python
+        run: |
+          from pathlib import Path
+
+          manifest = Path('android/app/src/main/AndroidManifest.xml')
+          text = manifest.read_text()
+          marker = 'android:scheme="nus"'
+          if marker not in text:
+              activity_marker = 'android:name=".MainActivity"'
+              activity_index = text.find(activity_marker)
+              if activity_index < 0:
+                  raise SystemExit('ERROR: Flutter MainActivity was not found in AndroidManifest.xml.')
+              activity_end = text.find('</activity>', activity_index)
+              if activity_end < 0:
+                  raise SystemExit('ERROR: MainActivity closing tag was not found.')
+              deep_link = '''
+              <intent-filter>
+                  <action android:name="android.intent.action.VIEW" />
+                  <category android:name="android.intent.category.DEFAULT" />
+                  <category android:name="android.intent.category.BROWSABLE" />
+                  <data android:scheme="nus" />
+              </intent-filter>
+'''
+              text = text[:activity_end] + deep_link + text[activity_end:]
+              manifest.write_text(text)
+
+          final_manifest = manifest.read_text()
+          assert 'android:scheme="nus"' in final_manifest
+          assert 'android.intent.action.VIEW' in final_manifest
+          assert 'android.intent.category.BROWSABLE' in final_manifest
+          print('NUS OAuth deep link configuration verified.')
+
       - name: Configure NUS branding and launcher icon
         shell: bash
         run: |
@@ -159,6 +192,7 @@ jobs:
           assert 'android.permission.SCHEDULE_EXACT_ALARM' in final_manifest
           assert 'android.permission.RECEIVE_BOOT_COMPLETED' in final_manifest
           assert 'android:label="NUS"' in final_manifest
+          assert 'android:scheme="nus"' in final_manifest
           print('Android notification manifest configuration verified.')
 
       - name: Restore repository tests after Flutter scaffolding
@@ -198,6 +232,20 @@ jobs:
 
           unzip -l "$APK" | grep -E 'res/mipmap-(mdpi|hdpi|xhdpi|xxhdpi|xxxhdpi)(-v[0-9]+)?/ic_launcher(_round)?\.png$'
           echo 'Packaged Android label and launcher icon resources verified.'
+
+      - name: Verify NUS OAuth deep link in APK manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          APK='build/app/outputs/flutter-apk/app-debug.apk'
+          AAPT2="$(find "$ANDROID_HOME/build-tools" -type f -name aapt2 -print | sort -V | tail -n 1)"
+          test -x "$AAPT2"
+          BADGING="$($AAPT2 dump xmltree "$APK" AndroidManifest.xml)"
+          printf '%s\n' "$BADGING" | grep -F 'android.intent.action.VIEW'
+          printf '%s\n' "$BADGING" | grep -F 'android.intent.category.BROWSABLE'
+          printf '%s\n' "$BADGING" | grep -F 'nus'
+          echo 'Packaged NUS OAuth deep link verified.'
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
