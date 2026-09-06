@@ -27,15 +27,28 @@ class NotificationService implements ReminderScheduler {
   Future<void> initialize() async {
     if (_initialized) return;
 
-    tz_data.initializeTimeZones();
-    final timezoneInfo = await FlutterTimezone.getLocalTimezone();
-    tz.setLocalLocation(tz.getLocation(timezoneInfo.identifier));
+    try {
+      tz_data.initializeTimeZones();
+      final timezoneInfo = await FlutterTimezone.getLocalTimezone();
+      final location = tz.getLocation(timezoneInfo.identifier);
+      tz.setLocalLocation(location);
+    } catch (error) {
+      // Notification/timezone infrastructure must never prevent the app from
+      // reaching its first usable screen. The tz package already has a
+      // default location, so continue with it when device lookup fails.
+      debugPrint('NUS timezone initialization failed: $error');
+    }
 
     const android = AndroidInitializationSettings('@mipmap/ic_launcher');
     const settings = InitializationSettings(android: android);
-    await _plugin.initialize(settings);
-    _initialized = true;
 
+    try {
+      await _plugin.initialize(settings);
+    } catch (error) {
+      debugPrint('NUS notification plugin initialization failed: $error');
+    }
+
+    _initialized = true;
     await SupabaseService.initialize();
   }
 
@@ -43,16 +56,26 @@ class NotificationService implements ReminderScheduler {
     await initialize();
     final android = _plugin.resolvePlatformSpecificImplementation<
         AndroidFlutterLocalNotificationsPlugin>();
-    final granted = await android?.requestNotificationsPermission();
-    return granted ?? true;
+    try {
+      final granted = await android?.requestNotificationsPermission();
+      return granted ?? true;
+    } catch (error) {
+      debugPrint('NUS notification permission request failed: $error');
+      return false;
+    }
   }
 
   Future<bool> requestExactAlarmPermission() async {
     await initialize();
     final android = _plugin.resolvePlatformSpecificImplementation<
         AndroidFlutterLocalNotificationsPlugin>();
-    final granted = await android?.requestExactAlarmsPermission();
-    return granted ?? true;
+    try {
+      final granted = await android?.requestExactAlarmsPermission();
+      return granted ?? true;
+    } catch (error) {
+      debugPrint('NUS exact alarm permission request failed: $error');
+      return false;
+    }
   }
 
   @override
@@ -88,27 +111,42 @@ class NotificationService implements ReminderScheduler {
         payload: id,
       );
     } on PlatformException {
-      await _plugin.zonedSchedule(
-        notificationId,
-        AppIdentity.reminderTitle,
-        title,
-        scheduled,
-        details,
-        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-        payload: id,
-      );
+      try {
+        await _plugin.zonedSchedule(
+          notificationId,
+          AppIdentity.reminderTitle,
+          title,
+          scheduled,
+          details,
+          androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+          payload: id,
+        );
+      } catch (error) {
+        debugPrint('NUS reminder scheduling failed: $error');
+      }
+    } catch (error) {
+      debugPrint('NUS reminder scheduling failed: $error');
     }
   }
 
   @override
   Future<void> cancelReminder(String id) async {
     await initialize();
-    await _plugin.cancel(_notificationId(id));
+    try {
+      await _plugin.cancel(_notificationId(id));
+    } catch (error) {
+      debugPrint('NUS reminder cancellation failed: $error');
+    }
   }
 
   Future<List<PendingNotificationRequest>> pendingNotifications() async {
     await initialize();
-    return _plugin.pendingNotificationRequests();
+    try {
+      return await _plugin.pendingNotificationRequests();
+    } catch (error) {
+      debugPrint('NUS pending notifications lookup failed: $error');
+      return const [];
+    }
   }
 
   int _notificationId(String id) {
