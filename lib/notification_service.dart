@@ -5,6 +5,7 @@ import 'package:timezone/data/latest_all.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
 
 import 'core/app_identity.dart';
+import 'core/strong_alarm_service.dart';
 import 'core/supabase_service.dart';
 
 abstract interface class ReminderScheduler {
@@ -22,6 +23,7 @@ class NotificationService implements ReminderScheduler {
       : _plugin = plugin ?? FlutterLocalNotificationsPlugin();
 
   final FlutterLocalNotificationsPlugin _plugin;
+  final StrongAlarmService _strongAlarm = StrongAlarmService();
   bool _initialized = false;
 
   Future<void> initialize() async {
@@ -53,6 +55,39 @@ class NotificationService implements ReminderScheduler {
         AndroidFlutterLocalNotificationsPlugin>();
     final granted = await android?.requestExactAlarmsPermission();
     return granted ?? true;
+  }
+
+  Future<bool> requestFullScreenIntentPermission() async {
+    await initialize();
+    final android = _plugin.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
+    final granted = await android?.requestFullScreenIntentPermission();
+    return granted ?? true;
+  }
+
+  Future<void> prepareHighAttentionReminders() async {
+    await requestPermission();
+    await requestExactAlarmPermission();
+    await requestFullScreenIntentPermission();
+  }
+
+  Future<void> scheduleStrongReminder({
+    required String id,
+    required String title,
+    required DateTime dateTime,
+    String? body,
+  }) async {
+    await prepareHighAttentionReminders();
+    await _strongAlarm.schedule(
+      id: id,
+      title: title,
+      dateTime: dateTime,
+      body: body,
+    );
+  }
+
+  Future<void> cancelStrongReminder(String id) async {
+    await _strongAlarm.cancel(id);
   }
 
   @override
