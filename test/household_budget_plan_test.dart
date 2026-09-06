@@ -25,6 +25,7 @@ void main() {
     expect(plan.remaining, 1000);
     expect(plan.weeklyAllowance, 231);
     expect(plan.reserve, 1000);
+    expect(input.hasReadyPlan, isTrue);
   });
 
   test('marks an over-budget household plan and stops weekly allowance', () {
@@ -75,7 +76,7 @@ void main() {
     expect(plan.weeklyAllowance, 855);
   });
 
-  test('does not auto-allocate missing household categories', () {
+  test('does not present incomplete income as spendable remainder before AI planning', () {
     final input = HouseholdBudgetInput(
       monthlyIncome: 10000,
       rent: 2500,
@@ -87,7 +88,8 @@ void main() {
 
     final plan = buildHouseholdBudgetPlan(input);
 
-    expect(plan.status, BudgetStatus.tight);
+    expect(input.hasMissingCategories, isTrue);
+    expect(input.hasReadyPlan, isFalse);
     expect(input.effectiveFood, 0);
     expect(input.effectiveClothing, 0);
     expect(input.effectiveMaintenance, 0);
@@ -95,7 +97,7 @@ void main() {
     expect(input.effectiveOther, 0);
     expect(plan.reserve, 0);
     expect(plan.plannedTotal, 4700);
-    expect(plan.remaining, 5300);
+    expect(plan.remaining, 0);
     expect(plan.weeklyAllowance, 0);
     expect(plan.recommendation, contains('لسه في بنود مصروفات ناقصة'));
   });
@@ -119,7 +121,9 @@ void main() {
     expect(input.effectiveMaintenance, 0);
     expect(input.effectiveFamilyFun, 0);
     expect(input.effectiveOther, 0);
+    expect(input.hasReadyPlan, isFalse);
     expect(plan.status, BudgetStatus.tight);
+    expect(plan.remaining, 0);
     expect(plan.weeklyAllowance, 0);
   });
 }
