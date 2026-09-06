@@ -3,9 +3,7 @@ import 'household_budget_management.dart';
 
 /// Inputs collected by the household manager.
 ///
-/// `providedFields` is important: an empty field means "unknown, let the
-/// manager plan it", while a typed 0 means the household really has no cost
-/// for that item. This prevents AI from silently overwriting user intent.
+/// `providedFields` distinguishes an empty/unknown cost from a real zero.
 class HouseholdBudgetInput {
   const HouseholdBudgetInput({
     required this.monthlyIncome,
@@ -188,7 +186,7 @@ HouseholdBudgetPlan buildHouseholdBudgetPlan(HouseholdBudgetInput input) {
   final status = reserve / input.monthlyIncome < 0.03 ? BudgetStatus.tight : BudgetStatus.healthy;
   final recommendation = input.aiRecommendation?.recommendation.isNotEmpty == true
       ? input.aiRecommendation!.recommendation
-      : 'الخطة محسوبة من الأرقام التي أدخلتها. المتبقي ليس دعوة لإنفاقه كله؛ حافظ على هامش أمان.',
+      : 'الخطة محسوبة من الأرقام التي أدخلتها. المتبقي ليس دعوة لإنفاقه كله؛ حافظ على هامش أمان.';
 
   return HouseholdBudgetPlan(
     input: input,
