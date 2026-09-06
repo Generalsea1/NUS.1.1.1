@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/auth/google_auth_repository.dart';
 import '../../../core/supabase_service.dart';
 
 class AiSettingsPage extends StatefulWidget {
@@ -17,6 +18,7 @@ class _AiSettingsPageState extends State<AiSettingsPage> with WidgetsBindingObse
   String _provider = 'gemini';
   bool _loading = true;
   bool _connecting = false;
+  bool _signingIn = false;
   bool _connected = false;
   String? _model;
   String? _error;
@@ -64,7 +66,7 @@ class _AiSettingsPageState extends State<AiSettingsPage> with WidgetsBindingObse
 
       final row = (rows as List)
           .whereType<Map>()
-          .cast<Map<String, dynamic>>()
+          .map((item) => Map<String, dynamic>.from(item))
           .firstWhere(
             (item) => item['provider'] == _provider,
             orElse: () => <String, dynamic>{},
@@ -94,6 +96,26 @@ class _AiSettingsPageState extends State<AiSettingsPage> with WidgetsBindingObse
       _error = null;
     });
     await _loadConnection();
+  }
+
+  Future<void> _signInWithGoogle() async {
+    setState(() {
+      _signingIn = true;
+      _error = null;
+    });
+    try {
+      final started = await const GoogleAuthRepository().signIn();
+      if (!started && mounted) {
+        setState(() => _error = _t(
+              'Google sign-in is not configured for this NUS build.',
+              'تسجيل دخول Google مش متظبط لنسخة NUS دي لسه.',
+            ));
+      }
+    } catch (error) {
+      if (mounted) setState(() => _error = error.toString());
+    } finally {
+      if (mounted) setState(() => _signingIn = false);
+    }
   }
 
   Future<void> _connectGemini() async {
@@ -186,14 +208,50 @@ class _AiSettingsPageState extends State<AiSettingsPage> with WidgetsBindingObse
     if (user == null) {
       return Scaffold(
         appBar: AppBar(title: Text(_t('AI', 'الذكاء الاصطناعي'))),
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Text(_t(
-              'Sign in to NUS first.',
-              'سجّل دخولك في NUS الأول.',
-            )),
-          ),
+        body: ListView(
+          padding: const EdgeInsets.all(24),
+          children: [
+            Card(
+              elevation: 0,
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  children: [
+                    const CircleAvatar(radius: 30, child: Icon(Icons.account_circle_outlined, size: 34)),
+                    const SizedBox(height: 14),
+                    Text(
+                      _t('Sign in to NUS', 'سجّل دخولك في NUS'),
+                      style: const TextStyle(fontSize: 23, fontWeight: FontWeight.w900),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _t(
+                        'Your personal AI connections and AI history belong to your NUS account.',
+                        'اتصالات الذكاء الاصطناعي وسجل التحليلات بتوعك بيتحفظوا تحت حسابك في NUS.',
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 18),
+                    FilledButton.icon(
+                      onPressed: _signingIn ? null : _signInWithGoogle,
+                      icon: _signingIn
+                          ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                          : const Icon(Icons.login_rounded),
+                      label: Text(_signingIn ? _t('Opening Google…', 'جاري فتح Google…') : _t('Continue with Google', 'الدخول بحساب Google')),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            if (_error != null) ...[
+              const SizedBox(height: 12),
+              Card(
+                color: Theme.of(context).colorScheme.errorContainer,
+                elevation: 0,
+                child: Padding(padding: const EdgeInsets.all(14), child: Text(_error!)),
+              ),
+            ],
+          ],
         ),
       );
     }
@@ -223,6 +281,8 @@ class _AiSettingsPageState extends State<AiSettingsPage> with WidgetsBindingObse
                     'NUS uses the AI provider you authorize. Your AI password is never entered into NUS.',
                     'NUS بيستخدم مزود الذكاء الاصطناعي اللي إنت بتوافق عليه، وكلمة مرور AI مش بتدخلها في NUS.',
                   )),
+                  const SizedBox(height: 6),
+                  Text(user.email ?? '', style: const TextStyle(fontWeight: FontWeight.w700)),
                 ],
               ),
             ),
