@@ -1,0 +1,38 @@
+name: One-time household status fix
+
+on:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: contains(github.event.head_commit.message, 'apply one-time household status UI fix')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch incomplete budget status
+        shell: python
+        run: |
+          from pathlib import Path
+          path = Path('lib/features/expenses/presentation/household_expense_manager_page.dart')
+          text = path.read_text()
+          old = "plan.status == BudgetStatus.healthy ? 'الخطة متوازنة' : plan.status == BudgetStatus.tight ? 'الخطة محتاجة حذر' : 'الخطة أعلى من الدخل'"
+          new = "plan.status == BudgetStatus.healthy ? 'الخطة متوازنة' : plan.status == BudgetStatus.tight ? 'الخطة محتاجة حذر' : plan.status == BudgetStatus.incomplete ? 'الخطة لسه محتاجة بيانات' : 'الخطة أعلى من الدخل'"
+          if old not in text:
+              raise SystemExit('Expected household status expression not found')
+          path.write_text(text.replace(old, new, 1))
+      - name: Commit and remove temporary workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add lib/features/expenses/presentation/household_expense_manager_page.dart .github/workflows/one-time-status-fix.yml
+          git commit -m 'fix: show distinct incomplete household budget status'
+          git push
+          git rm .github/workflows/one-time-status-fix.yml
+          git commit -m 'chore: remove one-time household status fix workflow'
+          git push
