@@ -16,6 +16,7 @@ import 'features/shopping/application/shopping_lifecycle_service.dart';
 import 'features/shopping/data/local_shopping_repository.dart';
 import 'features/shopping/presentation/shopping_page.dart';
 import 'features/ai/presentation/ai_settings_page.dart';
+import 'features/ai/presentation/ai_history_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -390,6 +391,11 @@ class _HomePageState extends State<HomePage> {
             icon: const Icon(Icons.auto_awesome_rounded),
           ),
           IconButton(
+            tooltip: t('AI history', 'سجل الذكاء الاصطناعي'),
+            onPressed: () => _openFeature(AiHistoryPage(isArabic: widget.isArabic)),
+            icon: const Icon(Icons.history_rounded),
+          ),
+          IconButton(
             tooltip: t('Dark mode', 'الوضع الداكن'),
             onPressed: widget.onToggleDarkMode,
             icon: Icon(widget.isDarkMode ? Icons.light_mode_rounded : Icons.dark_mode_rounded),
@@ -400,11 +406,13 @@ class _HomePageState extends State<HomePage> {
               if (value == 'language') await widget.onToggleLanguage();
               if (value == 'dark') await widget.onToggleDarkMode();
               if (value == 'ai') await _openFeature(AiSettingsPage(isArabic: widget.isArabic));
+              if (value == 'history') await _openFeature(AiHistoryPage(isArabic: widget.isArabic));
             },
             itemBuilder: (_) => [
               PopupMenuItem(value: 'language', child: Text(t('العربية', 'English'))),
               PopupMenuItem(value: 'dark', child: Text(t('Dark mode', 'الوضع الداكن'))),
               PopupMenuItem(value: 'ai', child: Text(t('Google AI account', 'حساب Google للذكاء الاصطناعي'))),
+              PopupMenuItem(value: 'history', child: Text(t('AI history', 'سجل الذكاء الاصطناعي'))),
             ],
           ),
           const SizedBox(width: 8),
@@ -593,11 +601,13 @@ class _HomePageState extends State<HomePage> {
                           lastDate: DateTime.now().add(const Duration(days: 730)),
                           initialDate: selected,
                         );
+                        if (!context.mounted) return;
                         if (day == null) return;
                         final time = await showTimePicker(
                           context: context,
                           initialTime: TimeOfDay.fromDateTime(selected),
                         );
+                        if (!context.mounted) return;
                         if (time == null) return;
                         setSheetState(() {
                           selected = DateTime(day.year, day.month, day.day, time.hour, time.minute);
@@ -622,6 +632,10 @@ class _HomePageState extends State<HomePage> {
       },
     );
 
+    if (!mounted) {
+      controller.dispose();
+      return;
+    }
     if (result != null && controller.text.trim().isNotEmpty) {
       await widget.store.add(controller.text, result);
     }
