@@ -55,6 +55,7 @@ HouseholdBudgetManagement buildHouseholdBudgetManagement({
   required int knownMaintenance,
   required int knownFamilyFun,
   required int knownOther,
+  String? managerMessageOverride,
 }) {
   final lines = <HouseholdBudgetLine>[
     HouseholdBudgetLine(key: 'rent', title: 'السكن', amount: rent, weeklyCap: _weekly(rent), priority: HouseholdBudgetPriority.essential, autoAllocated: false),
@@ -82,9 +83,11 @@ HouseholdBudgetManagement buildHouseholdBudgetManagement({
     flexibleRoom: flexible,
     weeklyRoom: weeklyRoom,
     cutOrder: const ['other', 'familyFun', 'clothing', 'maintenance', 'food'],
-    managerMessage: weeklyRoom > 0 && flexible > 0
-        ? 'ثبّت الأساسيات والاحتياطي أولاً. عند الضغط على الميزانية يبدأ الخفض من المتفرقات ثم الفسحة ثم الملابس، ولا نقترب من الغذاء والصحة والسكن إلا عند الضرورة.'
-        : 'الهامش المتاح ضعيف. لا تزود الإنفاق المرن قبل تأمين الأساسيات والاحتياطي.',
+    managerMessage: managerMessageOverride?.trim().isNotEmpty == true
+        ? managerMessageOverride!.trim()
+        : weeklyRoom > 0 && flexible > 0
+            ? 'ثبّت الأساسيات والاحتياطي أولاً. عند الضغط على الميزانية يبدأ الخفض من المتفرقات ثم الفسحة ثم الملابس، ولا نقترب من الغذاء والصحة والسكن إلا عند الضرورة.'
+            : 'الهامش المتاح ضعيف. لا تزود الإنفاق المرن قبل تأمين الأساسيات والاحتياطي.',
   );
 }
 
