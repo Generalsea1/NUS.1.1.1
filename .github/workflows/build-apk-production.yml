@@ -40,7 +40,6 @@ jobs:
         shell: python
         run: |
           from pathlib import Path
-          import re
           path = Path('android/app/build.gradle.kts')
           text = path.read_text()
           if 'isCoreLibraryDesugaringEnabled = true' not in text:
@@ -50,12 +49,14 @@ jobs:
                   raise SystemExit('android block not found')
               block = '''android {\n    compileOptions {\n        isCoreLibraryDesugaringEnabled = true\n    }'''
               text = text[:index] + text[index:].replace(marker, block, 1)
+          dependency = '    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")'
           if 'coreLibraryDesugaring("com.android.tools:desugar_jdk_libs' not in text:
-              marker = 'dependencies {'
+              marker = 'flutter {'
               index = text.find(marker)
               if index < 0:
-                  raise SystemExit('dependencies block not found')
-              text = text[:index] + text[index:].replace(marker, 'dependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")', 1)
+                  text += '\n\ndependencies {\n' + dependency + '\n}\n'
+              else:
+                  text = text[:index] + 'dependencies {\n' + dependency + '\n}\n\n' + text[index:]
           path.write_text(text)
 
       - name: Configure NUS deep link and notifications
