@@ -1,5 +1,9 @@
 import '../domain/expense.dart';
 
+/// Compatibility export for the current composition root. The lifecycle
+/// service itself depends only on ExpenseRepository.
+export '../data/local_expense_repository.dart';
+
 /// Application boundary for Expense lifecycle orchestration.
 ///
 /// The service depends only on the [ExpenseRepository] abstraction and does
