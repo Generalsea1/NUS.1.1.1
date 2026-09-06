@@ -60,6 +60,14 @@ class _ExpensePageState extends State<ExpensePage> {
     _load();
   }
 
+  @override
+  void didUpdateWidget(covariant ExpensePage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.service != widget.service || oldWidget.isArabic != widget.isArabic) {
+      _load();
+    }
+  }
+
   Future<void> _load() async {
     setState(() {
       _loading = true;
@@ -149,7 +157,7 @@ class _ExpensePageState extends State<ExpensePage> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _busy ? null : () => _openForm(),
         icon: const Icon(Icons.add_rounded),
-        label: Text(widget.isArabic ? 'مصروف جديد' : 'New expense'),
+        label: Text(widget.isArabic ? 'إضافة مصروف' : 'Add expense'),
       ),
       body: _buildBody(),
     );
