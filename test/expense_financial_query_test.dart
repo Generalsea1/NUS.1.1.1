@@ -133,7 +133,7 @@ void main() {
   });
 
   test('Expense totals are represented as negative cash-flow deltas', () {
-    const service = _SignedExpenseProbe();
+    final service = _SignedExpenseProbe();
     expect(service.signedExpenseMinorUnits(1234), -1234);
   });
 }
