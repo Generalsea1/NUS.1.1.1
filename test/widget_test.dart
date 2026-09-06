@@ -36,6 +36,23 @@ void main() {
     expect(find.text('ملخص يومك'), findsOneWidget);
   });
 
+  testWidgets('home AI Center opens the real AI manager', (tester) async {
+    final store = ScheduleStore();
+
+    await tester.pumpWidget(NosApp(store: store));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('المزيد'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('مركز الذكاء الاصطناعي'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('مدير الذكاء الاصطناعي'), findsOneWidget);
+    expect(find.text('الدخول بحساب Google'), findsOneWidget);
+    expect(find.text('NUS AI Center'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('saving a valid reminder dismisses the sheet before scheduling',
       (tester) async {
     final scheduler = _FakeReminderScheduler();
