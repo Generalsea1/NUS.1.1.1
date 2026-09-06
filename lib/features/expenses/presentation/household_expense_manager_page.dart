@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../application/expense_lifecycle_service.dart';
+import '../application/household_budget_ai_provider.dart';
 import '../domain/household_budget_actual_comparison.dart';
+import '../domain/household_budget_ai_recommendation.dart';
 import '../domain/household_budget_management.dart';
 import '../domain/household_budget_plan.dart';
 import 'expense_page.dart';
@@ -35,10 +37,14 @@ class _HouseholdExpenseManagerPageState extends State<HouseholdExpenseManagerPag
   };
 
   final Map<String, TextEditingController> _controllers = {};
+  final HouseholdBudgetAiProvider _aiProvider = const HouseholdBudgetAiProvider();
+  HouseholdBudgetAiRecommendation? _aiRecommendation;
   HouseholdBudgetPlan? _plan;
   int _actualThisMonth = 0;
   bool _loading = true;
   bool _saving = false;
+  bool _aiLoading = false;
+  String? _aiError;
 
   @override
   void initState() {
@@ -85,22 +91,23 @@ class _HouseholdExpenseManagerPageState extends State<HouseholdExpenseManagerPag
 
   int _value(String key) => int.tryParse(_controllers[key]!.text.trim()) ?? 0;
 
-  HouseholdBudgetPlan _buildPlan() => buildHouseholdBudgetPlan(
-        HouseholdBudgetInput(
-          monthlyIncome: _value('income'),
-          rent: _value('rent'),
-          utilities: _value('utilities'),
-          food: _value('food'),
-          transport: _value('transport'),
-          debt: _value('debt'),
-          health: _value('health'),
-          clothing: _value('clothing'),
-          maintenance: _value('maintenance'),
-          familyFun: _value('familyFun'),
-          other: _value('other'),
-          savingsTarget: _value('savingsTarget'),
-        ),
+  HouseholdBudgetInput _input() => HouseholdBudgetInput(
+        monthlyIncome: _value('income'),
+        rent: _value('rent'),
+        utilities: _value('utilities'),
+        food: _value('food'),
+        transport: _value('transport'),
+        debt: _value('debt'),
+        health: _value('health'),
+        clothing: _value('clothing'),
+        maintenance: _value('maintenance'),
+        familyFun: _value('familyFun'),
+        other: _value('other'),
+        savingsTarget: _value('savingsTarget'),
+        aiRecommendation: _aiRecommendation,
       );
+
+  HouseholdBudgetPlan _buildPlan() => buildHouseholdBudgetPlan(_input());
 
   HouseholdBudgetActualComparison _actualComparison(HouseholdBudgetPlan plan) {
     final plannedSpending = (plan.plannedTotal - plan.reserve).clamp(0, 0x7fffffffffffffff);
@@ -111,20 +118,64 @@ class _HouseholdExpenseManagerPageState extends State<HouseholdExpenseManagerPag
   }
 
   Future<void> _saveAndPlan() async {
-    if (_saving) return;
+    if (_saving || _aiLoading) return;
+    if (_value('income') <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_t('Enter monthly income first.', 'اكتب الدخل الشهري الأول عشان الذكاء الاصطناعي يقدر يدير الخطة.'))),
+      );
+      return;
+    }
+
     setState(() {
       _saving = true;
+      _aiLoading = true;
+      _aiError = null;
+      _aiRecommendation = null;
       _plan = _buildPlan();
     });
-    final prefs = await SharedPreferences.getInstance();
-    for (final key in _fields.keys) {
-      await prefs.setInt('$_storageKey.$key', _value(key));
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      for (final key in _fields.keys) {
+        await prefs.setInt('$_storageKey.$key', _value(key));
+      }
+
+      final recommendation = await _aiProvider.generate(
+        input: _input(),
+        actualThisMonth: _actualThisMonth,
+      );
+
+      if (!mounted) return;
+      setState(() {
+        _aiRecommendation = recommendation;
+        _plan = _buildPlan();
+        _saving = false;
+        _aiLoading = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_t('AI household plan generated.', 'الذكاء الاصطناعي حلّل دخلك وطلّع خطة تدبير فعلية.'))),
+      );
+    } on HouseholdBudgetAiException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+        _aiLoading = false;
+        _aiError = error.message;
+        _plan = _buildPlan();
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_t('AI planning failed. The local plan is still available.', 'تعذّر تشغيل الذكاء الاصطناعي حاليًا، والخطة المحلية ما زالت متاحة.'))),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+        _aiLoading = false;
+        _aiError = _t('Unexpected AI service error.', 'حصل خطأ غير متوقع في خدمة الذكاء الاصطناعي.');
+        _plan = _buildPlan();
+      });
     }
-    if (!mounted) return;
-    setState(() => _saving = false);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(_t('Plan saved.', 'الخطة اتحفظت، ومدير المنزل جهّز لك التوزيع.'))),
-    );
   }
 
   String _money(int amount) => '${_formatNumber(amount)} ${_t('EGP', 'جنيه')}';
@@ -172,6 +223,21 @@ class _HouseholdExpenseManagerPageState extends State<HouseholdExpenseManagerPag
           const SizedBox(height: 18),
           _managementCard(plan.management),
           const SizedBox(height: 18),
+          if (_aiError != null) ...[
+            Card(
+              elevation: 0,
+              color: Theme.of(context).colorScheme.errorContainer,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(children: [
+                  const Icon(Icons.cloud_off_rounded),
+                  const SizedBox(width: 10),
+                  Expanded(child: Text(_aiError!, style: const TextStyle(fontWeight: FontWeight.w700))),
+                ]),
+              ),
+            ),
+            const SizedBox(height: 14),
+          ],
           _sectionTitle('1', 'الدخل والالتزامات الأساسية', 'Income & essentials'),
           _field('income', Icons.payments_outlined, emphasized: true),
           _field('rent', Icons.home_outlined),
@@ -189,15 +255,27 @@ class _HouseholdExpenseManagerPageState extends State<HouseholdExpenseManagerPag
           _field('savingsTarget', Icons.savings_outlined),
           const SizedBox(height: 8),
           FilledButton.icon(
-            onPressed: _saving ? null : _saveAndPlan,
-            icon: _saving
+            onPressed: (_saving || _aiLoading) ? null : _saveAndPlan,
+            icon: _aiLoading
                 ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                : const Icon(Icons.auto_graph_rounded),
+                : const Icon(Icons.auto_awesome_rounded),
             label: Padding(
               padding: const EdgeInsets.symmetric(vertical: 14),
-              child: Text(_saving ? _t('Saving…', 'بيجهّز الخطة…') : _t('Build my household plan', 'اعمل لي خطة تدبير البيت')),
+              child: Text(
+                _aiLoading
+                    ? _t('AI is managing your month…', 'الذكاء الاصطناعي بيدير الشهر دلوقتي…')
+                    : _t('Build with AI household manager', 'خلّي الذكاء الاصطناعي يدير ميزانية البيت'),
+              ),
             ),
           ),
+          if (plan.isAiPowered) ...[
+            const SizedBox(height: 9),
+            Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+              const Icon(Icons.verified_rounded, size: 16),
+              const SizedBox(width: 6),
+              Text(_t('AI-generated plan • verified against your income', 'خطة مولّدة بالذكاء الاصطناعي • متراجعة حسابيًا على دخلك'), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
+            ]),
+          ],
           const SizedBox(height: 18),
           _statusCard(plan),
         ],
@@ -226,8 +304,8 @@ class _HouseholdExpenseManagerPageState extends State<HouseholdExpenseManagerPag
             const SizedBox(height: 12),
             Text(
               _t(
-                'Enter what you know. The manager fills missing planning envelopes, protects priorities, and leaves a buffer.',
-                'إنت تدخل اللي تعرفه، ومدير المنزل يكمّل البنود الناقصة بتقدير مبدئي، ويحمي الأولويات، ويسيب لك هامش حركة.',
+                'Enter what you know. AI analyzes your income, obligations and recent spending, then builds the missing envelopes.',
+                'إنت تدخل اللي تعرفه، والذكاء الاصطناعي يحلل دخلك والتزاماتك ومصروفاتك الأخيرة، وبعدين يبني البنود الناقصة.',
               ),
               style: const TextStyle(height: 1.45),
             ),
@@ -327,7 +405,11 @@ class _HouseholdExpenseManagerPageState extends State<HouseholdExpenseManagerPag
       child: Padding(
         padding: const EdgeInsets.all(18),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('خطة مدير المنزل', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900)),
+          Row(children: [
+            const Expanded(child: Text('خطة مدير المنزل', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900))),
+            if (management == planManagementPlaceholder(context))
+              const SizedBox.shrink(),
+          ]),
           const SizedBox(height: 10),
           Text(management.managerMessage, style: const TextStyle(height: 1.45)),
           const Divider(height: 28),
@@ -350,6 +432,16 @@ class _HouseholdExpenseManagerPageState extends State<HouseholdExpenseManagerPag
       ),
     );
   }
+
+  // Keeps the management card layout independent from the plan lifecycle.
+  HouseholdBudgetManagement planManagementPlaceholder(BuildContext _) => const HouseholdBudgetManagement(
+        lines: <HouseholdBudgetLine>[],
+        protectedAmount: 0,
+        flexibleRoom: 0,
+        weeklyRoom: 0,
+        cutOrder: <String>[],
+        managerMessage: '',
+      );
 
   IconData _priorityIcon(HouseholdBudgetPriority priority) {
     switch (priority) {
@@ -387,7 +479,11 @@ class _HouseholdExpenseManagerPageState extends State<HouseholdExpenseManagerPag
         child: TextField(
           controller: _controllers[key],
           keyboardType: TextInputType.number,
-          onChanged: (_) => setState(() => _plan = _buildPlan()),
+          onChanged: (_) => setState(() {
+            _aiRecommendation = null;
+            _aiError = null;
+            _plan = _buildPlan();
+          }),
           decoration: InputDecoration(
             prefixIcon: Icon(icon),
             labelText: _fields[key],
