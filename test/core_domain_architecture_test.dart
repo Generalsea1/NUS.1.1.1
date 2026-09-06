@@ -71,7 +71,7 @@ void main() {
       Budget(
         id: 'b',
         name: 'Monthly',
-        amount: 100,
+        limitMinorUnits: 100,
         currencyCode: 'USD',
         periodStart: DateTime.utc(2026, 9, 1),
         periodEnd: DateTime.utc(2026, 9, 30),
@@ -79,7 +79,7 @@ void main() {
       Bill(
         id: 'bill',
         title: 'Internet',
-        amount: 50,
+        amountMinorUnits: 50,
         currencyCode: 'USD',
         dueAt: DateTime.utc(2026, 9, 15),
       ),
