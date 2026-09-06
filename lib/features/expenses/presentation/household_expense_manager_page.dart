@@ -11,7 +11,11 @@ import 'expense_page.dart';
 import '../../ai/presentation/ai_settings_page.dart';
 
 class HouseholdExpenseManagerPage extends StatefulWidget {
-  const HouseholdExpenseManagerPage({super.key, required this.service, this.isArabic = true});
+  const HouseholdExpenseManagerPage({
+    super.key,
+    required this.service,
+    this.isArabic = true,
+  });
 
   final ExpenseLifecycleService service;
   final bool isArabic;
@@ -21,21 +25,24 @@ class HouseholdExpenseManagerPage extends StatefulWidget {
 }
 
 class _HouseholdExpenseManagerPageState extends State<HouseholdExpenseManagerPage> {
-  static const _storageKey = 'nus.household_budget.v1';
+  static const _storageKey = 'nus.household_budget.v2';
   static const _fields = <String, String>{
     'income': 'الدخل الشهري',
-    'rent': 'الإيجار / السكن',
+    'rent': 'السكن / الإيجار',
     'utilities': 'المرافق والفواتير',
-    'food': 'الأغذية والاحتياجات المنزلية',
+    'food': 'الغذاء واحتياجات البيت',
     'transport': 'المواصلات / السيارة',
     'debt': 'الديون والأقساط',
     'health': 'الصحة والدواء',
     'clothing': 'الملابس',
     'maintenance': 'الصيانة والإصلاحات',
     'familyFun': 'الفسحة والعائلة',
-    'other': 'مصروفات أخرى',
-    'savingsTarget': 'هدف الادخار / الاحتياطي',
+    'other': 'متفرقات',
+    'savingsTarget': 'هدف الأمان المالي',
   };
+
+  static const _essentialKeys = <String>['rent', 'utilities', 'food', 'transport', 'debt', 'health'];
+  static const _flexibleKeys = <String>['clothing', 'maintenance', 'familyFun', 'other'];
 
   final Map<String, TextEditingController> _controllers = {};
   final HouseholdBudgetAiProvider _aiProvider = const HouseholdBudgetAiProvider();
@@ -43,7 +50,6 @@ class _HouseholdExpenseManagerPageState extends State<HouseholdExpenseManagerPag
   HouseholdBudgetPlan? _plan;
   int _actualThisMonth = 0;
   bool _loading = true;
-  bool _saving = false;
   bool _aiLoading = false;
   String? _aiError;
 
@@ -69,8 +75,10 @@ class _HouseholdExpenseManagerPageState extends State<HouseholdExpenseManagerPag
   Future<void> _load() async {
     final prefs = await SharedPreferences.getInstance();
     for (final key in _fields.keys) {
-      _controllers[key]!.text = prefs.getInt('$_storageKey.$key')?.toString() ?? '';
+      final saved = prefs.getInt('$_storageKey.$key');
+      _controllers[key]!.text = saved == null || saved == 0 ? '' : saved.toString();
     }
+
     try {
       final expenses = await widget.service.list();
       final now = DateTime.now();
@@ -80,6 +88,7 @@ class _HouseholdExpenseManagerPageState extends State<HouseholdExpenseManagerPag
     } catch (_) {
       _actualThisMonth = 0;
     }
+
     if (!mounted) return;
     setState(() {
       _loading = false;
@@ -109,20 +118,23 @@ class _HouseholdExpenseManagerPageState extends State<HouseholdExpenseManagerPag
 
   HouseholdBudgetActualComparison _actualComparison(HouseholdBudgetPlan plan) {
     final plannedSpending = (plan.plannedTotal - plan.reserve).clamp(0, 0x7fffffffffffffff);
-    return HouseholdBudgetActualComparison(plannedAmount: plannedSpending, actualAmount: _actualThisMonth);
+    return HouseholdBudgetActualComparison(
+      plannedAmount: plannedSpending,
+      actualAmount: _actualThisMonth,
+    );
   }
 
-  Future<void> _saveAndPlan() async {
-    if (_saving || _aiLoading) return;
-    if (_value('income') <= 0) {
+  Future<void> _buildWithAi() async {
+    if (_aiLoading) return;
+    final income = _value('income');
+    if (income <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_t('Enter monthly income first.', 'اكتب الدخل الشهري الأول عشان الذكاء الاصطناعي يقدر يدير الخطة.'))),
+        SnackBar(content: Text(_t('Enter your monthly income first.', 'اكتب الدخل الشهري الأول عشان مدير البيت يبدأ.'))),
       );
       return;
     }
 
     setState(() {
-      _saving = true;
       _aiLoading = true;
       _aiError = null;
       _aiRecommendation = null;
@@ -135,34 +147,27 @@ class _HouseholdExpenseManagerPageState extends State<HouseholdExpenseManagerPag
         await prefs.setInt('$_storageKey.$key', _value(key));
       }
 
-      final recommendation = await _aiProvider.generate(input: _input(), actualThisMonth: _actualThisMonth);
+      final recommendation = await _aiProvider.generate(
+        input: _input(),
+        actualThisMonth: _actualThisMonth,
+      );
 
       if (!mounted) return;
       setState(() {
         _aiRecommendation = recommendation;
         _plan = _buildPlan();
-        _saving = false;
         _aiLoading = false;
       });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_t('AI household plan generated.', 'الذكاء الاصطناعي حلّل دخلك وطلّع خطة تدبير فعلية.'))),
-      );
     } on HouseholdBudgetAiException catch (error) {
       if (!mounted) return;
       setState(() {
-        _saving = false;
         _aiLoading = false;
         _aiError = error.message;
         _plan = _buildPlan();
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_t('AI planning failed. The local plan is still available.', 'تعذّر تشغيل الذكاء الاصطناعي حاليًا، والخطة المحلية ما زالت متاحة.'))),
-      );
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        _saving = false;
         _aiLoading = false;
         _aiError = _t('Unexpected AI service error.', 'حصل خطأ غير متوقع في خدمة الذكاء الاصطناعي.');
         _plan = _buildPlan();
@@ -184,281 +189,414 @@ class _HouseholdExpenseManagerPageState extends State<HouseholdExpenseManagerPag
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    if (_loading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
     final plan = _plan ?? _buildPlan();
     final comparison = _actualComparison(plan);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(_t('Household Expense Manager', 'مصروفات مدير المنزل')),
-        actions: [
-          IconButton(
-            tooltip: _t('My AI connection', 'اتصال الذكاء الاصطناعي'),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => AiSettingsPage(isArabic: widget.isArabic)),
-            ),
-            icon: const Icon(Icons.auto_awesome_rounded),
-          ),
-          IconButton(
-            tooltip: _t('Expense ledger', 'سجل المصروفات'),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => ExpensePage(service: widget.service, isArabic: widget.isArabic)),
-            ),
-            icon: const Icon(Icons.receipt_long_outlined),
-          ),
-        ],
+    final base = Theme.of(context);
+    final scheme = ColorScheme.fromSeed(
+      seedColor: const Color(0xFF0E5A4F),
+      brightness: base.brightness,
+    );
+    final theme = base.copyWith(
+      colorScheme: scheme,
+      scaffoldBackgroundColor: base.brightness == Brightness.dark
+          ? const Color(0xFF0B1412)
+          : const Color(0xFFF5F1E8),
+      cardTheme: CardThemeData(
+        margin: EdgeInsets.zero,
+        elevation: 0,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       ),
-      body: ListView(
+    );
+
+    return Theme(
+      data: theme,
+      child: Directionality(
+        textDirection: widget.isArabic ? TextDirection.rtl : TextDirection.ltr,
+        child: Scaffold(
+          appBar: AppBar(
+            title: Text(_t('Household Manager', 'مدير اقتصاد البيت'), style: const TextStyle(fontWeight: FontWeight.w900)),
+            actions: [
+              IconButton(
+                tooltip: _t('AI connection', 'اتصال الذكاء الاصطناعي'),
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => AiSettingsPage(isArabic: widget.isArabic)),
+                ),
+                icon: const Icon(Icons.auto_awesome_rounded),
+              ),
+              IconButton(
+                tooltip: _t('Expense ledger', 'سجل المصروفات'),
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => ExpensePage(service: widget.service, isArabic: widget.isArabic)),
+                ),
+                icon: const Icon(Icons.receipt_long_rounded),
+              ),
+            ],
+          ),
+          body: ListView(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+            children: [
+              _managerHero(plan),
+              const SizedBox(height: 14),
+              _commandStrip(plan),
+              const SizedBox(height: 14),
+              _actualCard(comparison),
+              const SizedBox(height: 14),
+              if (_aiError != null) ...[
+                _errorCard(_aiError!),
+                const SizedBox(height: 14),
+              ],
+              if (plan.isAiPowered) ...[
+                _aiDecisionCard(plan),
+                const SizedBox(height: 14),
+              ],
+              _inputSection(
+                title: _t('Foundation', 'أساس البيت'),
+                subtitle: _t('Protect these before lifestyle spending.', 'دي البنود اللي بنحميها الأول قبل أي رفاهية.'),
+                keys: _essentialKeys,
+              ),
+              const SizedBox(height: 14),
+              _inputSection(
+                title: _t('Lifestyle & flexibility', 'المرونة وأسلوب الحياة'),
+                subtitle: _t('These are the first places to trim when money gets tight.', 'دي أول مناطق التخفيض لما الدخل يضغط.'),
+                keys: _flexibleKeys,
+              ),
+              const SizedBox(height: 14),
+              _inputSection(
+                title: _t('Financial safety', 'الأمان المالي'),
+                subtitle: _t('Build a buffer instead of spending every pound.', 'مش لازم نصرف كل جنيه متبقي؛ الأمان المالي جزء من الخطة.'),
+                keys: const ['savingsTarget'],
+              ),
+              const SizedBox(height: 16),
+              FilledButton.icon(
+                onPressed: _aiLoading ? null : _buildWithAi,
+                icon: _aiLoading
+                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Icon(Icons.auto_awesome_rounded),
+                label: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 15),
+                  child: Text(
+                    _aiLoading
+                        ? _t('AI is managing your month…', 'مدير البيت الذكي بيبني الخطة…')
+                        : _t('Build my household plan with AI', 'ابنِ لي خطة البيت بالذكاء الاصطناعي'),
+                    style: const TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              _managementCard(plan.management),
+              const SizedBox(height: 14),
+              _statusCard(plan),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _managerHero(HouseholdBudgetPlan plan) {
+    final scheme = Theme.of(context).colorScheme;
+    final income = plan.input.monthlyIncome;
+    final free = plan.remaining;
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 22),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [scheme.primary, const Color(0xFF143D36)],
+          ),
+        ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: const Color(0xFFE6C98B).withValues(alpha: .18),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFE6C98B).withValues(alpha: .45)),
+              ),
+              child: const Icon(Icons.account_balance_rounded, color: Color(0xFFE6C98B)),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(
+                  _t('HOUSEHOLD ECONOMY', 'اقتصاد البيت'),
+                  style: const TextStyle(color: Color(0xFFE6C98B), fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 1.2),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  _t('Your money needs a manager, not a ledger.', 'فلوس البيت محتاجة مدير اقتصادي، مش مجرد دفتر مصروفات.'),
+                  style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900, height: 1.15),
+                ),
+              ]),
+            ),
+          ]),
+          const SizedBox(height: 18),
+          Text(
+            income > 0 ? _money(income) : _t('Enter your monthly income', 'اكتب الدخل الشهري'),
+            style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            income > 0
+                ? _t('planned income • ${_money(free)} flexible room', 'دخل الخطة • ${_money(free)} مساحة حركة')
+                : _t('The manager starts from a real income number.', 'المدير الاقتصادي لازم يبدأ من رقم دخل حقيقي.'),
+            style: TextStyle(color: Colors.white.withValues(alpha: .78), fontWeight: FontWeight.w600),
+          ),
+        ]),
+      ),
+    );
+  }
+
+  Widget _commandStrip(HouseholdBudgetPlan plan) {
+    final scheme = Theme.of(context).colorScheme;
+    final protectedRatio = plan.input.monthlyIncome <= 0
+        ? 0.0
+        : (plan.input.mandatoryTotal / plan.input.monthlyIncome).clamp(0.0, 1.0);
+    return Card(
+      child: Padding(
         padding: const EdgeInsets.all(16),
-        children: [
-          _heroCard(plan),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Icon(Icons.speed_rounded, color: scheme.primary),
+            const SizedBox(width: 8),
+            Expanded(child: Text(_t('Manager cockpit', 'لوحة قرار مدير البيت'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900))),
+            _pill(plan.isAiPowered ? _t('AI ACTIVE', 'AI شغّال') : _t('READY', 'جاهز')),
+          ]),
           const SizedBox(height: 14),
-          _summaryGrid(plan),
-          const SizedBox(height: 18),
-          _actualVsPlanCard(comparison),
-          const SizedBox(height: 18),
-          _managementCard(plan.management),
-          const SizedBox(height: 18),
-          if (_aiError != null) ...[
-            Card(
-              elevation: 0,
-              color: Theme.of(context).colorScheme.errorContainer,
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(children: [
-                  const Icon(Icons.cloud_off_rounded),
-                  const SizedBox(width: 10),
-                  Expanded(child: Text(_aiError!, style: const TextStyle(fontWeight: FontWeight.w700))),
-                ]),
-              ),
-            ),
-            const SizedBox(height: 14),
-          ],
-          _sectionTitle('1', 'الدخل والالتزامات الأساسية', 'Income & essentials'),
-          _field('income', Icons.payments_outlined, emphasized: true),
-          _field('rent', Icons.home_outlined),
-          _field('utilities', Icons.receipt_outlined),
-          _field('food', Icons.shopping_basket_outlined),
-          _field('transport', Icons.directions_car_outlined),
-          _field('debt', Icons.account_balance_outlined),
-          _field('health', Icons.health_and_safety_outlined),
-          const SizedBox(height: 12),
-          _sectionTitle('2', 'المصروفات المرنة وأسلوب الحياة', 'Flexible spending'),
-          _field('clothing', Icons.checkroom_outlined),
-          _field('maintenance', Icons.build_outlined),
-          _field('familyFun', Icons.celebration_outlined),
-          _field('other', Icons.more_horiz_rounded),
-          _field('savingsTarget', Icons.savings_outlined),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(99),
+            child: LinearProgressIndicator(value: protectedRatio, minHeight: 9),
+          ),
           const SizedBox(height: 8),
-          FilledButton.icon(
-            onPressed: (_saving || _aiLoading) ? null : _saveAndPlan,
-            icon: _aiLoading
-                ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                : const Icon(Icons.auto_awesome_rounded),
-            label: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              child: Text(
-                _aiLoading
-                    ? _t('AI is managing your month…', 'الذكاء الاصطناعي بيدير الشهر دلوقتي…')
-                    : _t('Build with AI household manager', 'خلّي الذكاء الاصطناعي يدير ميزانية البيت'),
-              ),
-            ),
+          Text(
+            _t('Protected commitments use ${(protectedRatio * 100).round()}% of income.', 'الالتزامات الأساسية بتستهلك ${(protectedRatio * 100).round()}% من الدخل.'),
+            style: const TextStyle(fontWeight: FontWeight.w700),
           ),
-          if (plan.isAiPowered) ...[
-            const SizedBox(height: 9),
-            Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-              const Icon(Icons.verified_rounded, size: 16),
-              const SizedBox(width: 6),
-              Text(_t('AI-generated plan • verified against your income', 'خطة مولّدة بالذكاء الاصطناعي • متراجعة حسابيًا على دخلك'), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
-            ]),
-          ],
-          const SizedBox(height: 18),
-          _statusCard(plan),
-        ],
-      ),
-    );
-  }
-
-  Widget _heroCard(HouseholdBudgetPlan plan) => Card(
-        elevation: 0,
-        color: plan.status == BudgetStatus.overBudget ? Theme.of(context).colorScheme.errorContainer : Theme.of(context).colorScheme.primaryContainer,
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
-              const CircleAvatar(radius: 24, child: Icon(Icons.account_balance_wallet_outlined)),
-              const SizedBox(width: 12),
-              Expanded(child: Text(_t('Your home has a financial manager now', 'بيتك بقى له مدير مالي جوّه البرنامج'), style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w900))),
-            ]),
-            const SizedBox(height: 12),
-            Text(_t('Enter what you know. AI analyzes your income, obligations and recent spending, then builds the missing envelopes.', 'إنت تدخل اللي تعرفه، والذكاء الاصطناعي يحلل دخلك والتزاماتك ومصروفاتك الأخيرة، وبعدين يبني البنود الناقصة.'), style: const TextStyle(height: 1.45)),
-            const SizedBox(height: 14),
-            Text(plan.input.monthlyIncome > 0 ? _money(plan.input.monthlyIncome) : _t('Enter monthly income', 'لسه ما دخلتش الدخل الشهري'), style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900)),
-            if (plan.input.monthlyIncome > 0) Text(_actualThisMonth > 0 ? '${_money(_actualThisMonth)} ${_t('recorded this month', 'مصروف مسجل هذا الشهر')}' : _t('No expenses recorded this month yet.', 'لسه مفيش مصروفات مسجلة الشهر ده.')),
-          ]),
-        ),
-      );
-
-  Widget _summaryGrid(HouseholdBudgetPlan plan) => GridView.count(
-        crossAxisCount: 2,
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        mainAxisSpacing: 10,
-        crossAxisSpacing: 10,
-        childAspectRatio: 1.42,
-        children: [
-          _metricCard('الأساسيات', _money(plan.input.mandatoryTotal), Icons.lock_outline_rounded),
-          _metricCard('هامش الحركة', _money(plan.remaining), Icons.account_balance_wallet_outlined),
-          _metricCard('السقف الأسبوعي', _money(plan.weeklyAllowance), Icons.calendar_view_week_outlined),
-          _metricCard('الاحتياطي', _money(plan.reserve), Icons.savings_outlined),
-        ],
-      );
-
-  Widget _metricCard(String title, String value, IconData icon) => Card(
-        elevation: 0,
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Icon(icon, size: 20),
-            const Spacer(),
-            Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
-            const SizedBox(height: 4),
-            FittedBox(alignment: AlignmentDirectional.centerStart, child: Text(value, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w900))),
-          ]),
-        ),
-      );
-
-  Widget _actualVsPlanCard(HouseholdBudgetActualComparison comparison) {
-    final overPlan = comparison.isOverPlan;
-    final tone = overPlan ? Theme.of(context).colorScheme.errorContainer : Theme.of(context).colorScheme.secondaryContainer;
-    final varianceLabel = overPlan ? 'متجاوز الخطة' : 'متبقي من الخطة';
-    return Card(
-      elevation: 0,
-      color: tone,
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            Icon(overPlan ? Icons.warning_amber_rounded : Icons.fact_check_outlined),
-            const SizedBox(width: 10),
-            const Expanded(child: Text('الواقع مقابل الخطة', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900))),
-          ]),
           const SizedBox(height: 12),
           Row(children: [
-            Expanded(child: _comparisonMetric('خطة الإنفاق', _money(comparison.plannedAmount))),
+            Expanded(child: _miniMetric(_t('Essentials', 'الأساسيات'), _money(plan.input.mandatoryTotal), Icons.shield_outlined)),
             const SizedBox(width: 10),
-            Expanded(child: _comparisonMetric('الفعلي هذا الشهر', _money(comparison.actualAmount))),
+            Expanded(child: _miniMetric(_t('Weekly ceiling', 'سقف الأسبوع'), _money(plan.weeklyAllowance), Icons.date_range_rounded)),
+          ]),
+        ]),
+      ),
+    );
+  }
+
+  Widget _actualCard(HouseholdBudgetActualComparison comparison) {
+    final scheme = Theme.of(context).colorScheme;
+    final over = comparison.isOverPlan;
+    return Card(
+      color: over ? scheme.errorContainer : scheme.secondaryContainer,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Icon(over ? Icons.warning_amber_rounded : Icons.verified_outlined),
+            const SizedBox(width: 8),
+            Text(_t('Reality check', 'مراجعة الواقع'), style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900)),
           ]),
           const SizedBox(height: 10),
-          Text('$varianceLabel: ${_money(comparison.variance.abs())}', style: const TextStyle(fontWeight: FontWeight.w900)),
-          const SizedBox(height: 6),
-          Text(comparison.managerMessage, style: const TextStyle(height: 1.45)),
+          Row(children: [
+            Expanded(child: _miniMetric(_t('Plan', 'الخطة'), _money(comparison.plannedAmount), Icons.flag_outlined)),
+            const SizedBox(width: 10),
+            Expanded(child: _miniMetric(_t('Actual', 'الفعلي'), _money(comparison.actualAmount), Icons.receipt_long_outlined)),
+          ]),
+          const SizedBox(height: 8),
+          Text(comparison.managerMessage, style: const TextStyle(fontWeight: FontWeight.w700, height: 1.4)),
         ]),
       ),
     );
   }
 
-  Widget _comparisonMetric(String title, String value) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(title, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
-        const SizedBox(height: 4),
-        FittedBox(alignment: AlignmentDirectional.centerStart, child: Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900))),
-      ]);
-
-  Widget _managementCard(HouseholdBudgetManagement management) {
-    const labels = <HouseholdBudgetPriority, String>{
-      HouseholdBudgetPriority.essential: 'أساسي',
-      HouseholdBudgetPriority.important: 'مهم',
-      HouseholdBudgetPriority.flexible: 'مرن',
-      HouseholdBudgetPriority.reserve: 'احتياطي',
-    };
+  Widget _aiDecisionCard(HouseholdBudgetPlan plan) {
+    final recommendation = _aiRecommendation!;
     return Card(
-      elevation: 0,
       child: Padding(
-        padding: const EdgeInsets.all(18),
+        padding: const EdgeInsets.all(16),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('خطة مدير المنزل', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900)),
+          Row(children: [
+            const Icon(Icons.auto_awesome_rounded),
+            const SizedBox(width: 8),
+            Expanded(child: Text(_t('AI decision', 'قرار مدير البيت الذكي'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900))),
+            _pill(_t('VERIFIED', 'مُراجع')),
+          ]),
           const SizedBox(height: 10),
-          Text(management.managerMessage, style: const TextStyle(height: 1.45)),
-          const Divider(height: 28),
-          ...management.lines.map((line) => ListTile(
-                dense: true,
-                contentPadding: EdgeInsets.zero,
-                leading: Icon(_priorityIcon(line.priority)),
-                title: Text(line.title, style: const TextStyle(fontWeight: FontWeight.w800)),
-                subtitle: Text('${labels[line.priority]}${line.autoAllocated ? ' • تقدير المدير' : ''}'),
-                trailing: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.end, children: [
-                  Text(_money(line.amount), style: const TextStyle(fontWeight: FontWeight.w900)),
-                  if (line.weeklyCap > 0) Text('${_money(line.weeklyCap)} / أسبوع', style: const TextStyle(fontSize: 11)),
-                ]),
-              )),
-          const Divider(height: 24),
-          Text('ترتيب التخفيض عند الضيق: ${management.cutOrder.join(' ← ')}', style: const TextStyle(fontWeight: FontWeight.w800)),
+          Text(recommendation.managerMessage, style: const TextStyle(fontWeight: FontWeight.w700, height: 1.45)),
+          const SizedBox(height: 10),
+          Text(recommendation.recommendation, style: const TextStyle(height: 1.45)),
         ]),
       ),
     );
   }
 
-  IconData _priorityIcon(HouseholdBudgetPriority priority) {
-    switch (priority) {
-      case HouseholdBudgetPriority.essential:
-        return Icons.shield_outlined;
-      case HouseholdBudgetPriority.important:
-        return Icons.warning_amber_rounded;
-      case HouseholdBudgetPriority.flexible:
-        return Icons.tune_rounded;
-      case HouseholdBudgetPriority.reserve:
-        return Icons.savings_outlined;
-    }
+  Widget _inputSection({required String title, required String subtitle, required List<String> keys}) {
+    final scheme = Theme.of(context).colorScheme;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Container(width: 5, height: 26, decoration: BoxDecoration(color: scheme.primary, borderRadius: BorderRadius.circular(8))),
+            const SizedBox(width: 10),
+            Expanded(child: Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900))),
+          ]),
+          const SizedBox(height: 4),
+          Text(subtitle, style: TextStyle(color: scheme.onSurfaceVariant, height: 1.35)),
+          const SizedBox(height: 12),
+          ...keys.map((key) => _field(key)),
+        ]),
+      ),
+    );
   }
 
-  Widget _sectionTitle(String number, String ar, String en) => Padding(
-        padding: const EdgeInsets.only(bottom: 10),
-        child: Row(children: [
-          Container(
-            width: 30,
-            height: 30,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(color: Theme.of(context).colorScheme.secondaryContainer, borderRadius: BorderRadius.circular(10)),
-            child: Text(number, style: const TextStyle(fontWeight: FontWeight.w900)),
-          ),
-          const SizedBox(width: 10),
-          Expanded(child: Text(_t(en, ar), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900))),
-        ]),
-      );
-
-  Widget _field(String key, IconData icon, {bool emphasized = false}) => Padding(
+  Widget _field(String key) => Padding(
         padding: const EdgeInsets.only(bottom: 10),
         child: TextField(
           controller: _controllers[key],
-          keyboardType: TextInputType.number,
+          keyboardType: const TextInputType.numberWithOptions(decimal: false),
           onChanged: (_) => setState(() {
             _aiRecommendation = null;
             _aiError = null;
             _plan = _buildPlan();
           }),
-          decoration: InputDecoration(prefixIcon: Icon(icon), labelText: _fields[key], suffixText: _t('EGP', 'جنيه'), border: const OutlineInputBorder(), filled: emphasized),
+          decoration: InputDecoration(
+            labelText: _fields[key],
+            suffixText: _t('EGP', 'جنيه'),
+            prefixIcon: Icon(_iconFor(key)),
+            filled: true,
+          ),
         ),
       );
 
-  Widget _statusCard(HouseholdBudgetPlan plan) => Card(
-        elevation: 0,
+  Widget _managementCard(HouseholdBudgetManagement management) {
+    final labels = <HouseholdBudgetPriority, String>{
+      HouseholdBudgetPriority.essential: _t('Essential', 'أساسي'),
+      HouseholdBudgetPriority.important: _t('Important', 'مهم'),
+      HouseholdBudgetPriority.flexible: _t('Flexible', 'مرن'),
+      HouseholdBudgetPriority.reserve: _t('Reserve', 'احتياطي'),
+    };
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(_t('Manager instructions', 'تعليمات مدير البيت'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 8),
+          Text(management.managerMessage, style: const TextStyle(height: 1.45)),
+          const Divider(height: 26),
+          ...management.lines.map((line) => ListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(_priorityIcon(line.priority)),
+                title: Text(line.title, style: const TextStyle(fontWeight: FontWeight.w800)),
+                subtitle: Text('${labels[line.priority]}${line.autoAllocated ? ' • ${_t('AI estimate', 'تقدير المدير')}' : ''}'),
+                trailing: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.end, children: [
+                  Text(_money(line.amount), style: const TextStyle(fontWeight: FontWeight.w900)),
+                  if (line.weeklyCap > 0) Text('${_money(line.weeklyCap)} / ${_t('week', 'أسبوع')}', style: const TextStyle(fontSize: 11)),
+                ]),
+              )),
+        ]),
+      ),
+    );
+  }
+
+  Widget _statusCard(HouseholdBudgetPlan plan) {
+    final title = switch (plan.status) {
+      BudgetStatus.healthy => _t('Healthy plan', 'الخطة متوازنة'),
+      BudgetStatus.tight => _t('Tight month', 'الشهر محتاج حذر'),
+      BudgetStatus.overBudget => _t('Over budget', 'الخطة أعلى من الدخل'),
+      BudgetStatus.incomplete => _t('Needs more information', 'الخطة محتاجة بيانات'),
+    };
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 8),
+          Text(plan.recommendation, style: const TextStyle(height: 1.45)),
+          const Divider(height: 26),
+          Row(children: [
+            const Icon(Icons.savings_outlined),
+            const SizedBox(width: 8),
+            Expanded(child: Text(_t('Safety reserve', 'احتياطي الأمان'), style: const TextStyle(fontWeight: FontWeight.w800))),
+            Text(_money(plan.reserve), style: const TextStyle(fontWeight: FontWeight.w900)),
+          ]),
+        ]),
+      ),
+    );
+  }
+
+  Widget _errorCard(String message) => Card(
+        color: Theme.of(context).colorScheme.errorContainer,
         child: Padding(
-          padding: const EdgeInsets.all(18),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(
-              plan.status == BudgetStatus.healthy ? 'الخطة متوازنة' : plan.status == BudgetStatus.tight ? 'الخطة محتاجة حذر' : plan.status == BudgetStatus.incomplete ? 'الخطة لسه محتاجة بيانات' : 'الخطة أعلى من الدخل',
-              style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w900),
-            ),
-            const SizedBox(height: 8),
-            Text(plan.recommendation, style: const TextStyle(height: 1.45)),
-            const Divider(height: 28),
-            Row(children: [
-              const Icon(Icons.date_range_outlined),
-              const SizedBox(width: 10),
-              const Expanded(child: Text('السقف الأسبوعي للمبلغ غير المخصص', style: TextStyle(fontWeight: FontWeight.w800))),
-              Text(_money(plan.weeklyAllowance), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
-            ]),
+          padding: const EdgeInsets.all(16),
+          child: Row(children: [
+            const Icon(Icons.cloud_off_rounded),
+            const SizedBox(width: 10),
+            Expanded(child: Text(message, style: const TextStyle(fontWeight: FontWeight.w700, height: 1.35))),
           ]),
         ),
       );
+
+  Widget _miniMetric(String title, String value, IconData icon) => Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: .55),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(children: [
+          Icon(icon, size: 18),
+          const SizedBox(width: 8),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(title, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 2),
+            FittedBox(alignment: AlignmentDirectional.centerStart, child: Text(value, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16))),
+          ])),
+        ]),
+      );
+
+  Widget _pill(String text) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.primaryContainer,
+          borderRadius: BorderRadius.circular(99),
+        ),
+        child: Text(text, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: .5)),
+      );
+
+  IconData _iconFor(String key) {
+    switch (key) {
+      case 'income': return Icons.payments_rounded;
+      case 'rent': return Icons.home_work_outlined;
+      case 'utilities': return Icons.bolt_rounded;
+      case 'food': return Icons.shopping_basket_outlined;
+      case 'transport': return Icons.directions_car_outlined;
+      case 'debt': return Icons.account_balance_outlined;
+      case 'health': return Icons.health_and_safety_outlined;
+      case 'clothing': return Icons.checkroom_outlined;
+      case 'maintenance': return Icons.build_outlined;
+      case 'familyFun': return Icons.celebration_outlined;
+      case 'savingsTarget': return Icons.savings_rounded;
+      default: return Icons.more_horiz_rounded;
+    }
+  }
+
+  IconData _priorityIcon(HouseholdBudgetPriority priority) {
+    switch (priority) {
+      case HouseholdBudgetPriority.essential: return Icons.shield_outlined;
+      case HouseholdBudgetPriority.important: return Icons.warning_amber_rounded;
+      case HouseholdBudgetPriority.flexible: return Icons.tune_rounded;
+      case HouseholdBudgetPriority.reserve: return Icons.savings_outlined;
+    }
+  }
 }
