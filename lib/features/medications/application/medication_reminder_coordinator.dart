@@ -77,7 +77,7 @@ class MedicationReminderCoordinator {
       final recurrenceRule = switch (schedule.frequency) {
         MedicationFrequency.daily => const RecurrenceRule.daily(),
         MedicationFrequency.selectedWeekdays =>
-          RecurrenceRule.selectedWeekdays(schedule.selectedWeekdays),
+          RecurrenceRule.selectedWeekdays(schedule.selectedWeekdays.toSet()),
       };
 
       final scheduleStart = startDate.add(Duration(minutes: schedule.minutesSinceMidnight));
