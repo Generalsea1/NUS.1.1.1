@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'core/supabase_service.dart';
 import 'notification_service.dart';
 import 'features/appointments/presentation/appointments_page.dart';
+import 'features/ai/presentation/ai_hub_page.dart';
 import 'features/expenses/application/expense_lifecycle_service.dart';
 import 'features/expenses/presentation/household_expense_manager_page.dart';
 import 'features/medications/application/medication_lifecycle_service.dart';
@@ -443,7 +444,7 @@ class _HomePageState extends State<HomePage> {
               if (value == 'language') widget.onToggleLanguage();
               if (value == 'ai') {
                 Navigator.of(context).push(MaterialPageRoute(
-                  builder: (_) => const _AiLaunchPage(),
+                  builder: (_) => const AiHubPage(),
                 ));
               }
             },
@@ -921,16 +922,4 @@ class _HomePageState extends State<HomePage> {
     if (!mounted || reminder == null) return;
     await widget.store.add(reminder.title, reminder.dateTime);
   }
-}
-
-/// Lightweight navigation card used to keep the home shell independent from
-/// optional AI infrastructure. The real AI page is opened from feature pages
-/// where the AI connection provider is available.
-class _AiLaunchPage extends StatelessWidget {
-  const _AiLaunchPage();
-
-  @override
-  Widget build(BuildContext context) => const Scaffold(
-        body: Center(child: Text('NUS AI Center')),
-      );
 }
