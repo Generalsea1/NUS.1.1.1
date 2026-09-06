@@ -17,6 +17,14 @@ class _AppointmentPort implements AppointmentReminderPort {
   Future<void> cancel(String id) async {}
 }
 
+class _MedicationPort implements MedicationReminderPort {
+  @override
+  Future<void> schedule({required String id, required String title, required DateTime dateTime}) async {}
+
+  @override
+  Future<void> cancel(String id) async {}
+}
+
 void main() {
   const engine = RecurrenceEngine();
   final now = DateTime(2026, 9, 6, 8);
@@ -76,12 +84,15 @@ void main() {
         startDate: DateTime(2026, 9, 6),
         schedules: [schedule],
       );
-      final legacy = MedicationReminderCoordinator.occurrences(
-        medication,
-        now: now,
-        horizon: const Duration(days: 14),
-        includeNoReminderSchedules: true,
-      ).map((item) => item.dateTime).toList();
+      final legacy = MedicationReminderCoordinator(_MedicationPort(), clock: () => now)
+          .occurrences(
+            medication,
+            now: now,
+            horizon: const Duration(days: 14),
+            includeNoReminderSchedules: true,
+          )
+          .map((item) => item.dateTime)
+          .toList();
 
       final rule = schedule.frequency == MedicationFrequency.daily
           ? const RecurrenceRule.daily()
