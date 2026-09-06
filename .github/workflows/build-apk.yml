@@ -31,6 +31,12 @@ jobs:
           channel: stable
           cache: true
 
+      - name: Install image tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y imagemagick
+          command -v convert
+
       - name: Generate Android project files
         run: flutter create --platforms=android --project-name=nus .
 
@@ -124,10 +130,10 @@ jobs:
           if not icon_source.is_file():
               raise SystemExit(f'ERROR: Original NUS icon not found: {icon_source}')
           if shutil.which('convert') is None:
-              raise SystemExit('ERROR: ImageMagick convert is required to restore the original NUS icon.')
+              raise SystemExit('ERROR: ImageMagick convert is unavailable.')
 
-          # Disable Flutter's generated adaptive-icon resources so Android cannot
-          # silently replace the repository icon on Android 8+.
+          # Flutter creates adaptive launcher XML files. Remove those so Android
+          # cannot select a generated Flutter icon on Android 8+ devices.
           for adaptive in (
               Path('android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml'),
               Path('android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml'),
