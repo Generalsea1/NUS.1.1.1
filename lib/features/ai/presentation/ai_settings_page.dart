@@ -196,18 +196,19 @@ class _AiSettingsPageState extends State<AiSettingsPage> with WidgetsBindingObse
       _error = null;
     });
     try {
-      await client.from('user_ai_connections').update({
-        'status': 'disconnected',
-        'access_token_encrypted': null,
-        'refresh_token_encrypted': null,
-        'token_expires_at': null,
-        'last_error': null,
-      }).eq('user_id', user.id).eq('provider', _provider);
+      await client.functions.invoke(
+        'ai-provider-connect',
+        body: {'provider': _provider, 'action': 'disconnect'},
+      );
       if (mounted) {
         setState(() {
           _connected = false;
           _model = null;
         });
+      }
+    } on FunctionException catch (error) {
+      if (mounted) {
+        setState(() => _error = error.reasonPhrase ?? error.toString());
       }
     } catch (error) {
       if (mounted) setState(() => _error = error.toString());
