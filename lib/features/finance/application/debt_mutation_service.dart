@@ -93,7 +93,7 @@ class DebtMutationService {
     final existing = await _debtRepository.getById(debt.id);
     if (existing == null) throw DebtNotFoundException(debt.id);
 
-    final settled = await _settledMinorUnitsFor(existing);
+    final settled = await _settledMinorUnits(existing);
     if (debt.principalMinorUnits < settled) {
       throw DebtPrincipalBelowSettledException(
         principalMinorUnits: debt.principalMinorUnits,
@@ -147,7 +147,7 @@ class DebtMutationService {
       );
     }
 
-    final settledMinorUnits = await _settledMinorUnitsFor(debt);
+    final settledMinorUnits = await _settledMinorUnits(debt);
     final outstandingMinorUnits =
         debt.principalMinorUnits - settledMinorUnits;
     if (outstandingMinorUnits < 0) {
