@@ -109,4 +109,29 @@ void main() {
       expect(legacy, expected);
     }
   });
+
+  test('recurrence remains equivalent at the exact future-window boundary', () async {
+    final start = DateTime(2026, 9, 6, 9);
+    final boundaryNow = DateTime(2026, 9, 7, 9);
+    final port = _AppointmentPort();
+    final appointment = Appointment(
+      id: 'equivalence-boundary',
+      title: 'Equivalence',
+      startsAt: start,
+      recurrence: AppointmentRecurrence.daily,
+      reminder: AppointmentReminder.atTime,
+    );
+    await AppointmentReminderCoordinator(port).sync(appointment);
+
+    final expected = engine
+        .occurrences(
+          start: start,
+          rule: const RecurrenceRule.daily(),
+          windowStart: boundaryNow,
+          windowEnd: boundaryNow.add(const Duration(days: 1)),
+        )
+        .toList();
+
+    expect(expected, [DateTime(2026, 9, 8, 9)]);
+  });
 }
