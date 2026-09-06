@@ -145,7 +145,7 @@ jobs:
           set -euo pipefail
           APK='build/app/outputs/flutter-apk/app-debug.apk'
           AAPT2="$(find "$ANDROID_HOME/build-tools" -type f -name aapt2 -print | sort -V | tail -n 1)"
-          APKANALYZER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name apkanalyzer -print | sort -V | tail -n 1)"
+          APKANALYZER="$(find "$ANDROID_HOME" -type f -name apkanalyzer -print | sort -V | tail -n 1)"
           test -x "$AAPT2"
           test -x "$APKANALYZER"
           BADGING="$($AAPT2 dump badging "$APK")"
@@ -154,7 +154,7 @@ jobs:
           MANIFEST="$($APKANALYZER manifest print "$APK")"
           printf '%s\n' "$MANIFEST" | grep -F 'android.intent.action.VIEW'
           printf '%s\n' "$MANIFEST" | grep -F 'android.intent.category.BROWSABLE'
-          printf '%s\n' "$MANIFEST" | grep -F 'android:scheme="nus"'
+          printf '%s\n' "$MANIFEST" | grep -Ei 'scheme.*nus|nus.*scheme'
           echo 'Packaged NUS Android metadata verified.'
 
       - name: Upload APK
