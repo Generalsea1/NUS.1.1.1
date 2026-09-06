@@ -33,7 +33,7 @@ void main() {
 
     expect(find.text('NUS'), findsWidgets);
     expect(find.text('إضافة تذكير'), findsOneWidget);
-    expect(find.text('النهارده'), findsOneWidget);
+    expect(find.text('ملخص يومك'), findsOneWidget);
   });
 
   testWidgets('saving a valid reminder dismisses the sheet before scheduling',
