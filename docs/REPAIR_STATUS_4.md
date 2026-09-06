@@ -1,0 +1,1 @@
+Startup OAuth repair applied. Authentication is now initiated only from the account interface.
