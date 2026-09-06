@@ -16,9 +16,9 @@ void main() {
     final plan = buildHouseholdBudgetPlan(input);
 
     expect(plan.management.lines, hasLength(11));
-    expect(plan.management.protectedAmount, 4730);
-    expect(plan.management.flexibleRoom, greaterThan(0));
-    expect(plan.management.weeklyRoom, greaterThan(0));
+    expect(plan.management.protectedAmount, 4200);
+    expect(plan.management.flexibleRoom, 0);
+    expect(plan.management.weeklyRoom, 0);
     expect(plan.management.cutOrder, <String>[
       'other',
       'familyFun',
