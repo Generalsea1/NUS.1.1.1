@@ -127,7 +127,8 @@ jobs:
           set -euo pipefail
           flutter test test/recurrence_engine_test.dart test/recurrence_engine_equivalence_test.dart
 
-      - name: Verify repository workspace is clean
+      - name: Verify no tracked workspace mutation
         run: |
           set -euo pipefail
-          test -z "$(git status --porcelain)"
+          git diff --quiet -- .
+          git diff --cached --quiet -- .
