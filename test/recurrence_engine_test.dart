@@ -75,9 +75,9 @@ void main() {
           .toList();
 
       expect(values, <DateTime>[
-        DateTime(2026, 9, 1, 8),
         DateTime(2026, 9, 2, 8),
         DateTime(2026, 9, 4, 8),
+        DateTime(2026, 9, 7, 8),
       ]);
     });
 
