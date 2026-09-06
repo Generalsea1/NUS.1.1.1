@@ -24,7 +24,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Apply one-time AI hub wiring
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && !contains(github.event.head_commit.message, 'ci: apply one-time AI hub wiring') && !contains(github.event.head_commit.message, 'ci: remove one-time AI hub wiring') }}
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && !contains(github.event.head_commit.message, 'ci: remove one-time AI hub wiring') }}
         shell: bash
         run: |
           set -euo pipefail
