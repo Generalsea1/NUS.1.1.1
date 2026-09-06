@@ -14,14 +14,16 @@ class AiSettingsPage extends StatefulWidget {
   State<AiSettingsPage> createState() => _AiSettingsPageState();
 }
 
-class _AiSettingsPageState extends State<AiSettingsPage> with WidgetsBindingObserver {
+class _AiSettingsPageState extends State<AiSettingsPage>
+    with WidgetsBindingObserver {
   String _provider = 'gemini';
   bool _loading = true;
   bool _connecting = false;
   bool _signingIn = false;
   bool _connected = false;
   String? _model;
-  String? _error;
+  String? _statusMessage;
+  bool _statusIsError = false;
 
   String _t(String en, String ar) => widget.isArabic ? ar : en;
 
@@ -49,11 +51,13 @@ class _AiSettingsPageState extends State<AiSettingsPage> with WidgetsBindingObse
     final client = SupabaseService.client;
     final user = client?.auth.currentUser;
     if (client == null || user == null) {
-      if (mounted) setState(() {
-        _loading = false;
-        _connected = false;
-        _model = null;
-      });
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _connected = false;
+          _model = null;
+        });
+      }
       return;
     }
 
@@ -82,7 +86,8 @@ class _AiSettingsPageState extends State<AiSettingsPage> with WidgetsBindingObse
       if (mounted) {
         setState(() {
           _loading = false;
-          _error = error.toString();
+          _statusIsError = true;
+          _statusMessage = error.toString();
         });
       }
     }
@@ -93,7 +98,8 @@ class _AiSettingsPageState extends State<AiSettingsPage> with WidgetsBindingObse
       _provider = provider;
       _connected = false;
       _model = null;
-      _error = null;
+      _statusMessage = null;
+      _statusIsError = false;
     });
     await _loadConnection();
   }
@@ -101,18 +107,35 @@ class _AiSettingsPageState extends State<AiSettingsPage> with WidgetsBindingObse
   Future<void> _signInWithGoogle() async {
     setState(() {
       _signingIn = true;
-      _error = null;
+      _statusMessage = null;
+      _statusIsError = false;
     });
     try {
       final started = await const GoogleAuthRepository().signIn();
       if (!started && mounted) {
-        setState(() => _error = _t(
-              'Google sign-in is not configured for this NUS build.',
-              'تسجيل دخول Google مش متظبط لنسخة NUS دي لسه.',
-            ));
+        setState(() {
+          _statusIsError = true;
+          _statusMessage = _t(
+            'Google sign-in is not configured for this NUS build.',
+            'تسجيل دخول Google مش متظبط لنسخة NUS دي لسه.',
+          );
+        });
+      } else if (mounted) {
+        setState(() {
+          _statusMessage = _t(
+            'Continue in Google, then return to NUS. Your account will be detected automatically.',
+            'كمّل الدخول من Google وبعدها ارجع لـNUS. الحساب هيتعرف تلقائيًا.',
+          );
+          _statusIsError = false;
+        });
       }
     } catch (error) {
-      if (mounted) setState(() => _error = error.toString());
+      if (mounted) {
+        setState(() {
+          _statusIsError = true;
+          _statusMessage = error.toString();
+        });
+      }
     } finally {
       if (mounted) setState(() => _signingIn = false);
     }
@@ -122,16 +145,22 @@ class _AiSettingsPageState extends State<AiSettingsPage> with WidgetsBindingObse
     final client = SupabaseService.client;
     final user = client?.auth.currentUser;
     if (client == null || user == null) {
-      if (mounted) setState(() => _error = _t(
-            'Sign in to NUS before connecting an AI provider.',
-            'سجّل دخولك في NUS الأول قبل ربط مزود الذكاء الاصطناعي.',
-          ));
+      if (mounted) {
+        setState(() {
+          _statusIsError = true;
+          _statusMessage = _t(
+            'Sign in with your Google account to NUS first.',
+            'سجّل دخولك بحساب Google في NUS الأول.',
+          );
+        });
+      }
       return;
     }
 
     setState(() {
       _connecting = true;
-      _error = null;
+      _statusMessage = null;
+      _statusIsError = false;
     });
 
     try {
@@ -141,29 +170,51 @@ class _AiSettingsPageState extends State<AiSettingsPage> with WidgetsBindingObse
       );
       final data = response.data;
       if (data is! Map || data['authorizationUrl'] is! String) {
-        throw const _AiSettingsException('Authorization URL was not returned.');
+        throw const _AiSettingsException(
+          'The Gemini authorization URL was not returned.',
+        );
       }
 
       final uri = Uri.tryParse(data['authorizationUrl'] as String);
       if (uri == null || !await canLaunchUrl(uri)) {
-        throw const _AiSettingsException('The Gemini authorization link could not be opened.');
+        throw const _AiSettingsException(
+          'The Gemini authorization link could not be opened.',
+        );
       }
 
-      final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      final launched = await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
       if (!launched) {
-        throw const _AiSettingsException('The Gemini authorization link could not be opened.');
+        throw const _AiSettingsException(
+          'The Gemini authorization link could not be opened.',
+        );
       }
 
       if (mounted) {
-        setState(() => _error = _t(
-              'Approve access in Google, then return to NUS. The connection status will refresh automatically.',
-              'وافق على الوصول في Google وبعدها ارجع لـNUS. حالة الاتصال هتتحدث تلقائيًا.',
-            ));
+        setState(() {
+          _statusIsError = false;
+          _statusMessage = _t(
+            'Approve Gemini access in Google. After you return to NUS, the connection will refresh automatically.',
+            'وافق على صلاحية Gemini من Google. وبعد الرجوع لـNUS حالة الاتصال هتتحدث تلقائيًا.',
+          );
+        });
       }
     } on FunctionException catch (error) {
-      if (mounted) setState(() => _error = error.reasonPhrase ?? error.toString());
+      if (mounted) {
+        setState(() {
+          _statusIsError = true;
+          _statusMessage = error.reasonPhrase ?? error.toString();
+        });
+      }
     } catch (error) {
-      if (mounted) setState(() => _error = error.toString());
+      if (mounted) {
+        setState(() {
+          _statusIsError = true;
+          _statusMessage = error.toString();
+        });
+      }
     } finally {
       if (mounted) setState(() => _connecting = false);
     }
@@ -173,10 +224,13 @@ class _AiSettingsPageState extends State<AiSettingsPage> with WidgetsBindingObse
     final client = SupabaseService.client;
     final user = client?.auth.currentUser;
     if (client == null || user == null) return;
+
     setState(() {
       _connecting = true;
-      _error = null;
+      _statusMessage = null;
+      _statusIsError = false;
     });
+
     try {
       await client.from('user_ai_connections').update({
         'status': 'disconnected',
@@ -185,161 +239,362 @@ class _AiSettingsPageState extends State<AiSettingsPage> with WidgetsBindingObse
         'token_expires_at': null,
         'last_error': null,
       }).eq('user_id', user.id).eq('provider', _provider);
+
       if (mounted) {
         setState(() {
           _connected = false;
           _model = null;
+          _statusMessage = _t(
+            'Gemini is disconnected. NUS will not use it for AI planning.',
+            'تم فصل Gemini. NUS مش هيستخدمه في التخطيط بالذكاء الاصطناعي.',
+          );
         });
       }
     } catch (error) {
-      if (mounted) setState(() => _error = error.toString());
+      if (mounted) {
+        setState(() {
+          _statusIsError = true;
+          _statusMessage = error.toString();
+        });
+      }
     } finally {
       if (mounted) setState(() => _connecting = false);
     }
   }
 
+  Widget _statusCard(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final active = _connected;
+    return Card(
+      elevation: 0,
+      color: active ? scheme.primaryContainer : scheme.surfaceContainerHighest,
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Row(
+          children: [
+            Container(
+              width: 50,
+              height: 50,
+              decoration: BoxDecoration(
+                color: active ? scheme.primary : scheme.surface,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              alignment: Alignment.center,
+              child: Icon(
+                active ? Icons.auto_awesome_rounded : Icons.link_off_rounded,
+                color: active ? scheme.onPrimary : scheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    active
+                        ? _t('AI is ready', 'الذكاء الاصطناعي جاهز')
+                        : _t('AI is not connected', 'الذكاء الاصطناعي غير متصل'),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w900,
+                      fontSize: 19,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    active
+                        ? (_model ?? 'Google Gemini')
+                        : _t(
+                            'No recommendation will be invented while Gemini is unavailable.',
+                            'مش هنخترع أي توصية مالية طالما Gemini مش متاح.',
+                          ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
     }
 
     final user = SupabaseService.client?.auth.currentUser;
     if (user == null) {
       return Scaffold(
-        appBar: AppBar(title: Text(_t('AI', 'الذكاء الاصطناعي'))),
-        body: ListView(
-          padding: const EdgeInsets.all(24),
-          children: [
-            Card(
-              elevation: 0,
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  children: [
-                    const CircleAvatar(radius: 30, child: Icon(Icons.account_circle_outlined, size: 34)),
-                    const SizedBox(height: 14),
-                    Text(
-                      _t('Sign in to NUS', 'سجّل دخولك في NUS'),
-                      style: const TextStyle(fontSize: 23, fontWeight: FontWeight.w900),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      _t(
-                        'Your personal AI connections and AI history belong to your NUS account.',
-                        'اتصالات الذكاء الاصطناعي وسجل التحليلات بتوعك بيتحفظوا تحت حسابك في NUS.',
+        appBar: AppBar(title: Text(_t('AI Center', 'مركز الذكاء الاصطناعي'))),
+        body: SafeArea(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(18, 18, 18, 32),
+            children: [
+              Card(
+                elevation: 0,
+                child: Padding(
+                  padding: const EdgeInsets.all(22),
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 72,
+                        height: 72,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [Color(0xFF3949AB), Color(0xFF7C4DFF)],
+                          ),
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                        alignment: Alignment.center,
+                        child: const Icon(
+                          Icons.auto_awesome_rounded,
+                          color: Colors.white,
+                          size: 34,
+                        ),
                       ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 18),
-                    FilledButton.icon(
-                      onPressed: _signingIn ? null : _signInWithGoogle,
-                      icon: _signingIn
-                          ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                          : const Icon(Icons.login_rounded),
-                      label: Text(_signingIn ? _t('Opening Google…', 'جاري فتح Google…') : _t('Continue with Google', 'الدخول بحساب Google')),
-                    ),
-                  ],
+                      const SizedBox(height: 18),
+                      Text(
+                        _t('Your personal AI manager', 'مديرك الشخصي بالذكاء الاصطناعي'),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 9),
+                      Text(
+                        _t(
+                          'Sign in with the Google account you use for NUS. Then authorize Gemini separately for real AI household planning.',
+                          'سجّل بالحساب اللي بتستخدمه مع Google، وبعدها فوّض Gemini بشكل منفصل عشان التخطيط المالي يكون حقيقي.',
+                        ),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(height: 1.45),
+                      ),
+                      const SizedBox(height: 20),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton.icon(
+                          onPressed: _signingIn ? null : _signInWithGoogle,
+                          icon: _signingIn
+                              ? const SizedBox(
+                                  width: 19,
+                                  height: 19,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Icon(Icons.login_rounded),
+                          label: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            child: Text(
+                              _signingIn
+                                  ? _t('Opening Google…', 'جاري فتح Google…')
+                                  : _t('Continue with Google', 'الدخول بحساب Google'),
+                              style: const TextStyle(fontWeight: FontWeight.w900),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            if (_error != null) ...[
               const SizedBox(height: 12),
               Card(
-                color: Theme.of(context).colorScheme.errorContainer,
                 elevation: 0,
-                child: Padding(padding: const EdgeInsets.all(14), child: Text(_error!)),
+                child: ListTile(
+                  leading: const Icon(Icons.verified_user_outlined),
+                  title: Text(_t('Account ownership', 'ملكية الحساب')),
+                  subtitle: Text(_t(
+                    'Your NUS identity and AI connections are stored under your authenticated account.',
+                    'حساب NUS واتصالات الذكاء الاصطناعي بيتسجلوا تحت حسابك الموثّق.',
+                  )),
+                ),
               ),
+              if (_statusMessage != null) ...[
+                const SizedBox(height: 12),
+                _messageCard(context),
+              ],
             ],
-          ],
+          ),
         ),
       );
     }
 
     return Scaffold(
-      appBar: AppBar(title: Text(_t('AI', 'الذكاء الاصطناعي'))),
-      body: ListView(
-        padding: const EdgeInsets.all(18),
-        children: [
-          Card(
-            elevation: 0,
-            child: Padding(
-              padding: const EdgeInsets.all(18),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(children: [
-                    const CircleAvatar(child: Icon(Icons.auto_awesome_rounded)),
+      appBar: AppBar(
+        title: Text(_t('AI Center', 'مركز الذكاء الاصطناعي')),
+      ),
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(18, 18, 18, 32),
+          children: [
+            Card(
+              elevation: 0,
+              child: Padding(
+                padding: const EdgeInsets.all(18),
+                child: Row(
+                  children: [
+                    const CircleAvatar(
+                      radius: 27,
+                      child: Icon(Icons.account_circle_outlined, size: 31),
+                    ),
                     const SizedBox(width: 12),
-                    Expanded(child: Text(
-                      _t('Your AI connections', 'اتصالات الذكاء الاصطناعي الخاصة بك'),
-                      style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w900),
-                    )),
-                  ]),
-                  const SizedBox(height: 10),
-                  Text(_t(
-                    'NUS uses the AI provider you authorize. Your AI password is never entered into NUS.',
-                    'NUS بيستخدم مزود الذكاء الاصطناعي اللي إنت بتوافق عليه، وكلمة مرور AI مش بتدخلها في NUS.',
-                  )),
-                  const SizedBox(height: 6),
-                  Text(user.email ?? '', style: const TextStyle(fontWeight: FontWeight.w700)),
-                ],
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            user.email ?? _t('Google account', 'حساب Google'),
+                            style: const TextStyle(fontWeight: FontWeight.w900),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(_t('Authenticated NUS account', 'حساب NUS موثّق')),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 14),
-          SegmentedButton<String>(
-            segments: [
-              ButtonSegment(value: 'gemini', label: Text('Google Gemini'), icon: const Icon(Icons.cloud_outlined)),
-              ButtonSegment(value: 'openai', label: Text('OpenAI'), icon: const Icon(Icons.psychology_outlined)),
-            ],
-            selected: {_provider},
-            onSelectionChanged: (value) => _selectProvider(value.first),
-          ),
-          const SizedBox(height: 14),
-          Card(
-            elevation: 0,
-            child: ListTile(
-              leading: Icon(_connected ? Icons.link_rounded : Icons.link_off_rounded),
-              title: Text(_connected ? _t('Connected', 'متصل') : _t('Not connected', 'غير متصل')),
-              subtitle: Text(_model ?? _t('No AI model connected yet.', 'لسه مفيش موديل AI متصل.')),
-              trailing: _connected && _provider == 'gemini'
-                  ? OutlinedButton(
-                      onPressed: _connecting ? null : _disconnect,
-                      child: Text(_t('Disconnect', 'فصل')),
-                    )
-                  : FilledButton(
-                      onPressed: _connecting || _provider != 'gemini' ? null : _connectGemini,
-                      child: Text(_connecting ? _t('Connecting…', 'جاري الربط…') : _t('Connect', 'ربط')),
-                    ),
+            const SizedBox(height: 12),
+            _statusCard(context),
+            const SizedBox(height: 16),
+            SegmentedButton<String>(
+              segments: [
+                ButtonSegment(
+                  value: 'gemini',
+                  label: const Text('Google Gemini'),
+                  icon: const Icon(Icons.cloud_outlined),
+                ),
+                ButtonSegment(
+                  value: 'openai',
+                  label: const Text('OpenAI'),
+                  icon: const Icon(Icons.psychology_outlined),
+                ),
+              ],
+              selected: {_provider},
+              onSelectionChanged: (value) => _selectProvider(value.first),
             ),
-          ),
-          if (_provider == 'openai') ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
+            Card(
+              elevation: 0,
+              child: Padding(
+                padding: const EdgeInsets.all(18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _provider == 'gemini'
+                          ? _t('Google Gemini', 'Google Gemini')
+                          : _t('OpenAI', 'OpenAI'),
+                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+                    ),
+                    const SizedBox(height: 7),
+                    Text(
+                      _provider == 'gemini'
+                          ? _t(
+                              'NUS uses Gemini only after you explicitly authorize your Google account. Your Google password is never entered into NUS.',
+                              'NUS بيستخدم Gemini فقط بعد ما تفوّض حساب Google بنفسك. باسورد Google مش بيتكتب في NUS.',
+                            )
+                          : _t(
+                              'OpenAI remains disabled until a supported user-authorization flow is implemented. NUS will never ask for a ChatGPT password.',
+                              'OpenAI لسه مقفول لحد ما طريقة التفويض الرسمية للمستخدم تكتمل. NUS عمره ما هيطلب باسورد ChatGPT.',
+                            ),
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: _connected && _provider == 'gemini'
+                          ? OutlinedButton.icon(
+                              onPressed: _connecting ? null : _disconnect,
+                              icon: const Icon(Icons.link_off_rounded),
+                              label: Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                child: Text(_t('Disconnect Gemini', 'فصل Gemini')),
+                              ),
+                            )
+                          : FilledButton.icon(
+                              onPressed: _connecting || _provider != 'gemini'
+                                  ? null
+                                  : _connectGemini,
+                              icon: _connecting
+                                  ? const SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                    )
+                                  : const Icon(Icons.link_rounded),
+                              label: Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                child: Text(
+                                  _connecting
+                                      ? _t('Connecting…', 'جاري الربط…')
+                                      : _t('Connect Google Gemini', 'ربط Google Gemini'),
+                                ),
+                              ),
+                            ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
             Card(
               elevation: 0,
               color: Theme.of(context).colorScheme.surfaceContainerHighest,
               child: Padding(
                 padding: const EdgeInsets.all(16),
-                child: Text(_t(
-                  'OpenAI / ChatGPT is shown separately because signing in with ChatGPT does not give NUS access to ChatGPT conversations, billing, or an API account. NUS will not ask for your ChatGPT password. OpenAI connection will be enabled only through an explicitly supported user authorization flow.',
-                  'OpenAI / ChatGPT ظاهر بشكل منفصل لأن تسجيل الدخول بـChatGPT ما بيديش NUS صلاحية لمحادثات ChatGPT أو الفوترة أو حساب الـAPI. NUS مش هيطلب باسورد ChatGPT. ربط OpenAI هيتفعل فقط من خلال طريقة تفويض للمستخدم تكون مدعومة رسميًا.',
-                )),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.shield_outlined),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(_t(
+                        'NUS must never invent a financial recommendation when the real AI service is unavailable.',
+                        'NUS ممنوع يخترع توصية مالية لما خدمة الذكاء الاصطناعي الحقيقية تكون غير متاحة.',
+                      )),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            if (_statusMessage != null) ...[
+              const SizedBox(height: 12),
+              _messageCard(context),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _messageCard(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Card(
+      elevation: 0,
+      color: _statusIsError ? scheme.errorContainer : scheme.secondaryContainer,
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              _statusIsError ? Icons.error_outline_rounded : Icons.info_outline_rounded,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                _statusMessage!,
+                style: const TextStyle(fontWeight: FontWeight.w700, height: 1.35),
               ),
             ),
           ],
-          if (_error != null) ...[
-            const SizedBox(height: 10),
-            Card(
-              color: Theme.of(context).colorScheme.errorContainer,
-              elevation: 0,
-              child: Padding(
-                padding: const EdgeInsets.all(14),
-                child: Text(_error!, style: const TextStyle(fontWeight: FontWeight.w700)),
-              ),
-            ),
-          ],
-        ],
+        ),
       ),
     );
   }
@@ -348,6 +603,7 @@ class _AiSettingsPageState extends State<AiSettingsPage> with WidgetsBindingObse
 class _AiSettingsException implements Exception {
   const _AiSettingsException(this.message);
   final String message;
+
   @override
   String toString() => message;
 }
