@@ -7,7 +7,7 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const categories = ["food", "clothing", "maintenance", "familyFun", "other"] as const;
+const categories = ["rent", "utilities", "food", "transport", "debt", "health", "clothing", "maintenance", "familyFun", "other"] as const;
 type Category = (typeof categories)[number];
 type BudgetInput = Record<string, number>;
 
@@ -23,11 +23,11 @@ const numberValue = (value: unknown): number => { const number = typeof value ==
 const cleanInput = (body: Record<string, unknown>): BudgetInput => { const result: BudgetInput = {}; for (const key of ["income","rent","utilities","food","transport","debt","health","clothing","maintenance","familyFun","other","savingsTarget","actualThisMonth"]) result[key] = numberValue(body[key]); return result; };
 
 const systemPrompt = `أنت مدير المنزل الاقتصادي داخل NUS. مهمتك بناء خطة شهرية واقعية من الدخل الحقيقي للمستخدم والتزاماته والمبالغ التي أدخلها بنفسه وسجل الصرف الفعلي لهذا الشهر.
-قواعد إلزامية: لا تخترع الدخل ولا تغيّر أي مبلغ أدخله المستخدم؛ اقترح قيمًا فقط للبنود التي قيمتها صفر؛ الأولوية للإيجار والمرافق والمواصلات والديون والصحة ثم الغذاء والاحتياجات الأساسية ثم البنود المرنة؛ راعِ الغلاء دون اختلاق أسعار؛ احتفظ باحتياطي فقط عندما يسمح الحساب؛ مجموع البنود الجديدة + الاحتياطي لا يتجاوز المتاح؛ actualThisMonth دليل على السلوك الحالي فقط؛ كن محافظًا؛ العملة جنيه مصري؛ أعداد صحيحة فقط؛ أعد JSON فقط؛ الرسائل باللهجة المصرية العملية.`;
+قواعد إلزامية: لا تخترع الدخل؛ لا تغيّر أي مبلغ أدخله المستخدم؛ القيم التي يتركها المستخدم فارغة فقط هي التي تحتاج اقتراحًا؛ الأولوية للسكن والمرافق والمواصلات والصحة والديون ثم الغذاء والاحتياجات الأساسية ثم الصيانة والملابس والفسحة والمتفرقات؛ راعِ الغلاء دون اختلاق أسعار أو أفراد أسرة غير مذكورين؛ احتفظ باحتياطي فقط عندما يسمح الحساب؛ مجموع البنود التي تقترحها + الاحتياطي لا يتجاوز المتاح؛ actualThisMonth دليل على السلوك الحالي فقط؛ كن محافظًا وعمليًا؛ العملة جنيه مصري؛ أعداد صحيحة فقط؛ أعد JSON فقط؛ الرسائل باللهجة المصرية العملية.`;
 
 const responseSchema = { type: "object", additionalProperties: false, properties: {
-  food: { type: "integer", minimum: 0 }, clothing: { type: "integer", minimum: 0 }, maintenance: { type: "integer", minimum: 0 }, familyFun: { type: "integer", minimum: 0 }, other: { type: "integer", minimum: 0 }, reserve: { type: "integer", minimum: 0 }, managerMessage: { type: "string" }, recommendation: { type: "string" },
-}, required: ["food","clothing","maintenance","familyFun","other","reserve","managerMessage","recommendation"] };
+  rent: { type: "integer", minimum: 0 }, utilities: { type: "integer", minimum: 0 }, food: { type: "integer", minimum: 0 }, transport: { type: "integer", minimum: 0 }, debt: { type: "integer", minimum: 0 }, health: { type: "integer", minimum: 0 }, clothing: { type: "integer", minimum: 0 }, maintenance: { type: "integer", minimum: 0 }, familyFun: { type: "integer", minimum: 0 }, other: { type: "integer", minimum: 0 }, reserve: { type: "integer", minimum: 0 }, managerMessage: { type: "string" }, recommendation: { type: "string" },
+}, required: ["rent","utilities","food","transport","debt","health","clothing","maintenance","familyFun","other","reserve","managerMessage","recommendation"] };
 
 async function deriveKey(secret: string) { const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(secret)); return crypto.subtle.importKey("raw", digest, "AES-GCM", false, ["encrypt","decrypt"]); }
 function decodeBase64(value: string) { const binary = atob(value); return Uint8Array.from(binary, (char) => char.charCodeAt(0)); }
@@ -61,9 +61,11 @@ async function getGeminiAccessToken(userId: string) {
   return { token:accessToken, model:connection.model || configuredModel };
 }
 
-function sanitizeRecommendation(recommendation: Record<string, unknown>, input: BudgetInput, available: number) {
-  const safe: Record<Category|"reserve", number> = { food:numberValue(recommendation.food), clothing:numberValue(recommendation.clothing), maintenance:numberValue(recommendation.maintenance), familyFun:numberValue(recommendation.familyFun), other:numberValue(recommendation.other), reserve:numberValue(recommendation.reserve) };
-  const missingKeys = categories.filter((key)=>input[key]===0);
+function sanitizeRecommendation(recommendation: Record<string, unknown>, input: BudgetInput, available: number, provided: Set<string>) {
+  const safe: Record<Category|"reserve", number> = {
+    rent:numberValue(recommendation.rent), utilities:numberValue(recommendation.utilities), food:numberValue(recommendation.food), transport:numberValue(recommendation.transport), debt:numberValue(recommendation.debt), health:numberValue(recommendation.health), clothing:numberValue(recommendation.clothing), maintenance:numberValue(recommendation.maintenance), familyFun:numberValue(recommendation.familyFun), other:numberValue(recommendation.other), reserve:numberValue(recommendation.reserve),
+  };
+  const missingKeys = categories.filter((key)=>!provided.has(key));
   const requestedReserve = input.savingsTarget > 0 ? Math.min(input.savingsTarget, available) : safe.reserve;
   const categoryBudget = Math.max(0, available - requestedReserve);
   let categoryTotal = missingKeys.reduce((sum,key)=>sum+safe[key],0);
@@ -74,13 +76,13 @@ function sanitizeRecommendation(recommendation: Record<string, unknown>, input: 
   categoryTotal = missingKeys.reduce((sum,key)=>sum+safe[key],0);
   if (categoryTotal > categoryBudget) {
     let overflow=categoryTotal-categoryBudget;
-    for (const key of ["other","familyFun","clothing","maintenance","food"] as Category[]) {
-      if(input[key]!==0 || overflow<=0) continue;
+    for (const key of ["other","familyFun","clothing","maintenance","debt","health","food","transport","utilities","rent"] as Category[]) {
+      if(!missingKeys.includes(key) || overflow<=0) continue;
       const reduction=Math.min(safe[key],overflow); safe[key]-=reduction; overflow-=reduction;
     }
   }
-  const missing=new Set(missingKeys);
-  return { food:missing.has("food")?safe.food:input.food, clothing:missing.has("clothing")?safe.clothing:input.clothing, maintenance:missing.has("maintenance")?safe.maintenance:input.maintenance, familyFun:missing.has("familyFun")?safe.familyFun:input.familyFun, other:missing.has("other")?safe.other:input.other, reserve:requestedReserve, managerMessage:String(recommendation.managerMessage||"مدير المنزل حلّل دخلك والتزاماتك ووزّع البنود الناقصة على المتاح."), recommendation:String(recommendation.recommendation||"الخطة محسوبة على دخلك الحالي وتقدر تعدّلها بإدخال أرقامك الفعلية.") };
+  const value = (key: Category) => provided.has(key) ? input[key] : safe[key];
+  return { rent:value("rent"), utilities:value("utilities"), food:value("food"), transport:value("transport"), debt:value("debt"), health:value("health"), clothing:value("clothing"), maintenance:value("maintenance"), familyFun:value("familyFun"), other:value("other"), reserve:requestedReserve, managerMessage:String(recommendation.managerMessage||"مدير المنزل حلّل دخلك والتزاماتك ووزّع البنود غير المعروفة على المتاح."), recommendation:String(recommendation.recommendation||"الخطة محسوبة على الدخل والمعلومات المتاحة حاليًا.") };
 }
 
 Deno.serve(async(req)=>{
@@ -91,18 +93,21 @@ Deno.serve(async(req)=>{
   const jwt=auth.replace(/^Bearer\s+/i,""); const {data:userData,error:userError}=await admin.auth.getUser(jwt); if(userError||!userData.user)return json({ok:false,error:"Authentication required."},401);
   let body:Record<string,unknown>; try{body=await req.json();}catch(_){return json({ok:false,error:"Invalid JSON request."},400);}
   const input=cleanInput(body); if(input.income<=0)return json({ok:false,error:"Monthly income must be greater than zero."},400);
-  const knownMandatory=input.rent+input.utilities+input.transport+input.debt+input.health;
-  const knownFlexible=categories.reduce((sum,key)=>sum+(input[key]>0?input[key]:0),0);
+  const providedBody = Array.isArray(body.providedFields) ? body.providedFields.filter((value): value is string => typeof value === "string") : [];
+  const provided = new Set<string>(providedBody);
+  for (const key of categories) if (input[key] > 0) provided.add(key);
+  const knownMandatory=input.rent*(provided.has("rent")?1:0)+input.utilities*(provided.has("utilities")?1:0)+input.transport*(provided.has("transport")?1:0)+input.debt*(provided.has("debt")?1:0)+input.health*(provided.has("health")?1:0);
+  const knownFlexible=input.food*(provided.has("food")?1:0)+input.clothing*(provided.has("clothing")?1:0)+input.maintenance*(provided.has("maintenance")?1:0)+input.familyFun*(provided.has("familyFun")?1:0)+input.other*(provided.has("other")?1:0);
   const available=Math.max(0,input.income-knownMandatory-knownFlexible); const userId=userData.user.id;
   let gemini:{token:string;model:string}|null; try{gemini=await getGeminiAccessToken(userId);}catch(error){console.error("Gemini credential resolution failed",error);return json({ok:false,error:"تعذر تجهيز اتصال Gemini. راجع اتصال حسابك وحاول مرة أخرى."},502);}
   if(!gemini)return json({ok:false,error:"اربط حساب Gemini الخاص بك من شاشة الذكاء الاصطناعي أولاً."},409);
-  const requestContext={currency:"EGP",input,knownMandatory,knownFlexible,availableForMissingCategoriesAndReserve:available,missingCategories:categories.filter((key)=>input[key]===0)};
+  const requestContext={currency:"EGP",input,providedFields:Array.from(provided),knownMandatory,knownFlexible,availableForMissingCategoriesAndReserve:available,missingCategories:categories.filter((key)=>!provided.has(key))};
   const endpoint=`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(gemini.model)}:generateContent`;
   let response:Response; try{response=await fetch(endpoint,{method:"POST",headers:{Authorization:`Bearer ${gemini.token}`,"Content-Type":"application/json","x-goog-user-project":googleCloudProjectId!},body:JSON.stringify({contents:[{parts:[{text:`${systemPrompt}\n\nبيانات المستخدم:\n${JSON.stringify(requestContext)}`}]}],generationConfig:{temperature:0.2,responseMimeType:"application/json",responseSchema}})});}catch(error){console.error("Gemini request failed",error);return json({ok:false,error:"تعذر الوصول إلى Gemini الآن."},502);}
   if(!response.ok){const details=await response.text();console.error("Gemini household budget request rejected",response.status,details.slice(0,1000));return json({ok:false,error:"Gemini رفض طلب التخطيط المالي. راجع صلاحية اتصال Gemini."},502);}
   const payload=await response.json(); const content=payload?.candidates?.[0]?.content?.parts?.find((part:Record<string,unknown>)=>typeof part?.text==="string")?.text; if(typeof content!=="string")return json({ok:false,error:"Gemini returned no recommendation."},502);
   let parsed:Record<string,unknown>; try{parsed=JSON.parse(content);}catch(_){return json({ok:false,error:"Gemini returned malformed recommendation data."},502);}
-  const recommendation=sanitizeRecommendation(parsed,input,available);
+  const recommendation=sanitizeRecommendation(parsed,input,available,provided);
   const {error:runError}=await admin.from("user_ai_runs").insert({user_id:userId,provider:"gemini",model:gemini.model,purpose:"household_budget_plan",request_context:requestContext,response:recommendation});
   if(runError){console.error("Failed to persist user_ai_run",runError);return json({ok:false,error:"تم إنشاء التحليل لكن تعذر حفظه في سجل حسابك."},500);}
   return json({ok:true,provider:"gemini",model:gemini.model,recommendation});
