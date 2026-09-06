@@ -6,6 +6,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'core/supabase_service.dart';
 import 'notification_service.dart';
 import 'features/appointments/presentation/appointments_page.dart';
+import 'features/appointments/data/local_appointment_repository.dart';
+import 'features/appointments/domain/appointment.dart';
 import 'features/ai/presentation/ai_hub_page.dart';
 import 'features/expenses/application/expense_lifecycle_service.dart';
 import 'features/expenses/presentation/household_expense_manager_page.dart';
@@ -352,10 +354,14 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  final LocalAppointmentRepository _appointmentRepository = LocalAppointmentRepository();
+  List<Appointment> _appointments = <Appointment>[];
+
   @override
   void initState() {
     super.initState();
     widget.store.addListener(_refresh);
+    _loadAppointments();
   }
 
   @override
@@ -377,6 +383,19 @@ class _HomePageState extends State<HomePage> {
     if (mounted) setState(() {});
   }
 
+  Future<void> _loadAppointments() async {
+    final appointments = await _appointmentRepository.list();
+    if (!mounted) return;
+    setState(() => _appointments = appointments);
+  }
+
+  Future<void> _openAppointments(BuildContext context) async {
+    await Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => AppointmentsPage(isArabic: widget.isArabic),
+    ));
+    await _loadAppointments();
+  }
+
   String t(String en, String ar) => widget.isArabic ? ar : en;
 
   @override
@@ -389,6 +408,17 @@ class _HomePageState extends State<HomePage> {
     final upcoming = widget.store.items
         .where((item) => item.dateTime.isAfter(now) &&
             !DateUtils.isSameDay(item.dateTime, today))
+        .take(6)
+        .toList();
+    final todayAppointments = _appointments
+        .where((item) => DateUtils.isSameDay(item.startsAt, today) && item.status != AppointmentStatus.cancelled)
+        .toList();
+    final upcomingAppointments = _appointments
+        .where((item) => item.status == AppointmentStatus.upcoming && item.startsAt.isAfter(now) && !DateUtils.isSameDay(item.startsAt, today))
+        .take(6)
+        .toList();
+    final completedAppointments = _appointments
+        .where((item) => item.status == AppointmentStatus.completed)
         .take(6)
         .toList();
 
@@ -470,7 +500,7 @@ class _HomePageState extends State<HomePage> {
             const SizedBox(height: 16),
             _quickActions(context),
             const SizedBox(height: 16),
-            _dailyFocusCard(context, todays.length + upcoming.length),
+            _dailyFocusCard(context, todays.length + todayAppointments.length + upcoming.length + upcomingAppointments.length),
             const SizedBox(height: 24),
             _sectionHeader(t('Today', 'النهارده'), todays.length),
             const SizedBox(height: 10),
@@ -485,6 +515,12 @@ class _HomePageState extends State<HomePage> {
               )
             else
               ...todays.map(_buildItemCard),
+            if (todayAppointments.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Text(t('Today appointments', 'مواعيد النهارده'), style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900)),
+              const SizedBox(height: 8),
+              ...todayAppointments.map(_buildAppointmentCard),
+            ],
             const SizedBox(height: 22),
             _sectionHeader(t('Upcoming', 'القادم'), upcoming.length),
             const SizedBox(height: 10),
@@ -499,6 +535,18 @@ class _HomePageState extends State<HomePage> {
               )
             else
               ...upcoming.map(_buildItemCard),
+            if (upcomingAppointments.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Text(t('Upcoming appointments', 'المواعيد الجاية'), style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900)),
+              const SizedBox(height: 8),
+              ...upcomingAppointments.map(_buildAppointmentCard),
+            ],
+            if (completedAppointments.isNotEmpty) ...[
+              const SizedBox(height: 22),
+              _sectionHeader(t('Completed', 'المكتملة'), completedAppointments.length),
+              const SizedBox(height: 10),
+              ...completedAppointments.map(_buildAppointmentCard),
+            ],
           ],
         ),
       ),
@@ -626,9 +674,7 @@ class _HomePageState extends State<HomePage> {
       (
         Icons.event_available_outlined,
         t('Appointments', 'المواعيد'),
-        () => Navigator.of(context).push(MaterialPageRoute(
-              builder: (_) => AppointmentsPage(isArabic: widget.isArabic),
-            )),
+        () => _openAppointments(context),
       ),
     ];
 
@@ -676,6 +722,41 @@ class _HomePageState extends State<HomePage> {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildAppointmentCard(Appointment appointment) {
+    final scheme = Theme.of(context).colorScheme;
+    final time = TimeOfDay.fromDateTime(appointment.startsAt).format(context);
+    final date = '${appointment.startsAt.day}/${appointment.startsAt.month}';
+    final isCompleted = appointment.status == AppointmentStatus.completed;
+    final isCancelled = appointment.status == AppointmentStatus.cancelled;
+    final title = appointment.isScheduledCall && (appointment.contactName ?? '').isNotEmpty
+        ? '${appointment.title} — ${appointment.contactName}'
+        : appointment.title;
+    return Card(
+      margin: const EdgeInsets.only(bottom: 10),
+      child: ListTile(
+        leading: Icon(
+          isCompleted ? Icons.check_circle_rounded : appointment.isScheduledCall ? Icons.phone_callback_rounded : Icons.event_rounded,
+          color: isCompleted ? scheme.primary : isCancelled ? scheme.error : null,
+        ),
+        title: Text(
+          title,
+          style: TextStyle(
+            fontWeight: FontWeight.w800,
+            decoration: isCompleted ? TextDecoration.lineThrough : null,
+          ),
+        ),
+        subtitle: Text('${appointment.isScheduledCall ? t('Scheduled call', 'اتصال مجدول') : t('Appointment', 'موعد')} • $date • $time'),
+        trailing: isCompleted
+            ? Icon(Icons.verified_rounded, color: scheme.primary)
+            : IconButton(
+                tooltip: t('Open appointments', 'فتح المواعيد'),
+                onPressed: () => _openAppointments(context),
+                icon: const Icon(Icons.chevron_right_rounded),
+              ),
+      ),
     );
   }
 
