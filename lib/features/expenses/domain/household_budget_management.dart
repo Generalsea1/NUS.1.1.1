@@ -61,7 +61,7 @@ HouseholdBudgetManagement buildHouseholdBudgetManagement({
     HouseholdBudgetLine(key: 'utilities', title: 'المرافق', amount: utilities, weeklyCap: _weekly(utilities), priority: HouseholdBudgetPriority.essential, autoAllocated: false),
     HouseholdBudgetLine(key: 'food', title: 'الغذاء والبيت', amount: food, weeklyCap: _weekly(food), priority: HouseholdBudgetPriority.essential, autoAllocated: knownFood == 0),
     HouseholdBudgetLine(key: 'transport', title: 'المواصلات', amount: transport, weeklyCap: _weekly(transport), priority: HouseholdBudgetPriority.essential, autoAllocated: false),
-    HouseholdBudgetLine(key: 'debt', title: 'الديون والأقساط', amount: debt, weeklyCap: _weekly(debt), priority: HouseholdBudgetPriority.essential, autoAllocated: false),
+    HouseholdBudgetLine(key: 'debt', title: 'الديون والأقساط', amount: debt, weeklyCap: _weekly(debt), priority: HouseholdBudgetPriority.important, autoAllocated: false),
     HouseholdBudgetLine(key: 'health', title: 'الصحة والدواء', amount: health, weeklyCap: _weekly(health), priority: HouseholdBudgetPriority.essential, autoAllocated: false),
     HouseholdBudgetLine(key: 'clothing', title: 'الملابس', amount: clothing, weeklyCap: _weekly(clothing), priority: HouseholdBudgetPriority.flexible, autoAllocated: knownClothing == 0),
     HouseholdBudgetLine(key: 'maintenance', title: 'الصيانة', amount: maintenance, weeklyCap: _weekly(maintenance), priority: HouseholdBudgetPriority.important, autoAllocated: knownMaintenance == 0),
@@ -70,7 +70,10 @@ HouseholdBudgetManagement buildHouseholdBudgetManagement({
     HouseholdBudgetLine(key: 'reserve', title: 'احتياطي الطوارئ', amount: reserve, weeklyCap: 0, priority: HouseholdBudgetPriority.reserve, autoAllocated: reserve > 0),
   ];
 
-  final protected = rent + utilities + transport + debt + health + reserve;
+  // Protected means the household floor: housing, utilities, transport,
+  // health, and emergency reserve. Debt remains important and is cut only
+  // after flexible spending when the plan is under pressure.
+  final protected = rent + utilities + transport + health + reserve;
   final flexible = food + clothing + maintenance + familyFun + other;
 
   return HouseholdBudgetManagement(
