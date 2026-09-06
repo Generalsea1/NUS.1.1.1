@@ -32,7 +32,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('NUS'), findsOneWidget);
-    expect(find.text('إيه اللي وراك؟'), findsOneWidget);
+    expect(find.text('What is on your agenda?'), findsOneWidget);
     expect(find.byType(FloatingActionButton), findsOneWidget);
     expect(find.byIcon(Icons.dark_mode_rounded), findsOneWidget);
     expect(find.byIcon(Icons.auto_awesome_rounded), findsWidgets);
@@ -41,7 +41,7 @@ void main() {
   Future<void> openReminderSheet(WidgetTester tester) async {
     await tester.tap(find.byType(FloatingActionButton));
     await tester.pumpAndSettle();
-    expect(find.text('تذكير جديد'), findsOneWidget);
+    expect(find.text('New reminder'), findsOneWidget);
   }
 
   testWidgets('saving a valid reminder dismisses the sheet before scheduling',
@@ -54,10 +54,10 @@ void main() {
 
     await openReminderSheet(tester);
     await tester.enterText(find.byType(TextField), 'موعد اختبار');
-    await tester.tap(find.text('احفظ التذكير'));
+    await tester.tap(find.text('Save reminder'));
     await tester.pumpAndSettle();
 
-    expect(find.text('تذكير جديد'), findsNothing);
+    expect(find.text('New reminder'), findsNothing);
     expect(store.items, hasLength(1));
     expect(store.items.single.title, 'موعد اختبار');
     expect(scheduler.scheduledCount, 1);
@@ -72,10 +72,10 @@ void main() {
     await tester.pumpAndSettle();
 
     await openReminderSheet(tester);
-    await tester.tap(find.text('احفظ التذكير'));
+    await tester.tap(find.text('Save reminder'));
     await tester.pumpAndSettle();
 
-    expect(find.text('تذكير جديد'), findsOneWidget);
+    expect(find.text('New reminder'), findsOneWidget);
     expect(store.items, isEmpty);
     expect(tester.takeException(), isNull);
   });
@@ -88,10 +88,10 @@ void main() {
     await tester.pumpAndSettle();
 
     await openReminderSheet(tester);
-    await tester.tap(find.text('إلغاء'));
+    await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();
 
-    expect(find.text('تذكير جديد'), findsNothing);
+    expect(find.text('New reminder'), findsNothing);
     expect(store.items, isEmpty);
     expect(tester.takeException(), isNull);
   });
