@@ -6,7 +6,7 @@ import '../domain/subscription.dart';
 /// expenses automatically. Those responsibilities belong to later
 /// recurrence/financial integration slices.
 class SubscriptionMutationService {
-  const SubscriptionMutationService({required SubscriptionRepository subscriptions});
+  const SubscriptionMutationService({required this.subscriptions});
 
   final SubscriptionRepository subscriptions;
 
