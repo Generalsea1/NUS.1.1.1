@@ -82,6 +82,8 @@ class _AppointmentEditorPageState extends State<AppointmentEditorPage> {
     'end_after_start' => t('End time must be after start time.', 'وقت الانتهاء لازم يكون بعد وقت البداية.'),
     'start_must_be_future' => t('The appointment must be in the future.', 'الموعد لازم يكون في المستقبل.'),
     'invalid_phone' => t('Enter a valid phone number.', 'اكتب رقم تليفون صحيح.'),
+    'call_contact_required' => t('Enter the person name for the scheduled call.', 'اكتب اسم الشخص علشان نقدر نجهز الاتصال المجدول.'),
+    'call_phone_required' => t('Enter a phone number for the scheduled call.', 'اكتب رقم تليفون للاتصال المجدول.'),
     'doctor_name_required' => t('Doctor name is required.', 'اسم الدكتور مطلوب.'),
     'follow_up_after_appointment' => t('Follow-up must be after the appointment.', 'المتابعة لازم تكون بعد الموعد.'),
     _ => t('Please review the details.', 'راجع البيانات.'),
@@ -90,12 +92,25 @@ class _AppointmentEditorPageState extends State<AppointmentEditorPage> {
   @override
   Widget build(BuildContext context) {
     final doctor = _type == AppointmentType.doctor;
+    final call = _type == AppointmentType.phoneCall;
     return Scaffold(
       appBar: AppBar(title: Text(widget.initial == null ? t('New appointment', 'موعد جديد') : t('Edit appointment', 'تعديل الموعد'), style: const TextStyle(fontWeight: FontWeight.w900))),
       body: ListView(padding: const EdgeInsets.fromLTRB(20, 8, 20, 32), children: [
-        TextField(controller: _title, autofocus: widget.initial == null, decoration: InputDecoration(labelText: t('Title *', 'اسم الموعد *'), prefixIcon: const Icon(Icons.title_rounded))),
+        TextField(controller: _title, autofocus: widget.initial == null, decoration: InputDecoration(labelText: call ? t('Call title *', 'عنوان الاتصال *') : t('Title *', 'اسم الموعد *'), prefixIcon: const Icon(Icons.title_rounded))),
         const SizedBox(height: 12),
-        DropdownButtonFormField<AppointmentType>(initialValue: _type, decoration: InputDecoration(labelText: t('Type', 'النوع')), items: AppointmentType.values.map((v) => DropdownMenuItem(value: v, child: Text(_typeLabel(v)))).toList(), onChanged: (v) => setState(() => _type = v ?? AppointmentType.personal)),
+        DropdownButtonFormField<AppointmentType>(initialValue: _type, decoration: InputDecoration(labelText: t('Type', 'النوع')), items: AppointmentType.values.map((v) => DropdownMenuItem(value: v, child: Text(_typeLabel(v)))).toList(), onChanged: (v) {
+          final next = v ?? AppointmentType.personal;
+          setState(() {
+            _type = next;
+            if (next == AppointmentType.phoneCall && _reminder == AppointmentReminder.none) {
+              _reminder = AppointmentReminder.atTime;
+            }
+          });
+        }),
+        if (call) ...[
+          const SizedBox(height: 8),
+          Card(elevation: 0, child: ListTile(leading: const Icon(Icons.phone_callback_rounded), title: Text(t('Scheduled call', 'اتصال مجدول'), style: const TextStyle(fontWeight: FontWeight.w900)), subtitle: Text(t('NUS will alert you with a persistent alarm at the selected time.', 'NUS هيفكّرك بتنبيه قوي ومستمر في وقت الاتصال المحدد.')))),
+        ],
         const SizedBox(height: 16),
         Text(t('Date & time', 'التاريخ والوقت'), style: const TextStyle(fontWeight: FontWeight.w900)),
         const SizedBox(height: 8),
@@ -104,8 +119,8 @@ class _AppointmentEditorPageState extends State<AppointmentEditorPage> {
         OutlinedButton.icon(onPressed: () => _pickDateTime(initial: _endsAt ?? _startsAt.add(const Duration(hours: 1)), first: _startsAt, onPicked: (v) => setState(() => _endsAt = v)), icon: const Icon(Icons.timelapse_outlined), label: Text(_endsAt == null ? t('Add end time', 'إضافة وقت انتهاء') : '${_endsAt!.day}/${_endsAt!.month}/${_endsAt!.year} • ${TimeOfDay.fromDateTime(_endsAt!).format(context)}')),
         if (_endsAt != null) TextButton(onPressed: () => setState(() => _endsAt = null), child: Text(t('Clear end time', 'مسح وقت الانتهاء'))),
         TextField(controller: _location, decoration: InputDecoration(labelText: t('Location', 'المكان'), prefixIcon: const Icon(Icons.place_outlined))),
-        const SizedBox(height: 10), TextField(controller: _contactName, decoration: InputDecoration(labelText: t('Contact name', 'اسم جهة الاتصال'), prefixIcon: const Icon(Icons.person_outline_rounded))),
-        const SizedBox(height: 10), TextField(controller: _contactPhone, keyboardType: TextInputType.phone, decoration: InputDecoration(labelText: t('Contact phone', 'رقم التليفون'), prefixIcon: const Icon(Icons.phone_outlined))),
+        const SizedBox(height: 10), TextField(controller: _contactName, decoration: InputDecoration(labelText: call ? t('Person name *', 'اسم الشخص *') : t('Contact name', 'اسم جهة الاتصال'), prefixIcon: const Icon(Icons.person_outline_rounded))),
+        const SizedBox(height: 10), TextField(controller: _contactPhone, keyboardType: TextInputType.phone, decoration: InputDecoration(labelText: call ? t('Phone number *', 'رقم التليفون *') : t('Contact phone', 'رقم التليفون'), prefixIcon: const Icon(Icons.phone_outlined))),
         const SizedBox(height: 10), TextField(controller: _notes, minLines: 3, maxLines: 6, decoration: InputDecoration(labelText: t('Notes', 'ملاحظات'), prefixIcon: const Icon(Icons.notes_rounded))),
         const SizedBox(height: 14),
         DropdownButtonFormField<AppointmentRecurrence>(initialValue: _recurrence, decoration: InputDecoration(labelText: t('Recurrence', 'التكرار')), items: AppointmentRecurrence.values.map((v) => DropdownMenuItem(value: v, child: Text(_recurrenceLabel(v)))).toList(), onChanged: (v) => setState(() => _recurrence = v ?? AppointmentRecurrence.none)),
@@ -115,12 +130,12 @@ class _AppointmentEditorPageState extends State<AppointmentEditorPage> {
           const SizedBox(height: 20), Text(t('Doctor appointment', 'موعد طبيب'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900)), const SizedBox(height: 10), TextField(controller: _doctorName, decoration: InputDecoration(labelText: t('Doctor name *', 'اسم الدكتور *'), prefixIcon: const Icon(Icons.medical_services_outlined))), const SizedBox(height: 10), TextField(controller: _specialty, decoration: InputDecoration(labelText: t('Specialty', 'التخصص'), prefixIcon: const Icon(Icons.local_hospital_outlined))), const SizedBox(height: 10), OutlinedButton.icon(onPressed: () => _pickDateTime(initial: _followUpAt ?? _startsAt.add(const Duration(days: 7)), first: _startsAt, onPicked: (v) => setState(() => _followUpAt = v)), icon: const Icon(Icons.event_repeat_rounded), label: Text(_followUpAt == null ? t('Add follow-up reminder', 'إضافة متابعة') : '${t('Follow-up', 'المتابعة')}: ${_followUpAt!.day}/${_followUpAt!.month}/${_followUpAt!.year}')),
           if (_followUpAt != null) TextButton(onPressed: () => setState(() => _followUpAt = null), child: Text(t('Clear follow-up', 'مسح المتابعة'))),
         ],
-        const SizedBox(height: 24), FilledButton.icon(onPressed: _save, icon: const Icon(Icons.check_rounded), label: Padding(padding: const EdgeInsets.symmetric(vertical: 14), child: Text(t('Save appointment', 'حفظ الموعد'), style: const TextStyle(fontWeight: FontWeight.w900)))),
+        const SizedBox(height: 24), FilledButton.icon(onPressed: _save, icon: const Icon(Icons.check_rounded), label: Padding(padding: const EdgeInsets.symmetric(vertical: 14), child: Text(call ? t('Save scheduled call', 'حفظ الاتصال المجدول') : t('Save appointment', 'حفظ الموعد'), style: const TextStyle(fontWeight: FontWeight.w900)))),
       ]),
     );
   }
 
-  String _typeLabel(AppointmentType v) => switch (v) { AppointmentType.personal => t('Personal', 'شخصي'), AppointmentType.doctor => t('Doctor', 'طبيب'), AppointmentType.work => t('Work', 'عمل'), AppointmentType.government => t('Government', 'حكومي'), AppointmentType.study => t('Study', 'دراسة'), AppointmentType.family => t('Family', 'عائلة'), AppointmentType.travel => t('Travel', 'سفر'), AppointmentType.phoneCall => t('Phone call', 'مكالمة'), AppointmentType.custom => t('Custom', 'مخصص') };
+  String _typeLabel(AppointmentType v) => switch (v) { AppointmentType.personal => t('Personal', 'شخصي'), AppointmentType.doctor => t('Doctor', 'طبيب'), AppointmentType.work => t('Work', 'عمل'), AppointmentType.government => t('Government', 'حكومي'), AppointmentType.study => t('Study', 'دراسة'), AppointmentType.family => t('Family', 'عائلة'), AppointmentType.travel => t('Travel', 'سفر'), AppointmentType.phoneCall => t('Phone call', 'مكالمة مجدولة'), AppointmentType.custom => t('Custom', 'مخصص') };
   String _recurrenceLabel(AppointmentRecurrence v) => switch (v) { AppointmentRecurrence.none => t('Does not repeat', 'بدون تكرار'), AppointmentRecurrence.daily => t('Daily', 'يومي'), AppointmentRecurrence.weekly => t('Weekly', 'أسبوعي') };
   String _reminderLabel(AppointmentReminder v) => switch (v) { AppointmentReminder.none => t('No reminder', 'بدون تذكير'), AppointmentReminder.atTime => t('At appointment time', 'وقت الموعد'), AppointmentReminder.fiveMinutesBefore => t('5 minutes before', 'قبلها بـ 5 دقائق'), AppointmentReminder.fifteenMinutesBefore => t('15 minutes before', 'قبلها بـ 15 دقيقة'), AppointmentReminder.thirtyMinutesBefore => t('30 minutes before', 'قبلها بـ 30 دقيقة'), AppointmentReminder.oneHourBefore => t('1 hour before', 'قبلها بساعة'), AppointmentReminder.oneDayBefore => t('1 day before', 'قبلها بيوم') };
 }
