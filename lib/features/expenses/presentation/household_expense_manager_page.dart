@@ -3,7 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../ai/presentation/ai_settings_page.dart';
-import '../../core/supabase_service.dart';
+import '../../../core/supabase_service.dart';
 import '../application/expense_lifecycle_service.dart';
 import '../application/household_budget_ai_provider.dart';
 import '../domain/household_budget_actual_comparison.dart';
@@ -199,10 +199,7 @@ class _HouseholdExpenseManagerPageState extends State<HouseholdExpenseManagerPag
 
   HouseholdBudgetActualComparison _actualComparison(HouseholdBudgetPlan plan) {
     final plannedSpending = (plan.plannedTotal - plan.reserve).clamp(0, 0x7fffffffffffffff);
-    return HouseholdBudgetActualComparison(
-      plannedAmount: plannedSpending,
-      actualAmount: _actualThisMonth,
-    );
+    return HouseholdBudgetActualComparison(plannedAmount: plannedSpending, actualAmount: _actualThisMonth);
   }
 
   Future<bool> _saveProfile() async {
@@ -272,10 +269,7 @@ class _HouseholdExpenseManagerPageState extends State<HouseholdExpenseManagerPag
     });
 
     try {
-      final recommendation = await _aiProvider.generate(
-        input: _input(),
-        actualThisMonth: _actualThisMonth,
-      );
+      final recommendation = await _aiProvider.generate(input: _input(), actualThisMonth: _actualThisMonth);
       if (!mounted) return;
       setState(() {
         _aiRecommendation = recommendation;
@@ -331,11 +325,7 @@ class _HouseholdExpenseManagerPageState extends State<HouseholdExpenseManagerPag
     final theme = base.copyWith(
       colorScheme: scheme,
       scaffoldBackgroundColor: base.brightness == Brightness.dark ? const Color(0xFF0B1412) : const Color(0xFFF5F1E8),
-      cardTheme: CardThemeData(
-        margin: EdgeInsets.zero,
-        elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      ),
+      cardTheme: CardThemeData(margin: EdgeInsets.zero, elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24))),
     );
 
     return Theme(
@@ -346,16 +336,8 @@ class _HouseholdExpenseManagerPageState extends State<HouseholdExpenseManagerPag
           appBar: AppBar(
             title: Text(_t('Household Manager', 'مدير اقتصاد الأسرة'), style: const TextStyle(fontWeight: FontWeight.w900)),
             actions: [
-              IconButton(
-                tooltip: _t('AI connection', 'اتصال الذكاء الاصطناعي'),
-                onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => AiSettingsPage(isArabic: widget.isArabic))),
-                icon: const Icon(Icons.auto_awesome_rounded),
-              ),
-              IconButton(
-                tooltip: _t('Expense ledger', 'سجل المصروفات'),
-                onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ExpensePage(service: widget.service, isArabic: widget.isArabic))),
-                icon: const Icon(Icons.receipt_long_rounded),
-              ),
+              IconButton(tooltip: _t('AI connection', 'اتصال الذكاء الاصطناعي'), onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => AiSettingsPage(isArabic: widget.isArabic))), icon: const Icon(Icons.auto_awesome_rounded)),
+              IconButton(tooltip: _t('Expense ledger', 'سجل المصروفات'), onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ExpensePage(service: widget.service, isArabic: widget.isArabic))), icon: const Icon(Icons.receipt_long_rounded)),
             ],
           ),
           body: ListView(
@@ -369,36 +351,16 @@ class _HouseholdExpenseManagerPageState extends State<HouseholdExpenseManagerPag
               const SizedBox(height: 14),
               if (_aiError != null) ...[_errorCard(_aiError!), const SizedBox(height: 14)],
               if (plan.isAiPowered) ...[_aiDecisionCard(), const SizedBox(height: 14)],
-              _inputSection(
-                title: _t('Foundation', 'أساس البيت'),
-                subtitle: _t('Protect these first. They are not lifestyle extras.', 'دي أول بنود الحماية، مش كماليات.'),
-                keys: _essentialKeys,
-              ),
+              _inputSection(title: _t('Foundation', 'أساس البيت'), subtitle: _t('Protect these first. They are not lifestyle extras.', 'دي أول بنود الحماية، مش كماليات.'), keys: _essentialKeys),
               const SizedBox(height: 14),
-              _inputSection(
-                title: _t('Lifestyle & flexibility', 'المرونة وأسلوب الحياة'),
-                subtitle: _t('Trim these first when the month is tight.', 'دي أول مساحة للتخفيض وقت الضغط.'),
-                keys: _flexibleKeys,
-              ),
+              _inputSection(title: _t('Lifestyle & flexibility', 'المرونة وأسلوب الحياة'), subtitle: _t('Trim these first when the month is tight.', 'دي أول مساحة للتخفيض وقت الضغط.'), keys: _flexibleKeys),
               const SizedBox(height: 14),
-              _inputSection(
-                title: _t('Financial safety', 'الأمان المالي'),
-                subtitle: _t('A reserve is part of managing the household, not leftover spending.', 'الاحتياطي جزء من الإدارة، مش فلوس فائضة لازم تتصرف.'),
-                keys: const ['savingsTarget'],
-              ),
+              _inputSection(title: _t('Financial safety', 'الأمان المالي'), subtitle: _t('A reserve is part of managing the household, not leftover spending.', 'الاحتياطي جزء من الإدارة، مش فلوس فائضة لازم تتصرف.'), keys: const ['savingsTarget']),
               const SizedBox(height: 16),
               FilledButton.icon(
                 onPressed: _aiLoading || _savingProfile ? null : _buildWithAi,
-                icon: _aiLoading || _savingProfile
-                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Icon(Icons.auto_awesome_rounded),
-                label: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 15),
-                  child: Text(
-                    _aiLoading ? _t('AI is managing your month…', 'مدير البيت الذكي بيبني الخطة…') : _t('Build my household plan with AI', 'ابنِ لي خطة البيت بالذكاء الاصطناعي'),
-                    style: const TextStyle(fontWeight: FontWeight.w900),
-                  ),
-                ),
+                icon: _aiLoading || _savingProfile ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.auto_awesome_rounded),
+                label: Padding(padding: const EdgeInsets.symmetric(vertical: 15), child: Text(_aiLoading ? _t('AI is managing your month…', 'مدير البيت الذكي بيبني الخطة…') : _t('Build my household plan with AI', 'ابنِ لي خطة البيت بالذكاء الاصطناعي'), style: const TextStyle(fontWeight: FontWeight.w900))),
               ),
               const SizedBox(height: 14),
               _managementCard(plan.management),
@@ -418,9 +380,7 @@ class _HouseholdExpenseManagerPageState extends State<HouseholdExpenseManagerPag
       clipBehavior: Clip.antiAlias,
       child: Container(
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 22),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [scheme.primary, const Color(0xFF143D36)]),
-        ),
+        decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [scheme.primary, const Color(0xFF143D36)])),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(_t('HOUSEHOLD ECONOMY', 'اقتصاد الأسرة'), style: const TextStyle(color: Color(0xFFE6C98B), fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 1.2)),
           const SizedBox(height: 6),
@@ -439,190 +399,61 @@ class _HouseholdExpenseManagerPageState extends State<HouseholdExpenseManagerPag
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            const Icon(Icons.family_restroom_rounded),
-            const SizedBox(width: 8),
-            Expanded(child: Text(_t('Household profile', 'ملف الأسرة'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900))),
-            _pill(_profileSaved ? _t('SAVED', 'محفوظ') : _t('FIRST SETUP', 'إعداد أول مرة')),
-          ]),
+          Row(children: [const Icon(Icons.family_restroom_rounded), const SizedBox(width: 8), Expanded(child: Text(_t('Household profile', 'ملف الأسرة'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900))), _pill(_profileSaved ? _t('SAVED', 'محفوظ') : _t('FIRST SETUP', 'إعداد أول مرة'))]),
           const SizedBox(height: 8),
           Text(_t('NUS uses these real details to plan for your household, location and currency.', 'NUS بيستخدم البيانات الحقيقية دي عشان يخطط لأسرتك ومكانك وعملتك، مش رقم افتراضي.'), style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, height: 1.35)),
           const SizedBox(height: 14),
-          Row(children: [
-            Expanded(child: _textField(_countryController, _t('Country code', 'كود الدولة (مثال: EG)'), Icons.public_rounded, maxLength: 2)),
-            const SizedBox(width: 10),
-            Expanded(child: _textField(_currencyController, _t('Currency', 'العملة (مثال: EGP)'), Icons.payments_rounded, maxLength: 6)),
-          ]),
+          Row(children: [Expanded(child: _textField(_countryController, _t('Country code', 'كود الدولة (مثال: EG)'), Icons.public_rounded, maxLength: 2)), const SizedBox(width: 10), Expanded(child: _textField(_currencyController, _t('Currency', 'العملة (مثال: EGP)'), Icons.payments_rounded, maxLength: 6))]),
           const SizedBox(height: 10),
           _textField(_regionController, _t('Region / city (optional)', 'المحافظة / المدينة (اختياري)'), Icons.location_on_outlined),
           const SizedBox(height: 10),
-          Row(children: [
-            Expanded(child: _numberStepper(_t('Adults', 'البالغين'), _adults, (v) => setState(() => _adults = v.clamp(1, 20)))),
-            const SizedBox(width: 10),
-            Expanded(child: _numberStepper(_t('Children', 'الأطفال'), _children, (v) => setState(() => _children = v.clamp(0, 20)))),
-          ]),
+          Row(children: [Expanded(child: _numberStepper(_t('Adults', 'البالغين'), _adults, (v) => setState(() => _adults = v.clamp(1, 20)))), const SizedBox(width: 10), Expanded(child: _numberStepper(_t('Children', 'الأطفال'), _children, (v) => setState(() => _children = v.clamp(0, 20)))]),
           const SizedBox(height: 10),
           Row(children: [
-            Expanded(child: DropdownButtonFormField<String>(value: _housingType, decoration: InputDecoration(labelText: _t('Housing', 'نوع السكن'), filled: true, prefixIcon: const Icon(Icons.home_work_outlined)), items: [
-              DropdownMenuItem(value: 'rent', child: Text(_t('Rent', 'إيجار'))),
-              DropdownMenuItem(value: 'owned', child: Text(_t('Owned', 'تمليك'))),
-              DropdownMenuItem(value: 'family', child: Text(_t('Family home', 'بيت العائلة'))),
-              DropdownMenuItem(value: 'other', child: Text(_t('Other', 'أخرى'))),
-            ], onChanged: (v) => setState(() => _housingType = v ?? 'rent'))),
+            Expanded(child: DropdownButtonFormField<String>(value: _housingType, decoration: InputDecoration(labelText: _t('Housing', 'نوع السكن'), filled: true, prefixIcon: const Icon(Icons.home_work_outlined)), items: [DropdownMenuItem(value: 'rent', child: Text(_t('Rent', 'إيجار'))), DropdownMenuItem(value: 'owned', child: Text(_t('Owned', 'تمليك'))), DropdownMenuItem(value: 'family', child: Text(_t('Family home', 'بيت العائلة'))), DropdownMenuItem(value: 'other', child: Text(_t('Other', 'أخرى')))], onChanged: (v) => setState(() => _housingType = v ?? 'rent'))),
             const SizedBox(width: 10),
-            Expanded(child: DropdownButtonFormField<String>(value: _incomeFrequency, decoration: InputDecoration(labelText: _t('Income frequency', 'دورية الدخل'), filled: true, prefixIcon: const Icon(Icons.event_repeat_rounded)), items: [
-              DropdownMenuItem(value: 'monthly', child: Text(_t('Monthly', 'شهري'))),
-              DropdownMenuItem(value: 'weekly', child: Text(_t('Weekly', 'أسبوعي'))),
-              DropdownMenuItem(value: 'biweekly', child: Text(_t('Biweekly', 'كل أسبوعين'))),
-              DropdownMenuItem(value: 'irregular', child: Text(_t('Irregular', 'غير منتظم'))),
-            ], onChanged: (v) => setState(() => _incomeFrequency = v ?? 'monthly'))),
+            Expanded(child: DropdownButtonFormField<String>(value: _incomeFrequency, decoration: InputDecoration(labelText: _t('Income frequency', 'دورية الدخل'), filled: true, prefixIcon: const Icon(Icons.event_repeat_rounded)), items: [DropdownMenuItem(value: 'monthly', child: Text(_t('Monthly', 'شهري'))), DropdownMenuItem(value: 'weekly', child: Text(_t('Weekly', 'أسبوعي'))), DropdownMenuItem(value: 'biweekly', child: Text(_t('Biweekly', 'كل أسبوعين'))), DropdownMenuItem(value: 'irregular', child: Text(_t('Irregular', 'غير منتظم')))], onChanged: (v) => setState(() => _incomeFrequency = v ?? 'monthly'))),
           ]),
           const SizedBox(height: 12),
-          OutlinedButton.icon(
-            onPressed: _savingProfile ? null : () async { await _saveProfile(); if (mounted) setState(() => _plan = _buildPlan()); },
-            icon: _savingProfile ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.save_outlined),
-            label: Text(_savingProfile ? _t('Saving…', 'جاري الحفظ…') : _t('Save household profile', 'احفظ بيانات الأسرة')),
-          ),
+          OutlinedButton.icon(onPressed: _savingProfile ? null : () async { await _saveProfile(); if (mounted) setState(() => _plan = _buildPlan()); }, icon: _savingProfile ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.save_outlined), label: Text(_savingProfile ? _t('Saving…', 'جاري الحفظ…') : _t('Save household profile', 'احفظ بيانات الأسرة'))),
         ]),
       ),
     );
   }
 
   Widget _textField(TextEditingController controller, String label, IconData icon, {int? maxLength}) {
-    return TextField(
-      controller: controller,
-      textCapitalization: TextCapitalization.characters,
-      maxLength: maxLength,
-      onChanged: (_) => setState(() { _aiRecommendation = null; _plan = _buildPlan(); }),
-      decoration: InputDecoration(labelText: label, prefixIcon: Icon(icon), filled: true, counterText: ''),
-    );
+    return TextField(controller: controller, textCapitalization: TextCapitalization.characters, maxLength: maxLength, onChanged: (_) => setState(() { _aiRecommendation = null; _plan = _buildPlan(); }), decoration: InputDecoration(labelText: label, prefixIcon: Icon(icon), filled: true, counterText: ''));
   }
 
   Widget _numberStepper(String title, int value, ValueChanged<int> onChanged) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: .55), borderRadius: BorderRadius.circular(16)),
-      child: Row(children: [
-        Expanded(child: Text('$title\n$value', style: const TextStyle(fontWeight: FontWeight.w800, height: 1.25))),
-        IconButton(onPressed: value <= 0 ? null : () => onChanged(value - 1), icon: const Icon(Icons.remove_circle_outline)),
-        IconButton(onPressed: () => onChanged(value + 1), icon: const Icon(Icons.add_circle_outline)),
-      ]),
-    );
+    return Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6), decoration: BoxDecoration(color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: .55), borderRadius: BorderRadius.circular(16)), child: Row(children: [Expanded(child: Text('$title\n$value', style: const TextStyle(fontWeight: FontWeight.w800, height: 1.25))), IconButton(onPressed: value <= 0 ? null : () => onChanged(value - 1), icon: const Icon(Icons.remove_circle_outline)), IconButton(onPressed: () => onChanged(value + 1), icon: const Icon(Icons.add_circle_outline))]));
   }
 
   Widget _actualCard(HouseholdBudgetActualComparison comparison) {
     final scheme = Theme.of(context).colorScheme;
-    return Card(
-      color: comparison.isOverPlan ? scheme.errorContainer : scheme.secondaryContainer,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [const Icon(Icons.fact_check_outlined), const SizedBox(width: 8), Text(_t('Reality check', 'مراجعة الواقع'), style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900))]),
-          const SizedBox(height: 10),
-          Row(children: [
-            Expanded(child: _miniMetric(_t('Plan', 'الخطة'), _money(comparison.plannedAmount), Icons.flag_outlined)),
-            const SizedBox(width: 10),
-            Expanded(child: _miniMetric(_t('Actual', 'الفعلي'), _money(comparison.actualAmount), Icons.receipt_long_outlined)),
-          ]),
-          const SizedBox(height: 8),
-          Text(comparison.managerMessage, style: const TextStyle(fontWeight: FontWeight.w700, height: 1.4)),
-        ]),
-      ),
-    );
+    return Card(color: comparison.isOverPlan ? scheme.errorContainer : scheme.secondaryContainer, child: Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Row(children: [const Icon(Icons.fact_check_outlined), const SizedBox(width: 8), Text(_t('Reality check', 'مراجعة الواقع'), style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900))]), const SizedBox(height: 10), Row(children: [Expanded(child: _miniMetric(_t('Plan', 'الخطة'), _money(comparison.plannedAmount), Icons.flag_outlined)), const SizedBox(width: 10), Expanded(child: _miniMetric(_t('Actual', 'الفعلي'), _money(comparison.actualAmount), Icons.receipt_long_outlined))]), const SizedBox(height: 8), Text(comparison.managerMessage, style: const TextStyle(fontWeight: FontWeight.w700, height: 1.4))])));
   }
 
   Widget _inputSection({required String title, required String subtitle, required List<String> keys}) {
     final scheme = Theme.of(context).colorScheme;
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [Container(width: 5, height: 26, decoration: BoxDecoration(color: scheme.primary, borderRadius: BorderRadius.circular(8))), const SizedBox(width: 10), Expanded(child: Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900)))]),
-          const SizedBox(height: 4),
-          Text(subtitle, style: TextStyle(color: scheme.onSurfaceVariant, height: 1.35)),
-          const SizedBox(height: 12),
-          ...keys.map((key) => _field(key)),
-        ]),
-      ),
-    );
+    return Card(child: Padding(padding: const EdgeInsets.fromLTRB(16, 16, 16, 8), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Row(children: [Container(width: 5, height: 26, decoration: BoxDecoration(color: scheme.primary, borderRadius: BorderRadius.circular(8))), const SizedBox(width: 10), Expanded(child: Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900)))]), const SizedBox(height: 4), Text(subtitle, style: TextStyle(color: scheme.onSurfaceVariant, height: 1.35)), const SizedBox(height: 12), ...keys.map((key) => _field(key))])));
   }
 
-  Widget _field(String key) => Padding(
-        padding: const EdgeInsets.only(bottom: 10),
-        child: TextField(
-          controller: _controllers[key],
-          keyboardType: const TextInputType.numberWithOptions(decimal: false),
-          onChanged: (_) => setState(() { _aiRecommendation = null; _aiError = null; _plan = _buildPlan(); }),
-          decoration: InputDecoration(labelText: _fields[key], suffixText: _currencyController.text.trim().isEmpty ? _t('currency', 'العملة') : _currencyController.text.trim().toUpperCase(), prefixIcon: Icon(_iconFor(key)), filled: true),
-        ),
-      );
+  Widget _field(String key) => Padding(padding: const EdgeInsets.only(bottom: 10), child: TextField(controller: _controllers[key], keyboardType: const TextInputType.numberWithOptions(decimal: false), onChanged: (_) => setState(() { _aiRecommendation = null; _aiError = null; _plan = _buildPlan(); }), decoration: InputDecoration(labelText: _fields[key], suffixText: _currencyController.text.trim().isEmpty ? _t('currency', 'العملة') : _currencyController.text.trim().toUpperCase(), prefixIcon: Icon(_iconFor(key)), filled: true)));
 
   Widget _aiDecisionCard() {
     final recommendation = _aiRecommendation!;
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [const Icon(Icons.auto_awesome_rounded), const SizedBox(width: 8), Expanded(child: Text(_t('AI decision', 'قرار مدير البيت الذكي'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900))), _pill(_t('PROFILE-AWARE', 'مبني على الملف'))]),
-          const SizedBox(height: 10),
-          Text(recommendation.managerMessage, style: const TextStyle(fontWeight: FontWeight.w700, height: 1.45)),
-          const SizedBox(height: 10),
-          Text(recommendation.recommendation, style: const TextStyle(height: 1.45)),
-        ]),
-      ),
-    );
+    return Card(child: Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Row(children: [const Icon(Icons.auto_awesome_rounded), const SizedBox(width: 8), Expanded(child: Text(_t('AI decision', 'قرار مدير البيت الذكي'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900))), _pill(_t('PROFILE-AWARE', 'مبني على الملف'))]), const SizedBox(height: 10), Text(recommendation.managerMessage, style: const TextStyle(fontWeight: FontWeight.w700, height: 1.45)), const SizedBox(height: 10), Text(recommendation.recommendation, style: const TextStyle(height: 1.45))])));
   }
 
   Widget _managementCard(HouseholdBudgetManagement management) {
-    final labels = <HouseholdBudgetPriority, String>{
-      HouseholdBudgetPriority.essential: _t('Essential', 'أساسي'),
-      HouseholdBudgetPriority.important: _t('Important', 'مهم'),
-      HouseholdBudgetPriority.flexible: _t('Flexible', 'مرن'),
-      HouseholdBudgetPriority.reserve: _t('Reserve', 'احتياطي'),
-    };
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(_t('Manager instructions', 'تعليمات مدير البيت'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
-          const SizedBox(height: 8),
-          Text(management.managerMessage, style: const TextStyle(height: 1.45)),
-          const Divider(height: 26),
-          ...management.lines.map((line) => ListTile(
-                dense: true,
-                contentPadding: EdgeInsets.zero,
-                leading: Icon(_priorityIcon(line.priority)),
-                title: Text(line.title, style: const TextStyle(fontWeight: FontWeight.w800)),
-                subtitle: Text('${labels[line.priority]}${line.autoAllocated ? ' • ${_t('AI estimate', 'تقدير المدير')}' : ''}'),
-                trailing: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.end, children: [
-                  Text(_money(line.amount), style: const TextStyle(fontWeight: FontWeight.w900)),
-                  if (line.weeklyCap > 0) Text('${_money(line.weeklyCap)} / ${_t('week', 'أسبوع')}', style: const TextStyle(fontSize: 11)),
-                ]),
-              )),
-        ]),
-      ),
-    );
+    final labels = <HouseholdBudgetPriority, String>{HouseholdBudgetPriority.essential: _t('Essential', 'أساسي'), HouseholdBudgetPriority.important: _t('Important', 'مهم'), HouseholdBudgetPriority.flexible: _t('Flexible', 'مرن'), HouseholdBudgetPriority.reserve: _t('Reserve', 'احتياطي')};
+    return Card(child: Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(_t('Manager instructions', 'تعليمات مدير البيت'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900)), const SizedBox(height: 8), Text(management.managerMessage, style: const TextStyle(height: 1.45)), const Divider(height: 26), ...management.lines.map((line) => ListTile(dense: true, contentPadding: EdgeInsets.zero, leading: Icon(_priorityIcon(line.priority)), title: Text(line.title, style: const TextStyle(fontWeight: FontWeight.w800)), subtitle: Text('${labels[line.priority]}${line.autoAllocated ? ' • ${_t('AI estimate', 'تقدير المدير')}' : ''}'), trailing: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.end, children: [Text(_money(line.amount), style: const TextStyle(fontWeight: FontWeight.w900)), if (line.weeklyCap > 0) Text('${_money(line.weeklyCap)} / ${_t('week', 'أسبوع')}', style: const TextStyle(fontSize: 11))])))])));
   }
 
   Widget _statusCard(HouseholdBudgetPlan plan) {
-    final title = switch (plan.status) {
-      BudgetStatus.healthy => _t('Healthy plan', 'الخطة متوازنة'),
-      BudgetStatus.tight => _t('Tight month', 'الشهر محتاج حذر'),
-      BudgetStatus.overBudget => _t('Over budget', 'الخطة أعلى من الدخل'),
-      BudgetStatus.incomplete => _t('Needs more information', 'الخطة محتاجة بيانات'),
-    };
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
-          const SizedBox(height: 8),
-          Text(plan.recommendation, style: const TextStyle(height: 1.45)),
-          const Divider(height: 26),
-          Row(children: [const Icon(Icons.savings_outlined), const SizedBox(width: 8), Expanded(child: Text(_t('Safety reserve', 'احتياطي الأمان'), style: const TextStyle(fontWeight: FontWeight.w800))), Text(_money(plan.reserve), style: const TextStyle(fontWeight: FontWeight.w900))]),
-        ]),
-      ),
-    );
+    final title = switch (plan.status) {BudgetStatus.healthy => _t('Healthy plan', 'الخطة متوازنة'), BudgetStatus.tight => _t('Tight month', 'الشهر محتاج حذر'), BudgetStatus.overBudget => _t('Over budget', 'الخطة أعلى من الدخل'), BudgetStatus.incomplete => _t('Needs more information', 'الخطة محتاجة بيانات')};
+    return Card(child: Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900)), const SizedBox(height: 8), Text(plan.recommendation, style: const TextStyle(height: 1.45)), const Divider(height: 26), Row(children: [const Icon(Icons.savings_outlined), const SizedBox(width: 8), Expanded(child: Text(_t('Safety reserve', 'احتياطي الأمان'), style: const TextStyle(fontWeight: FontWeight.w800))), Text(_money(plan.reserve), style: const TextStyle(fontWeight: FontWeight.w900))])])));
   }
 
   Widget _errorCard(String message) => Card(color: Theme.of(context).colorScheme.errorContainer, child: Padding(padding: const EdgeInsets.all(16), child: Row(children: [const Icon(Icons.cloud_off_rounded), const SizedBox(width: 10), Expanded(child: Text(message, style: const TextStyle(fontWeight: FontWeight.w700, height: 1.35)))])));
