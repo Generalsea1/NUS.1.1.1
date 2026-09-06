@@ -45,11 +45,14 @@ class SupabaseAuthRepository implements AuthRepository {
     if (client == null) {
       throw StateError('Supabase is not configured for this build.');
     }
-    await client.auth.signInWithOAuth(
+    final started = await client.auth.signInWithOAuth(
       supabase.OAuthProvider.google,
-      redirectTo: 'io.supabase.nus://login-callback/',
+      redirectTo: 'nus://auth-callback',
       authScreenLaunchMode: supabase.LaunchMode.externalApplication,
     );
+    if (!started) {
+      throw StateError('Google sign-in could not be started.');
+    }
   }
 
   @override
