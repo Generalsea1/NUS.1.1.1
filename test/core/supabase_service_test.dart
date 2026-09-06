@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:nus_1_1_1/core/supabase_service.dart';
+import 'package:nus/core/supabase_service.dart';
 
 void main() {
   test('Supabase config validation rejects missing provider credentials', () {
