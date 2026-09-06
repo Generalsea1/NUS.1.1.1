@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../application/expense_lifecycle_service.dart';
+import '../domain/household_budget_actual_comparison.dart';
 import '../domain/household_budget_management.dart';
 import '../domain/household_budget_plan.dart';
 import 'expense_page.dart';
@@ -67,7 +68,10 @@ class _HouseholdExpenseManagerPageState extends State<HouseholdExpenseManagerPag
       final expenses = await widget.service.list();
       final now = DateTime.now();
       _actualThisMonth = expenses
-          .where((e) => e.date.year == now.year && e.date.month == now.month)
+          .where((e) =>
+              e.date.year == now.year &&
+              e.date.month == now.month &&
+              e.amount.currencyCode == 'EGP')
           .fold<int>(0, (sum, e) => sum + e.amount.minorUnits ~/ 100);
     } catch (_) {
       _actualThisMonth = 0;
@@ -97,6 +101,14 @@ class _HouseholdExpenseManagerPageState extends State<HouseholdExpenseManagerPag
           savingsTarget: _value('savingsTarget'),
         ),
       );
+
+  HouseholdBudgetActualComparison _actualComparison(HouseholdBudgetPlan plan) {
+    final plannedSpending = (plan.plannedTotal - plan.reserve).clamp(0, 0x7fffffffffffffff);
+    return HouseholdBudgetActualComparison(
+      plannedAmount: plannedSpending,
+      actualAmount: _actualThisMonth,
+    );
+  }
 
   Future<void> _saveAndPlan() async {
     if (_saving) return;
@@ -133,6 +145,7 @@ class _HouseholdExpenseManagerPageState extends State<HouseholdExpenseManagerPag
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
     final plan = _plan ?? _buildPlan();
+    final comparison = _actualComparison(plan);
     return Scaffold(
       appBar: AppBar(
         title: Text(_t('Household Expense Manager', 'مصروفات مدير المنزل')),
@@ -154,6 +167,8 @@ class _HouseholdExpenseManagerPageState extends State<HouseholdExpenseManagerPag
           _heroCard(plan),
           const SizedBox(height: 14),
           _summaryGrid(plan),
+          const SizedBox(height: 18),
+          _actualVsPlanCard(comparison),
           const SizedBox(height: 18),
           _managementCard(plan.management),
           const SizedBox(height: 18),
@@ -254,6 +269,50 @@ class _HouseholdExpenseManagerPageState extends State<HouseholdExpenseManagerPag
             FittedBox(alignment: AlignmentDirectional.centerStart, child: Text(value, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w900))),
           ]),
         ),
+      );
+
+  Widget _actualVsPlanCard(HouseholdBudgetActualComparison comparison) {
+    final overPlan = comparison.isOverPlan;
+    final tone = overPlan
+        ? Theme.of(context).colorScheme.errorContainer
+        : Theme.of(context).colorScheme.secondaryContainer;
+    final varianceLabel = overPlan ? 'متجاوز الخطة' : 'متبقي من الخطة';
+    return Card(
+      elevation: 0,
+      color: tone,
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Icon(overPlan ? Icons.warning_amber_rounded : Icons.fact_check_outlined),
+            const SizedBox(width: 10),
+            const Expanded(child: Text('الواقع مقابل الخطة', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900))),
+          ]),
+          const SizedBox(height: 12),
+          Row(children: [
+            Expanded(child: _comparisonMetric('خطة الإنفاق', _money(comparison.plannedAmount))),
+            const SizedBox(width: 10),
+            Expanded(child: _comparisonMetric('الفعلي هذا الشهر', _money(comparison.actualAmount))),
+          ]),
+          const SizedBox(height: 10),
+          Text('$varianceLabel: ${_money(comparison.variance.abs())}', style: const TextStyle(fontWeight: FontWeight.w900)),
+          const SizedBox(height: 6),
+          Text(comparison.managerMessage, style: const TextStyle(height: 1.45)),
+        ]),
+      ),
+    );
+  }
+
+  Widget _comparisonMetric(String title, String value) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 4),
+          FittedBox(
+            alignment: AlignmentDirectional.centerStart,
+            child: Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+          ),
+        ],
       );
 
   Widget _managementCard(HouseholdBudgetManagement management) {
