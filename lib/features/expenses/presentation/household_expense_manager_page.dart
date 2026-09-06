@@ -3,7 +3,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../application/expense_lifecycle_service.dart';
 import '../domain/household_budget_plan.dart';
-import '../domain/money.dart';
 import 'expense_page.dart';
 
 class HouseholdExpenseManagerPage extends StatefulWidget {
@@ -132,7 +131,7 @@ class _HouseholdExpenseManagerPageState extends State<HouseholdExpenseManagerPag
     final text = value.abs().toString();
     final parts = <String>[];
     for (var i = text.length; i > 0; i -= 3) {
-      final start = (i - 3).clamp(0, i);
+      final start = i > 3 ? i - 3 : 0;
       parts.insert(0, text.substring(start, i));
     }
     return '${value < 0 ? '-' : ''}${parts.join(',')}';
