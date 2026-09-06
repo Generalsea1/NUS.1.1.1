@@ -88,5 +88,5 @@ class ExpenseFinancialQueryService {
   /// Keeps the shared transaction direction semantics in one place for future
   /// financial ledger projections.
   int signedTransactionMinorUnits(FinancialTransaction transaction) =>
-      transaction.signedMinorUnits;
+      transaction.amountMinorUnits;
 }

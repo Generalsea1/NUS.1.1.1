@@ -2,7 +2,7 @@ import '../domain/bill.dart';
 
 /// Controlled application boundary for bill lifecycle mutations.
 class BillMutationService {
-  const BillMutationService({required BillRepository bills});
+  const BillMutationService({required this.bills});
 
   final BillRepository bills;
 

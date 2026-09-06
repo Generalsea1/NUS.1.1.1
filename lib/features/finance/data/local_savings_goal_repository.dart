@@ -45,7 +45,7 @@ class LocalSavingsGoalRepository implements SavingsGoalRepository {
     } else {
       final parsed = jsonDecode(raw);
       if (parsed is! List<dynamic>) {
-        throw const StateError('Savings goal storage root is malformed.');
+        throw StateError('Savings goal storage root is malformed.');
       }
       decoded = List<dynamic>.from(parsed);
     }

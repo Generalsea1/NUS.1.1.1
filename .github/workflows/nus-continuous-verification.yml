@@ -78,7 +78,7 @@ jobs:
         run: |
           set -euo pipefail
           APK="build/app/outputs/flutter-apk/app-debug.apk"
-          unzip -l "$APK" | grep -E 'res/mipmap-(mdpi|hdpi|xhdpi|xxhdpi|xxxhdpi)(-v[0-9]+)?/ic_launcher(_round)?\.(png|webp)$'
+          unzip -l "$APK" | grep -E 'res/drawable(-[a-z0-9]+)?/ic_launcher\.xml$'
 
       - name: Generate APK SHA-256 evidence
         shell: bash
@@ -99,3 +99,36 @@ jobs:
             build/app/outputs/flutter-apk/build-evidence.txt
           if-no-files-found: error
           retention-days: 14
+
+  recurrence-runtime:
+    name: Recurrence runtime and equivalence verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout exact commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.2'
+          channel: stable
+          cache: true
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Run recurrence runtime tests
+        run: |
+          set -euo pipefail
+          flutter test test/recurrence_engine_test.dart test/recurrence_engine_equivalence_test.dart
+
+      - name: Verify no tracked workspace mutation
+        run: |
+          set -euo pipefail
+          git diff --quiet -- .
+          git diff --cached --quiet -- .

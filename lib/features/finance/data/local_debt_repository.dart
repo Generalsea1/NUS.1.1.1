@@ -45,8 +45,9 @@ class LocalDebtRepository implements DebtRepository {
       }
     }
 
+    // Debt settlement state is intentionally derived from settlement records.
+    // This repository sorts only by fields owned by the Debt aggregate.
     debts.sort((a, b) {
-      if (a.isSettled != b.isSettled) return a.isSettled ? 1 : -1;
       final dueA = a.dueAt;
       final dueB = b.dueAt;
       if (dueA == null && dueB != null) return 1;

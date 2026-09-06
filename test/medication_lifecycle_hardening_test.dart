@@ -71,7 +71,7 @@ MedicationLifecycleService _service(_EffectiveReminderPort port) => MedicationLi
     );
 
 Map<String, DateTime> _effectiveReminderSet(Medication medication) => {
-      for (final item in MedicationReminderCoordinator.occurrences(
+      for (final item in _coordinator(_EffectiveReminderPort()).occurrences(
         medication,
         now: _now,
         horizon: const Duration(days: 30),
