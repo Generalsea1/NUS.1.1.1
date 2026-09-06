@@ -176,9 +176,10 @@ void main() {
       await _tapSave(tester);
 
       final stored = repository._store.values.single;
+      final today = DateTime.now();
       expect(stored.amount.minorUnits, 1234);
       expect(stored.amount.currencyCode, 'EUR');
-      expect(stored.date, ExpenseDate(year: 2026, month: 9, day: 4));
+      expect(stored.date, ExpenseDate(year: today.year, month: today.month, day: today.day));
       expect(stored.category, 'Transport');
       expect(stored.merchant, 'Taxi');
       expect(stored.description, 'Airport ride');
