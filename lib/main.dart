@@ -20,7 +20,6 @@ import 'features/shopping/presentation/shopping_page.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await SupabaseService.initialize();
-
   final notifications = NotificationService();
   await notifications.initialize();
 
@@ -479,87 +478,120 @@ class _HomePageState extends State<HomePage> {
             onPressed: () => widget.store.toggle(item),
             icon: Icon(item.completed ? Icons.check_rounded : Icons.event_available_rounded),
           ),
-          title: Text(item.title, style: const TextStyle(fontWeight: FontWeight.w800)),
-          subtitle: Text('$date • $time'),
-          trailing: item.completed
-              ? const Icon(Icons.check_circle_rounded)
-              : const Icon(Icons.chevron_left_rounded),
+          title: Text(item.title, style: TextStyle(
+            fontWeight: FontWeight.w800,
+            decoration: item.completed ? TextDecoration.lineThrough : null,
+          )),
+          subtitle: Text('$date  •  $time'),
+          trailing: IconButton(
+            onPressed: () => widget.store.remove(item),
+            icon: const Icon(Icons.delete_outline_rounded),
+          ),
         ),
       ),
     );
   }
 
   Future<void> _showAddSheet(BuildContext context) async {
-    final controller = TextEditingController();
-    var date = DateTime.now().add(const Duration(hours: 1));
-    final pickedDate = await showDatePicker(
-      context: context,
-      initialDate: date,
-      firstDate: DateUtils.dateOnly(DateTime.now()),
-      lastDate: DateTime.now().add(const Duration(days: 3650)),
-    );
-    if (pickedDate == null || !mounted) {
-      controller.dispose();
-      return;
-    }
-    date = DateTime(pickedDate.year, pickedDate.month, pickedDate.day, date.hour, date.minute);
-    final pickedTime = await showTimePicker(context: context, initialTime: TimeOfDay.fromDateTime(date));
-    if (pickedTime == null || !mounted) {
-      controller.dispose();
-      return;
-    }
-    date = DateTime(pickedDate.year, pickedDate.month, pickedDate.day, pickedTime.hour, pickedTime.minute);
+    var title = '';
+    var selected = DateTime.now().add(const Duration(minutes: 30));
 
-    final added = await showModalBottomSheet<bool>(
+    final reminder = await showModalBottomSheet<({String title, DateTime dateTime})>(
       context: context,
       isScrollControlled: true,
-      builder: (sheetContext) {
-        return Padding(
-          padding: EdgeInsets.only(
-            left: 20,
-            right: 20,
-            top: 24,
-            bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 24,
+      showDragHandle: true,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setSheetState) => Padding(
+          padding: EdgeInsets.fromLTRB(
+            20, 8, 20, MediaQuery.of(context).viewInsets.bottom + 24,
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+          child: Column(mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(t('New reminder', 'تذكير جديد'), style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900)),
-              const SizedBox(height: 14),
+              Text(t('New reminder', 'تذكير جديد'), style: const TextStyle(
+                fontSize: 24, fontWeight: FontWeight.w900,
+              )),
+              const SizedBox(height: 16),
               TextField(
-                controller: controller,
                 autofocus: true,
-                decoration: InputDecoration(
-                  labelText: t('Title', 'عنوان التذكير'),
-                  border: const OutlineInputBorder(),
-                ),
-                onSubmitted: (_) => _submitReminder(sheetContext, controller, date),
+                textInputAction: TextInputAction.done,
+                onChanged: (value) => title = value,
+                decoration: InputDecoration(labelText: t(
+                  'What do you need to remember?', 'إيه اللي محتاج تفتكره؟',
+                )),
               ),
-              const SizedBox(height: 12),
-              Text('${t('When', 'الموعد')}: ${widget.isArabic ? '${date.day}/${date.month}' : '${date.month}/${date.day}'} • ${TimeOfDay.fromDateTime(date).format(context)}'),
               const SizedBox(height: 14),
+              Row(children: [
+                Expanded(child: OutlinedButton.icon(
+                  onPressed: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      firstDate: DateUtils.dateOnly(DateTime.now()),
+                      lastDate: DateTime.now().add(const Duration(days: 3650)),
+                      initialDate: selected,
+                    );
+                    if (picked != null) {
+                      setSheetState(() {
+                        selected = DateTime(
+                          picked.year, picked.month, picked.day,
+                          selected.hour, selected.minute,
+                        );
+                      });
+                    }
+                  },
+                  icon: const Icon(Icons.calendar_today_outlined),
+                  label: Text('${selected.day}/${selected.month}/${selected.year}'),
+                )),
+                const SizedBox(width: 10),
+                Expanded(child: OutlinedButton.icon(
+                  onPressed: () async {
+                    final picked = await showTimePicker(
+                      context: context,
+                      initialTime: TimeOfDay.fromDateTime(selected),
+                    );
+                    if (picked != null) {
+                      setSheetState(() {
+                        selected = DateTime(
+                          selected.year, selected.month, selected.day,
+                          picked.hour, picked.minute,
+                        );
+                      });
+                    }
+                  },
+                  icon: const Icon(Icons.schedule_outlined),
+                  label: Text(TimeOfDay.fromDateTime(selected).format(context)),
+                )),
+              ]),
+              const SizedBox(height: 16),
               FilledButton(
-                onPressed: () => _submitReminder(sheetContext, controller, date),
+                onPressed: () {
+                  final cleanTitle = title.trim();
+                  final reminderDate = selected;
+                  if (cleanTitle.isEmpty || !reminderDate.isAfter(DateTime.now())) {
+                    return;
+                  }
+                  Navigator.of(context).pop((
+                    title: cleanTitle,
+                    dateTime: reminderDate,
+                  ));
+                },
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 14),
-                  child: Text(t('Save reminder', 'حفظ التذكير')),
+                  child: Text(t('Save reminder', 'احفظ التذكير')),
                 ),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text(t('Cancel', 'إلغاء')),
               ),
             ],
           ),
-        );
-      },
+        ),
+      ),
     );
-    controller.dispose();
-    if (added == true && mounted) setState(() {});
-  }
 
-  Future<void> _submitReminder(BuildContext context, TextEditingController controller, DateTime date) async {
-    final title = controller.text.trim();
-    if (title.isEmpty) return;
-    await widget.store.add(title, date);
-    if (context.mounted) Navigator.of(context).pop(true);
+    if (!mounted || reminder == null) return;
+    await widget.store.add(reminder.title, reminder.dateTime);
   }
 }
 
@@ -569,17 +601,17 @@ class _SectionHeader extends StatelessWidget {
   final int count;
 
   @override
-  Widget build(BuildContext context) => Row(children: [
-        Expanded(child: Text(title, style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w900))),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surfaceContainerHighest,
-            borderRadius: BorderRadius.circular(20),
+  Widget build(BuildContext context) => Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(title, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w900)),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18)),
+            child: Text('$count', style: const TextStyle(fontWeight: FontWeight.w800)),
           ),
-          child: Text('$count'),
-        ),
-      ]);
+        ],
+      );
 }
 
 class _EmptyCard extends StatelessWidget {
@@ -590,12 +622,29 @@ class _EmptyCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Card(
         elevation: 0,
+        color: Colors.white,
         child: Padding(
-          padding: const EdgeInsets.all(18),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(title, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 17)),
-            const SizedBox(height: 6),
-            Text(subtitle, style: const TextStyle(height: 1.4)),
+          padding: const EdgeInsets.all(20),
+          child: Row(children: [
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                color: const Color(0xFFEFF1FF),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              alignment: Alignment.center,
+              child: const Icon(Icons.check_circle_outline_rounded),
+            ),
+            const SizedBox(width: 14),
+            Expanded(child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(fontWeight: FontWeight.w900)),
+                const SizedBox(height: 4),
+                Text(subtitle, style: const TextStyle(height: 1.3)),
+              ],
+            )),
           ]),
         ),
       );
