@@ -1,5 +1,3 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
-
 import '../../../core/supabase_service.dart';
 
 class UserAiRunRepository {
@@ -15,6 +13,8 @@ class UserAiRunRepository {
         .eq('user_id', user.id)
         .order('created_at', ascending: false)
         .limit(limit);
-    return (rows as List).map((row) => Map<String, dynamic>.from(row as Map)).toList(growable: false);
+    return (rows as List)
+        .map((row) => Map<String, dynamic>.from(row as Map))
+        .toList(growable: false);
   }
 }
