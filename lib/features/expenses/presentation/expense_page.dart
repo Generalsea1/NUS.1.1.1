@@ -384,11 +384,28 @@ class _ExpenseFormPageState extends State<ExpenseFormPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(_editing ? _t('Edit expense', 'تعديل مصروف') : _t('New expense', 'مصروف جديد'))),
+      appBar: AppBar(
+        title: Text(_editing ? _t('Edit expense', 'تعديل مصروف') : _t('New expense', 'مصروف جديد')),
+      ),
+      bottomNavigationBar: SafeArea(
+        minimum: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+        child: FilledButton.icon(
+          onPressed: _saving ? null : _save,
+          icon: _saving
+              ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+              : const Icon(Icons.save_outlined),
+          label: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            child: Text(_saving
+                ? _t('Saving…', 'بيتحفظ…')
+                : _t('Save expense', 'حفظ المصروف')),
+          ),
+        ),
+      ),
       body: SafeArea(
         child: Form(
           child: ListView(
-            padding: EdgeInsets.fromLTRB(20, 16, 20, MediaQuery.of(context).viewInsets.bottom + 28),
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
             children: [
               _field(
                 controller: _amountController,
@@ -436,19 +453,7 @@ class _ExpenseFormPageState extends State<ExpenseFormPage> {
                   child: Text(_formError!),
                 ),
               ],
-              const SizedBox(height: 22),
-              FilledButton.icon(
-                onPressed: _saving ? null : _save,
-                icon: _saving
-                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Icon(Icons.save_outlined),
-                label: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  child: Text(_saving
-                      ? _t('Saving…', 'بيتحفظ…')
-                      : _t('Save expense', 'حفظ المصروف')),
-                ),
-              ),
+              const SizedBox(height: 24),
             ],
           ),
         ),
