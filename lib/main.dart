@@ -646,13 +646,13 @@ class _HomePageState extends State<HomePage> {
     );
 
     if (!mounted) {
-      controller.dispose();
+      Future<void>.delayed(Duration.zero, controller.dispose);
       return;
     }
     if (result != null && controller.text.trim().isNotEmpty) {
       await widget.store.add(controller.text, result);
     }
-    controller.dispose();
+    Future<void>.delayed(Duration.zero, controller.dispose);
   }
 }
 
