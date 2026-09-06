@@ -7,9 +7,32 @@ class ReminderSchedulerAppointmentAdapter implements AppointmentReminderPort {
   final ReminderScheduler scheduler;
 
   @override
-  Future<void> schedule({required String id, required String title, required DateTime dateTime}) =>
-      scheduler.scheduleReminder(id: id, title: title, dateTime: dateTime);
+  Future<void> schedule({
+    required String id,
+    required String title,
+    required DateTime dateTime,
+  }) async {
+    if (scheduler is NotificationService) {
+      await (scheduler as NotificationService).scheduleStrongReminder(
+        id: id,
+        title: title,
+        dateTime: dateTime,
+      );
+      return;
+    }
+    await scheduler.scheduleReminder(
+      id: id,
+      title: title,
+      dateTime: dateTime,
+    );
+  }
 
   @override
-  Future<void> cancel(String id) => scheduler.cancelReminder(id);
+  Future<void> cancel(String id) async {
+    if (scheduler is NotificationService) {
+      await (scheduler as NotificationService).cancelStrongReminder(id);
+      return;
+    }
+    await scheduler.cancelReminder(id);
+  }
 }
