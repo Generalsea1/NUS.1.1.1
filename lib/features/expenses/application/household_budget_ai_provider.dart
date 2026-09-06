@@ -34,10 +34,12 @@ class HouseholdBudgetAiProvider {
 
     try {
       await _persistHouseholdContext(client, session.user.id, input);
+      final currencyCode = await _loadCurrencyCode(client, session.user.id);
 
       final response = await client.functions.invoke(
         'household-budget-ai',
         body: {
+          'currencyCode': currencyCode,
           'income': input.monthlyIncome,
           'rent': input.rent,
           'utilities': input.utilities,
@@ -93,6 +95,22 @@ class HouseholdBudgetAiProvider {
         'The household AI service failed: $error',
       );
     }
+  }
+
+  Future<String> _loadCurrencyCode(
+    SupabaseClient client,
+    String userId,
+  ) async {
+    final row = await client
+        .from('household_profiles')
+        .select('currency_code')
+        .eq('user_id', userId)
+        .maybeSingle();
+    final value = row?['currency_code'];
+    if (value is String && value.trim().isNotEmpty) {
+      return value.trim().toUpperCase();
+    }
+    return 'EGP';
   }
 
   Future<void> _persistHouseholdContext(
