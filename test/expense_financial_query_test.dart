@@ -133,13 +133,9 @@ void main() {
   });
 
   test('Expense totals are represented as negative cash-flow deltas', () {
-    final service = _SignedExpenseProbe();
+    final service = ExpenseFinancialQueryService(reader: _EmptyReader());
     expect(service.signedExpenseMinorUnits(1234), -1234);
   });
-}
-
-class _SignedExpenseProbe extends ExpenseFinancialQueryService {
-  const _SignedExpenseProbe() : super(reader: _EmptyReader());
 }
 
 class _EmptyReader implements FinancialExpenseReader {
