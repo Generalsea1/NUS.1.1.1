@@ -1,0 +1,45 @@
+name: One-shot reminder lifecycle repair
+
+on:
+  push:
+    branches:
+      - fix/android-build-workflow
+    paths:
+      - '.github/workflows/repair-lifecycle.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Patch reminder controller lifecycle
+        shell: python3 {0}
+        run: |
+          from pathlib import Path
+
+          path = Path('lib/main.dart')
+          text = path.read_text(encoding='utf-8')
+          old = """    if (!mounted) {\n      controller.dispose();\n      return;\n    }\n    if (result != null && controller.text.trim().isNotEmpty) {\n      await widget.store.add(controller.text, result);\n    }\n    controller.dispose();\n"""
+          new = """    if (!mounted) {\n      Future<void>.delayed(Duration.zero, controller.dispose);\n      return;\n    }\n    if (result != null && controller.text.trim().isNotEmpty) {\n      await widget.store.add(controller.text, result);\n    }\n    Future<void>.delayed(Duration.zero, controller.dispose);\n"""
+          if old not in text:
+              raise SystemExit('Expected reminder lifecycle block was not found; refusing to patch.')
+          path.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+      - name: Commit lifecycle fix back to branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'NUS CI'
+          git config user.email '134608530+Generalsea1@users.noreply.github.com'
+          git add lib/main.dart
+          git diff --cached --quiet && { echo 'No lifecycle change needed.'; exit 0; }
+          git commit -m 'fix(ui): prevent reminder controller teardown race [skip ci]'
+          git push origin HEAD:fix/android-build-workflow
