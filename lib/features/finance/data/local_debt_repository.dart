@@ -46,7 +46,6 @@ class LocalDebtRepository implements DebtRepository {
     }
 
     debts.sort((a, b) {
-      if (a.isSettled != b.isSettled) return a.isSettled ? 1 : -1;
       final dueA = a.dueAt;
       final dueB = b.dueAt;
       if (dueA == null && dueB != null) return 1;
