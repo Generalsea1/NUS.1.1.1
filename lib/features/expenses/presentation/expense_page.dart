@@ -404,57 +404,59 @@ class _ExpenseFormPageState extends State<ExpenseFormPage> {
       ),
       body: SafeArea(
         child: Form(
-          child: ListView(
+          child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
-            children: [
-              _field(
-                controller: _amountController,
-                label: _t('Amount', 'المبلغ'),
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              ),
-              const SizedBox(height: 14),
-              _field(
-                controller: _currencyController,
-                label: _t('Currency', 'العملة'),
-                textCapitalization: TextCapitalization.characters,
-                maxLength: 3,
-              ),
-              const SizedBox(height: 14),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(_t('Date', 'التاريخ')),
-                subtitle: Text(_date.toIsoString()),
-                trailing: OutlinedButton.icon(
-                  onPressed: _saving ? null : _pickDate,
-                  icon: const Icon(Icons.calendar_month_outlined),
-                  label: Text(_t('Choose', 'اختار')),
+            child: Column(
+              children: [
+                _field(
+                  controller: _amountController,
+                  label: _t('Amount', 'المبلغ'),
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 ),
-              ),
-              const SizedBox(height: 8),
-              _field(controller: _categoryController, label: _t('Category', 'الفئة')),
-              const SizedBox(height: 14),
-              _field(controller: _merchantController, label: _t('Merchant', 'التاجر')),
-              const SizedBox(height: 14),
-              _field(
-                controller: _descriptionController,
-                label: _t('Description', 'ملاحظة'),
-                maxLines: 3,
-              ),
-              const SizedBox(height: 14),
-              _field(controller: _paymentMethodController, label: _t('Payment method', 'طريقة الدفع')),
-              if (_formError != null) ...[
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.errorContainer,
-                    borderRadius: BorderRadius.circular(14),
+                const SizedBox(height: 14),
+                _field(
+                  controller: _currencyController,
+                  label: _t('Currency', 'العملة'),
+                  textCapitalization: TextCapitalization.characters,
+                  maxLength: 3,
+                ),
+                const SizedBox(height: 14),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(_t('Date', 'التاريخ')),
+                  subtitle: Text(_date.toIsoString()),
+                  trailing: OutlinedButton.icon(
+                    onPressed: _saving ? null : _pickDate,
+                    icon: const Icon(Icons.calendar_month_outlined),
+                    label: Text(_t('Choose', 'اختار')),
                   ),
-                  child: Text(_formError!),
                 ),
+                const SizedBox(height: 8),
+                _field(controller: _categoryController, label: _t('Category', 'الفئة')),
+                const SizedBox(height: 14),
+                _field(controller: _merchantController, label: _t('Merchant', 'التاجر')),
+                const SizedBox(height: 14),
+                _field(
+                  controller: _descriptionController,
+                  label: _t('Description', 'ملاحظة'),
+                  maxLines: 3,
+                ),
+                const SizedBox(height: 14),
+                _field(controller: _paymentMethodController, label: _t('Payment method', 'طريقة الدفع')),
+                if (_formError != null) ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.errorContainer,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Text(_formError!),
+                  ),
+                ],
+                const SizedBox(height: 24),
               ],
-              const SizedBox(height: 24),
-            ],
+            ),
           ),
         ),
       ),
