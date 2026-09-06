@@ -86,18 +86,15 @@ Future<void> _revealSave(WidgetTester tester) async {
   );
   expect(formList, findsOneWidget);
 
-  // Text entry can leave the keyboard/inset active. Clear focus first so the
-  // save button is measured against the full test viewport before tapping.
   FocusManager.instance.primaryFocus?.unfocus();
   tester.testTextInput.hide();
   await tester.pump();
 
   final save = find.text('حفظ المصروف');
-  await tester.dragUntilVisible(
+  await tester.scrollUntilVisible(
     save,
-    formList,
-    const Offset(0, -500),
-    maxIteration: 10,
+    300,
+    scrollable: formList,
   );
   await tester.ensureVisible(save);
   expect(save, findsOneWidget);
