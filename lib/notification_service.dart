@@ -29,13 +29,14 @@ class NotificationService implements ReminderScheduler {
 
     try {
       tz_data.initializeTimeZones();
-      final timezoneInfo = await FlutterTimezone.getLocalTimezone();
+      final timezoneInfo = await FlutterTimezone.getLocalTimezone().timeout(
+        const Duration(seconds: 2),
+      );
       final location = tz.getLocation(timezoneInfo.identifier);
       tz.setLocalLocation(location);
     } catch (error) {
-      // Notification/timezone infrastructure must never prevent the app from
-      // reaching its first usable screen. The tz package already has a
-      // default location, so continue with it when device lookup fails.
+      // Device timezone lookup is optional infrastructure. Never allow it to
+      // block NUS from reaching its first usable screen.
       debugPrint('NUS timezone initialization failed: $error');
     }
 
@@ -43,13 +44,22 @@ class NotificationService implements ReminderScheduler {
     const settings = InitializationSettings(android: android);
 
     try {
-      await _plugin.initialize(settings);
+      await _plugin.initialize(settings).timeout(
+        const Duration(seconds: 3),
+      );
     } catch (error) {
       debugPrint('NUS notification plugin initialization failed: $error');
     }
 
     _initialized = true;
-    await SupabaseService.initialize();
+
+    try {
+      await SupabaseService.initialize().timeout(
+        const Duration(seconds: 3),
+      );
+    } catch (error) {
+      debugPrint('NUS Supabase initialization failed: $error');
+    }
   }
 
   Future<bool> requestPermission() async {
