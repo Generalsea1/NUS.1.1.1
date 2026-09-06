@@ -1,9 +1,10 @@
+import 'household_budget_management.dart';
+
 /// Domain model for the "Household Expense Manager" experience.
 ///
-/// The planner is intentionally deterministic and provider-agnostic. It uses
-/// user-entered values when available and can provisionally allocate missing
-/// categories from the remaining household envelope. A future AI advisor can
-/// consume the same contract without changing the UI boundary.
+/// The planner is deterministic and provider-agnostic. It uses user-entered
+/// values when available and provisionally allocates missing categories from
+/// the remaining household envelope.
 class HouseholdBudgetInput {
   const HouseholdBudgetInput({
     required this.monthlyIncome,
@@ -40,6 +41,7 @@ class HouseholdBudgetInput {
       effectiveClothing + effectiveMaintenance + effectiveFamilyFun + effectiveOther;
   int get plannedTotal => mandatoryTotal + flexibleTotal + effectiveReserve;
   int get unallocated => monthlyIncome - plannedTotal;
+
   bool get isOverBudget =>
       knownMandatoryTotal + knownFlexibleTotal + savingsTarget > monthlyIncome;
 
@@ -65,11 +67,9 @@ class HouseholdBudgetInput {
     return base - reserve;
   }
 
-  // Deterministic baseline weights. They are fallback envelopes, not claims
-  // that every family should spend the same percentages. Twenty percent of
-  // the post-reserve envelope remains deliberately unallocated as a buffer.
-  int get _autoFood =>
-      food > 0 ? 0 : _shareForMissing(_autoEnvelope, 0.50);
+  // Fallback weights are planning envelopes, not universal spending rules.
+  // Twenty percent of the post-reserve envelope stays deliberately free.
+  int get _autoFood => food > 0 ? 0 : _shareForMissing(_autoEnvelope, 0.50);
   int get _autoClothing =>
       clothing > 0 ? 0 : _shareForMissing(_autoEnvelope, 0.08);
   int get _autoMaintenance =>
@@ -92,6 +92,7 @@ class HouseholdBudgetPlan {
     required this.weeklyAllowance,
     required this.recommendation,
     required this.status,
+    required this.management,
   });
 
   final HouseholdBudgetInput input;
@@ -99,6 +100,7 @@ class HouseholdBudgetPlan {
   final int weeklyAllowance;
   final String recommendation;
   final BudgetStatus status;
+  final HouseholdBudgetManagement management;
 
   int get plannedTotal => input.plannedTotal;
   int get remaining => input.monthlyIncome - plannedTotal;
@@ -115,6 +117,7 @@ HouseholdBudgetPlan buildHouseholdBudgetPlan(HouseholdBudgetInput input) {
       recommendation:
           'ابدأ بتسجيل الدخل الشهري أولاً حتى يقدر مدير المنزل يوزّع المصروفات بشكل صحيح.',
       status: BudgetStatus.overBudget,
+      management: _management(input, 0, 0),
     );
   }
 
@@ -126,6 +129,7 @@ HouseholdBudgetPlan buildHouseholdBudgetPlan(HouseholdBudgetInput input) {
       recommendation:
           'الخطة أعلى من الدخل. ابدأ بالالتزامات الأساسية، ثم خفّض البنود المرنة والمشتريات غير الضرورية قبل المساس بالأساسيات.',
       status: BudgetStatus.overBudget,
+      management: _management(input, input.savingsTarget, 0),
     );
   }
 
@@ -137,6 +141,7 @@ HouseholdBudgetPlan buildHouseholdBudgetPlan(HouseholdBudgetInput input) {
       input.maintenance == 0 ||
       input.familyFun == 0 ||
       input.other == 0;
+  final management = _management(input, reserve, weeklyAllowance);
 
   if (remaining < 0) {
     return HouseholdBudgetPlan(
@@ -146,6 +151,7 @@ HouseholdBudgetPlan buildHouseholdBudgetPlan(HouseholdBudgetInput input) {
       recommendation:
           'الخطة أعلى من الدخل بعد إضافة الاحتياطي. خفّض المصروفات المرنة أو هدف الادخار قبل اعتماد الشهر.',
       status: BudgetStatus.overBudget,
+      management: _management(input, reserve, 0),
     );
   }
 
@@ -161,6 +167,7 @@ HouseholdBudgetPlan buildHouseholdBudgetPlan(HouseholdBudgetInput input) {
         hasMissingPlanningInputs,
       ),
       status: BudgetStatus.tight,
+      management: management,
     );
   }
 
@@ -174,6 +181,33 @@ HouseholdBudgetPlan buildHouseholdBudgetPlan(HouseholdBudgetInput input) {
       hasMissingPlanningInputs,
     ),
     status: BudgetStatus.healthy,
+    management: management,
+  );
+}
+
+HouseholdBudgetManagement _management(
+  HouseholdBudgetInput input,
+  int reserve,
+  int weeklyAllowance,
+) {
+  return buildHouseholdBudgetManagement(
+    rent: input.rent,
+    utilities: input.utilities,
+    food: input.effectiveFood,
+    transport: input.transport,
+    debt: input.debt,
+    health: input.health,
+    clothing: input.effectiveClothing,
+    maintenance: input.effectiveMaintenance,
+    familyFun: input.effectiveFamilyFun,
+    other: input.effectiveOther,
+    reserve: reserve,
+    weeklyRoom: weeklyAllowance,
+    knownFood: input.food,
+    knownClothing: input.clothing,
+    knownMaintenance: input.maintenance,
+    knownFamilyFun: input.familyFun,
+    knownOther: input.other,
   );
 }
 
