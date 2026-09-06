@@ -76,7 +76,7 @@ void main() {
     expect(plan.weeklyAllowance, 855);
   });
 
-  test('does not present incomplete income as spendable remainder before AI planning', () {
+  test('marks missing household categories as incomplete until AI planning runs', () {
     final input = HouseholdBudgetInput(
       monthlyIncome: 10000,
       rent: 2500,
@@ -99,10 +99,11 @@ void main() {
     expect(plan.plannedTotal, 4700);
     expect(plan.remaining, 0);
     expect(plan.weeklyAllowance, 0);
-    expect(plan.recommendation, contains('لسه في بنود مصروفات ناقصة'));
+    expect(plan.status, BudgetStatus.incomplete);
+    expect(plan.recommendation, contains('الذكاء الاصطناعي'));
   });
 
-  test('manual category values remain authoritative while missing categories stay unplanned', () {
+  test('manual category values remain authoritative while missing categories stay incomplete', () {
     final input = HouseholdBudgetInput(
       monthlyIncome: 10000,
       rent: 2500,
@@ -122,7 +123,7 @@ void main() {
     expect(input.effectiveFamilyFun, 0);
     expect(input.effectiveOther, 0);
     expect(input.hasReadyPlan, isFalse);
-    expect(plan.status, BudgetStatus.tight);
+    expect(plan.status, BudgetStatus.incomplete);
     expect(plan.remaining, 0);
     expect(plan.weeklyAllowance, 0);
   });
