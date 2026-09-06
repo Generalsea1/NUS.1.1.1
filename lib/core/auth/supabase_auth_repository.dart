@@ -6,7 +6,6 @@ import '../supabase_service.dart';
 import 'auth_repository.dart';
 import 'auth_state.dart';
 
-/// Supabase-backed authentication infrastructure.
 class SupabaseAuthRepository implements AuthRepository {
   AuthState _state = const UnauthenticatedAuthState();
   StreamSubscription<supabase.AuthState>? _subscription;
@@ -42,14 +41,13 @@ class SupabaseAuthRepository implements AuthRepository {
   Future<void> signInWithGoogle() async {
     await initialize();
     final client = SupabaseService.client;
-    if (client == null) {
-      throw StateError('Supabase is not configured for this build.');
-    }
-    await client.auth.signInWithOAuth(
+    if (client == null) throw StateError('Supabase is not configured for this build.');
+    final started = await client.auth.signInWithOAuth(
       supabase.OAuthProvider.google,
-      redirectTo: 'io.supabase.nus://login-callback/',
+      redirectTo: 'nus://auth-callback',
       authScreenLaunchMode: supabase.LaunchMode.externalApplication,
     );
+    if (!started) throw StateError('Google sign-in could not be started.');
   }
 
   @override
