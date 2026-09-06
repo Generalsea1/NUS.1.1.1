@@ -1,17 +1,9 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'supabase_auth_repository.dart';
 
-import '../supabase_service.dart';
-
+/// Backward-compatible Google sign-in facade.
+/// The real authentication contract lives in [SupabaseAuthRepository].
 class GoogleAuthRepository {
   const GoogleAuthRepository();
 
-  Future<bool> signIn() async {
-    final client = SupabaseService.client;
-    if (client == null) return false;
-    return client.auth.signInWithOAuth(
-      OAuthProvider.google,
-      redirectTo: 'nus://auth-callback',
-      authScreenLaunchMode: LaunchMode.externalApplication,
-    );
-  }
+  Future<void> signIn() => SupabaseAuthRepository().signInWithGoogle();
 }
