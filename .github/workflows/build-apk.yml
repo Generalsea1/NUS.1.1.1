@@ -1,6 +1,7 @@
 name: Build NUS Android APK
 
 # Final Android gate: analyze, test, build, inspect, archive, and preserve the original NUS app icon.
+# The final clean run is intentionally triggered by this file so its APK is tied to one immutable HEAD SHA.
 on:
   workflow_dispatch:
   pull_request:
@@ -50,7 +51,6 @@ jobs:
 
           manifest = Path('android/app/src/main/AndroidManifest.xml')
           text = manifest.read_text(encoding='utf-8')
-
           if 'android:scheme="nus"' not in text:
               activity_marker = 'android:name=".MainActivity"'
               activity_index = text.find(activity_marker)
@@ -80,11 +80,7 @@ jobs:
               marker = 'android {\n'
               if marker not in gradle_text:
                   raise SystemExit('ERROR: Android Gradle android block was not found.')
-              gradle_text = gradle_text.replace(
-                  marker,
-                  'android {\n    compileOptions {\n        isCoreLibraryDesugaringEnabled = true\n    }\n',
-                  1,
-              )
+              gradle_text = gradle_text.replace(marker, 'android {\n    compileOptions {\n        isCoreLibraryDesugaringEnabled = true\n    }\n', 1)
           dependency = 'coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")'
           if dependency not in gradle_text:
               gradle_text += f'\n\ndependencies {{\n    {dependency}\n}}\n'
@@ -123,7 +119,6 @@ jobs:
                   '        </receiver>\n'
               )
               final_manifest = final_manifest.replace('</application>', receiver_block + '    </application>', 1)
-
           manifest.write_text(final_manifest, encoding='utf-8')
 
           icon_source = Path('Neural_network_brain_app_icon_202609031742.jpeg')
@@ -132,8 +127,7 @@ jobs:
           if shutil.which('convert') is None:
               raise SystemExit('ERROR: ImageMagick convert is unavailable.')
 
-          # Flutter creates adaptive launcher XML files. Remove those so Android
-          # cannot select a generated Flutter icon on Android 8+ devices.
+          # Remove Flutter-generated adaptive icons so Android cannot select a replacement.
           for adaptive in (
               Path('android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml'),
               Path('android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml'),
@@ -152,11 +146,10 @@ jobs:
               target.mkdir(parents=True, exist_ok=True)
               for filename in ('ic_launcher.png', 'ic_launcher_round.png'):
                   output = target / filename
-                  subprocess.run(
-                      ['convert', str(icon_source), '-auto-orient', '-resize', f'{size}x{size}^',
-                       '-gravity', 'center', '-extent', f'{size}x{size}', 'png32:' + str(output)],
-                      check=True,
-                  )
+                  subprocess.run([
+                      'convert', str(icon_source), '-auto-orient', '-resize', f'{size}x{size}^',
+                      '-gravity', 'center', '-extent', f'{size}x{size}', 'png32:' + str(output)
+                  ], check=True)
 
           assert 'android:label="NUS"' in final_manifest
           assert 'android:scheme="nus"' in final_manifest
@@ -192,7 +185,7 @@ jobs:
           test -x "$APKANALYZER"
           BADGING="$($AAPT2 dump badging "$APK")"
           printf '%s\n' "$BADGING" | grep -F "application-label:'NUS'"
-          printf '%s\n' "$BADGING" | grep -E 'application-icon(-[0-9]+)?:'
+          printf '%s\n' "$BADGING" | grep -E 'application-icon(-[0-9]+)?='
           MANIFEST="$($APKANALYZER manifest print "$APK")"
           printf '%s\n' "$MANIFEST" | grep -F 'android.intent.action.VIEW'
           printf '%s\n' "$MANIFEST" | grep -F 'android.intent.category.BROWSABLE'
