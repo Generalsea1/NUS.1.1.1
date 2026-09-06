@@ -3,6 +3,8 @@ name: Verify NUS PR
 on:
   pull_request:
     branches: [ main ]
+  push:
+    branches: [ feature/user-ai-connections ]
   workflow_dispatch:
 
 concurrency:
