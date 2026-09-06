@@ -1,0 +1,43 @@
+name: Wire real AI hub once
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  wire:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Wire AI hub
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('lib/main.dart')
+          s = p.read_text()
+          if "features/ai/presentation/ai_hub_page.dart" not in s:
+              s = s.replace("import 'features/appointments/presentation/appointments_page.dart';\n", "import 'features/appointments/presentation/appointments_page.dart';\nimport 'features/ai/presentation/ai_hub_page.dart';\n", 1)
+          old = "builder: (_) => const _AiLaunchPage(),"
+          if old not in s:
+              raise SystemExit('AI placeholder route not found')
+          s = s.replace(old, "builder: (_) => const AiHubPage(),", 1)
+          start = "\n/// Lightweight navigation card used to keep the home shell independent from\n/// optional AI infrastructure. The real AI page is opened from feature pages\n/// where the AI connection provider is available.\nclass _AiLaunchPage extends StatelessWidget {"
+          i = s.find(start)
+          if i < 0:
+              raise SystemExit('AI placeholder class not found')
+          s = s[:i].rstrip() + "\n"
+          p.write_text(s)
+          PY
+          grep -q "features/ai/presentation/ai_hub_page.dart" lib/main.dart
+          grep -q "builder: (_) => const AiHubPage()" lib/main.dart
+          ! grep -q "class _AiLaunchPage" lib/main.dart
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add lib/main.dart
+          git commit -m "feat: open real AI hub from home"
+          git push
