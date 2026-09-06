@@ -130,7 +130,7 @@ jobs:
           printf '%s\n' "$BADGING" | grep -F "application-label:'NUS'"
           printf '%s\n' "$BADGING" | grep -Eq "application-icon-[^:]+:'res/(mipmap|drawable)[^:]*ic_launcher"
           unzip -Z1 "$APK" | grep -Eq '(^|/)ic_launcher(_round)?\.png$'
-          XML="$($AAPT2 dump xmltree "$APK" AndroidManifest.xml)"
+          XML="$($AAPT2 dump xmltree --file AndroidManifest.xml "$APK")"
           printf '%s\n' "$XML" | grep -F 'android.intent.action.VIEW'
           printf '%s\n' "$XML" | grep -F 'android.intent.category.BROWSABLE'
           printf '%s\n' "$XML" | grep -F 'nus'
