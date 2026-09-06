@@ -1,0 +1,1 @@
+Direct repair: startup OAuth is disabled; authentication is user-driven via the NUS account screen.
