@@ -1,15 +1,17 @@
 import '../domain/appointment.dart';
 import '../domain/appointment_reminder_port.dart';
-import 'central_recurrence_engine.dart';
+import '../../../core/recurrence/recurrence_engine.dart';
+import '../../../core/recurrence/recurrence_rule.dart';
 
 class AppointmentReminderCoordinator {
   AppointmentReminderCoordinator(
     this.port, {
-    CentralRecurrenceEngine recurrenceEngine = const CentralRecurrenceEngine(),
+    RecurrenceEngine recurrenceEngine = const RecurrenceEngine(),
   }) : _recurrenceEngine = recurrenceEngine;
 
   final AppointmentReminderPort port;
-  final CentralRecurrenceEngine _recurrenceEngine;
+  final RecurrenceEngine _recurrenceEngine;
+  static const _maxOccurrences = 12;
 
   Future<void> sync(Appointment appointment) async {
     await cancel(appointment.id);
@@ -19,12 +21,8 @@ class AppointmentReminderCoordinator {
     }
 
     final now = DateTime.now();
-    final offset = _recurrenceEngine.reminderOffset(appointment.reminder);
-    final occurrences = _recurrenceEngine.futureOccurrences(
-      startsAt: appointment.startsAt,
-      recurrence: appointment.recurrence,
-      now: now,
-    );
+    final occurrences = _futureOccurrences(appointment, now);
+    final offset = _reminderOffset(appointment.reminder);
 
     for (var index = 0; index < occurrences.length; index++) {
       final occurrence = occurrences[index];
@@ -49,7 +47,7 @@ class AppointmentReminderCoordinator {
   }
 
   Future<void> cancel(String appointmentId) async {
-    for (var index = 0; index < 12; index++) {
+    for (var index = 0; index < _maxOccurrences; index++) {
       await port.cancel(_occurrenceId(appointmentId, index));
     }
     await port.cancel(_followUpId(appointmentId));
@@ -60,6 +58,44 @@ class AppointmentReminderCoordinator {
       await sync(appointment);
     }
   }
+
+  List<DateTime> _futureOccurrences(Appointment appointment, DateTime now) {
+    if (appointment.recurrence == AppointmentRecurrence.none) {
+      return appointment.startsAt.isAfter(now) ? [appointment.startsAt] : const [];
+    }
+
+    final rule = switch (appointment.recurrence) {
+      AppointmentRecurrence.daily => const RecurrenceRule.daily(),
+      AppointmentRecurrence.weekly => const RecurrenceRule.weekly(),
+      AppointmentRecurrence.none => const RecurrenceRule.daily(),
+    };
+
+    final step = appointment.recurrence == AppointmentRecurrence.weekly
+        ? const Duration(days: 7)
+        : const Duration(days: 1);
+    final anchor = appointment.startsAt.isAfter(now) ? appointment.startsAt : now;
+    final windowEnd = anchor.add(step * _maxOccurrences);
+
+    return _recurrenceEngine
+        .occurrences(
+          start: appointment.startsAt,
+          rule: rule,
+          windowStart: now,
+          windowEnd: windowEnd,
+          maxOccurrences: _maxOccurrences,
+        )
+        .toList();
+  }
+
+  Duration _reminderOffset(AppointmentReminder reminder) =>
+      switch (reminder) {
+        AppointmentReminder.none || AppointmentReminder.atTime => Duration.zero,
+        AppointmentReminder.fiveMinutesBefore => const Duration(minutes: 5),
+        AppointmentReminder.fifteenMinutesBefore => const Duration(minutes: 15),
+        AppointmentReminder.thirtyMinutesBefore => const Duration(minutes: 30),
+        AppointmentReminder.oneHourBefore => const Duration(hours: 1),
+        AppointmentReminder.oneDayBefore => const Duration(days: 1),
+      };
 
   // Numeric IDs keep scheduling/cancellation deterministic across app restarts
   // because the existing NotificationService treats numeric IDs as-is.
