@@ -8,11 +8,7 @@ class _FakeReminderScheduler implements ReminderScheduler {
   int scheduledCount = 0;
 
   @override
-  Future<void> scheduleReminder({
-    required String id,
-    required String title,
-    required DateTime dateTime,
-  }) async {
+  Future<void> scheduleReminder({required String id, required String title, required DateTime dateTime}) async {
     scheduledCount += 1;
   }
 
@@ -27,48 +23,39 @@ void main() {
 
   testWidgets('NUS renders the premium home shell', (tester) async {
     final store = ScheduleStore();
-
     await tester.pumpWidget(NosApp(store: store));
     await tester.pumpAndSettle();
-
     expect(find.text('NUS'), findsWidgets);
     expect(find.text('إضافة تذكير'), findsOneWidget);
     expect(find.text('ملخص يومك'), findsOneWidget);
   });
 
-  testWidgets('home AI Center opens the real AI manager', (tester) async {
+  testWidgets('home AI Center opens the real provider-neutral AI hub', (tester) async {
     final store = ScheduleStore();
-
     await tester.pumpWidget(NosApp(store: store));
     await tester.pumpAndSettle();
-
     await tester.tap(find.byTooltip('المزيد'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('مركز الذكاء الاصطناعي'));
     await tester.pumpAndSettle();
-
-    expect(find.text('مدير الذكاء الاصطناعي'), findsOneWidget);
-    expect(find.text('الدخول بحساب Google'), findsOneWidget);
+    expect(find.text('حساب NUS والذكاء الاصطناعي'), findsOneWidget);
+    expect(find.text('اعمل حساب NUS'), findsOneWidget);
+    expect(find.text('الدخول بحساب Google'), findsNothing);
     expect(find.text('NUS AI Center'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('saving a valid reminder dismisses the sheet before scheduling',
-      (tester) async {
+  testWidgets('saving a valid reminder dismisses the sheet before scheduling', (tester) async {
     final scheduler = _FakeReminderScheduler();
     final store = ScheduleStore(notifications: scheduler);
-
     await tester.pumpWidget(NosApp(store: store));
     await tester.pumpAndSettle();
-
     await tester.tap(find.text('إضافة تذكير'));
     await tester.pumpAndSettle();
     expect(find.text('تذكير جديد'), findsOneWidget);
-
     await tester.enterText(find.byType(TextField), 'موعد اختبار');
     await tester.tap(find.text('احفظ التذكير'));
     await tester.pumpAndSettle();
-
     expect(find.text('تذكير جديد'), findsNothing);
     expect(store.items, hasLength(1));
     expect(store.items.single.title, 'موعد اختبار');
@@ -76,35 +63,27 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('invalid reminder input stays rejected without closing the sheet',
-      (tester) async {
+  testWidgets('invalid reminder input stays rejected without closing the sheet', (tester) async {
     final store = ScheduleStore();
-
     await tester.pumpWidget(NosApp(store: store));
     await tester.pumpAndSettle();
-
     await tester.tap(find.text('إضافة تذكير'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('احفظ التذكير'));
     await tester.pumpAndSettle();
-
     expect(find.text('تذكير جديد'), findsOneWidget);
     expect(store.items, isEmpty);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('cancelling reminder creation closes the sheet without saving',
-      (tester) async {
+  testWidgets('cancelling reminder creation closes the sheet without saving', (tester) async {
     final store = ScheduleStore();
-
     await tester.pumpWidget(NosApp(store: store));
     await tester.pumpAndSettle();
-
     await tester.tap(find.text('إضافة تذكير'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('إلغاء'));
     await tester.pumpAndSettle();
-
     expect(find.text('تذكير جديد'), findsNothing);
     expect(store.items, isEmpty);
     expect(tester.takeException(), isNull);
