@@ -46,6 +46,7 @@ class Appointment implements DomainEntity {
   final DateTime? followUpAt;
 
   bool get isDoctor => type == AppointmentType.doctor;
+  bool get isScheduledCall => type == AppointmentType.phoneCall;
 
   Map<String, dynamic> toJson() => {
         'id': id,
@@ -146,6 +147,12 @@ class AppointmentValidator {
     }
     final phone = appointment.contactPhone?.trim() ?? '';
     if (phone.isNotEmpty && !isValidPhone(phone)) errors.add('invalid_phone');
+    if (appointment.isScheduledCall) {
+      if (appointment.contactName?.trim().isEmpty ?? true) errors.add('call_contact_required');
+      if (phone.isEmpty) {
+        errors.add('call_phone_required');
+      }
+    }
     if (appointment.isDoctor && (appointment.doctorName?.trim().isEmpty ?? true)) {
       errors.add('doctor_name_required');
     }
