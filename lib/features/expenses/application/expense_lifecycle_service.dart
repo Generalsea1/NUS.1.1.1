@@ -1,10 +1,5 @@
 import '../domain/expense.dart';
 
-// Bootstrap compatibility: the app composition root may obtain the concrete
-// local repository through the expense application boundary. The lifecycle
-// service itself still depends only on ExpenseRepository.
-export '../data/local_expense_repository.dart' show LocalExpenseRepository;
-
 /// Application boundary for Expense lifecycle orchestration.
 ///
 /// The service depends only on the [ExpenseRepository] abstraction and does
