@@ -78,7 +78,7 @@ jobs:
         run: |
           set -euo pipefail
           APK="build/app/outputs/flutter-apk/app-debug.apk"
-          unzip -l "$APK" | grep -E 'res/mipmap-(mdpi|hdpi|xhdpi|xxhdpi|xxxhdpi)(-v[0-9]+)?/ic_launcher(_round)?\.(png|webp)$'
+          unzip -l "$APK" | grep -E 'res/drawable(-[a-z0-9]+)?/ic_launcher\.xml$'
 
       - name: Generate APK SHA-256 evidence
         shell: bash
