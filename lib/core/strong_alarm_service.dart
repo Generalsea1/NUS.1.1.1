@@ -48,6 +48,10 @@ class StrongAlarmService {
         androidFullScreenIntent: true,
         androidStopAlarmOnTermination: false,
         androidSnoozeDuration: const Duration(minutes: 9),
+        volumeSettings: const VolumeSettings.fixed(
+          volume: 1.0,
+          volumeEnforced: false,
+        ),
         notificationSettings: NotificationSettings(
           title: 'NUS — تنبيه مهم',
           body: body ?? title,
