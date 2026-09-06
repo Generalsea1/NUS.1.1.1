@@ -454,7 +454,7 @@ class _HomePageState extends State<HomePage> {
                   ),
                   const SizedBox(height: 20),
                   _SectionTitle(
-                    title: t('اليوم', 'Today'),
+                    title: t('النهارده', 'Today'),
                     count: todays.length,
                     icon: Icons.today_rounded,
                   ),
@@ -462,8 +462,8 @@ class _HomePageState extends State<HomePage> {
                   if (todays.isEmpty)
                     _EmptyState(
                       icon: Icons.event_note_rounded,
-                      title: t('يومك لسه فاضي', 'Your day is clear'),
-                      subtitle: t('أضف أول تذكير وخلي NUS يرتّب يومك.', 'Add a reminder and let NUS keep your day organized.'),
+                      title: t('إيه اللي وراك؟', 'What is on your agenda?'),
+                      subtitle: t('خلي NUS ماسك يومك معاك من أول تذكير.', 'Let NUS keep your day organized from the first reminder.'),
                       action: _showAddSheet,
                       actionLabel: t('إضافة تذكير', 'Add reminder'),
                     )
@@ -482,7 +482,7 @@ class _HomePageState extends State<HomePage> {
                       title: t('لا يوجد شيء معلّق', 'Nothing waiting'),
                       subtitle: t('مواعيدك القادمة ستظهر هنا تلقائياً.', 'Your next plans will appear here automatically.'),
                       action: _showAddSheet,
-                      actionLabel: t('خطّط لموعد', 'Plan a reminder'),
+                      actionLabel: t('إضافة تذكير', 'Add reminder'),
                     )
                   else
                     ...upcoming.map(_buildItemCard),
@@ -616,13 +616,26 @@ class _HomePageState extends State<HomePage> {
                     ),
                   ),
                   const SizedBox(height: 14),
-                  FilledButton.icon(
-                    onPressed: () {
-                      if (controller.text.trim().isEmpty) return;
-                      Navigator.of(sheetContext).pop(selected);
-                    },
-                    icon: const Icon(Icons.check_rounded),
-                    label: Text(t('حفظ التذكير', 'Save reminder')),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.of(sheetContext).pop(),
+                          child: Text(t('إلغاء', 'Cancel')),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: FilledButton.icon(
+                          onPressed: () {
+                            if (controller.text.trim().isEmpty) return;
+                            Navigator.of(sheetContext).pop(selected);
+                          },
+                          icon: const Icon(Icons.check_rounded),
+                          label: Text(t('احفظ التذكير', 'Save reminder')),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
