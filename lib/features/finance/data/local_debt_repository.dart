@@ -45,6 +45,8 @@ class LocalDebtRepository implements DebtRepository {
       }
     }
 
+    // Settlement state is derived outside the aggregate; ordering therefore
+    // uses only fields owned by Debt itself.
     debts.sort((a, b) {
       final dueA = a.dueAt;
       final dueB = b.dueAt;
