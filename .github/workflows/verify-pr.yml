@@ -4,7 +4,9 @@ on:
   pull_request:
     branches: [ main ]
   push:
-    branches: [ feature/user-ai-connections ]
+    branches:
+      - main
+      - feature/user-ai-connections
   workflow_dispatch:
 
 concurrency:
