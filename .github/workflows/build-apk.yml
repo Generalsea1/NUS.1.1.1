@@ -22,6 +22,35 @@ jobs:
           channel: stable
           cache: true
 
+      - name: Verify Supabase build configuration
+        shell: bash
+        env:
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          set -euo pipefail
+
+          test -n "$SUPABASE_URL" || {
+            echo 'ERROR: Repository variable SUPABASE_URL is required for a production-capable APK.' >&2
+            exit 1
+          }
+          test -n "$SUPABASE_PUBLISHABLE_KEY" || {
+            echo 'ERROR: Repository variable SUPABASE_PUBLISHABLE_KEY is required for a production-capable APK.' >&2
+            exit 1
+          }
+
+          case "$SUPABASE_URL" in
+            https://*.supabase.co) ;;
+            *) echo 'ERROR: SUPABASE_URL must be an https://<project>.supabase.co URL.' >&2; exit 1 ;;
+          esac
+
+          case "$SUPABASE_PUBLISHABLE_KEY" in
+            sb_publishable_*) ;;
+            *) echo 'ERROR: SUPABASE_PUBLISHABLE_KEY must use the Supabase publishable-key format.' >&2; exit 1 ;;
+          esac
+
+          echo 'Supabase production build configuration is present.'
+
       - name: Generate Android project files
         run: flutter create --platforms=android --project-name=nus .
 
@@ -210,7 +239,13 @@ jobs:
         run: flutter test
 
       - name: Build debug APK
-        run: flutter build apk --debug
+        env:
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          flutter build apk --debug \
+            --dart-define=SUPABASE_URL="$SUPABASE_URL" \
+            --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY"
 
       - name: Verify APK exists
         run: test -s build/app/outputs/flutter-apk/app-debug.apk
