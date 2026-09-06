@@ -41,12 +41,20 @@ class HouseholdBudgetInput {
   int get mandatoryTotal => knownMandatoryTotal + effectiveFood;
   int get flexibleTotal => effectiveClothing + effectiveMaintenance + effectiveFamilyFun + effectiveOther;
   int get plannedTotal => mandatoryTotal + flexibleTotal + effectiveReserve;
-  int get unallocated => monthlyIncome - plannedTotal;
+
+  /// Income is not spendable while any AI-managed category is still missing.
+  /// This prevents the UI from presenting the unallocated remainder as if it
+  /// were a safe amount available for discretionary spending.
+  int get unallocated => hasMissingCategories && aiRecommendation == null
+      ? 0
+      : monthlyIncome - plannedTotal;
 
   bool get isOverBudget => knownMandatoryTotal + knownFlexibleTotal + savingsTarget > monthlyIncome;
 
   bool get hasMissingCategories =>
       food == 0 || clothing == 0 || maintenance == 0 || familyFun == 0 || other == 0;
+
+  bool get hasReadyPlan => monthlyIncome > 0 && (!hasMissingCategories || aiRecommendation != null);
 
   int get effectiveFood => _effective(food, aiRecommendation?.food);
   int get effectiveClothing => _effective(clothing, aiRecommendation?.clothing);
@@ -95,7 +103,7 @@ class HouseholdBudgetPlan {
   final HouseholdBudgetManagement management;
 
   int get plannedTotal => input.plannedTotal;
-  int get remaining => input.monthlyIncome - plannedTotal;
+  int get remaining => input.unallocated;
   bool get isAiPowered => input.aiRecommendation != null;
 }
 
