@@ -25,16 +25,24 @@ void main() {
     SharedPreferences.setMockInitialValues(<String, Object>{});
   });
 
-  testWidgets('NUS renders the schedule home screen', (tester) async {
+  testWidgets('NUS renders the modern schedule dashboard', (tester) async {
     final store = ScheduleStore();
 
     await tester.pumpWidget(NosApp(store: store));
     await tester.pumpAndSettle();
 
+    expect(find.text('NUS'), findsOneWidget);
     expect(find.text('إيه اللي وراك؟'), findsOneWidget);
-    expect(find.text('إضافة تذكير'), findsOneWidget);
-    expect(find.text('النهارده'), findsOneWidget);
+    expect(find.byType(FloatingActionButton), findsOneWidget);
+    expect(find.byIcon(Icons.dark_mode_rounded), findsOneWidget);
+    expect(find.byIcon(Icons.auto_awesome_rounded), findsWidgets);
   });
+
+  Future<void> openReminderSheet(WidgetTester tester) async {
+    await tester.tap(find.byType(FloatingActionButton));
+    await tester.pumpAndSettle();
+    expect(find.text('تذكير جديد'), findsOneWidget);
+  }
 
   testWidgets('saving a valid reminder dismisses the sheet before scheduling',
       (tester) async {
@@ -44,10 +52,7 @@ void main() {
     await tester.pumpWidget(NosApp(store: store));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('إضافة تذكير'));
-    await tester.pumpAndSettle();
-    expect(find.text('تذكير جديد'), findsOneWidget);
-
+    await openReminderSheet(tester);
     await tester.enterText(find.byType(TextField), 'موعد اختبار');
     await tester.tap(find.text('احفظ التذكير'));
     await tester.pumpAndSettle();
@@ -66,8 +71,7 @@ void main() {
     await tester.pumpWidget(NosApp(store: store));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('إضافة تذكير'));
-    await tester.pumpAndSettle();
+    await openReminderSheet(tester);
     await tester.tap(find.text('احفظ التذكير'));
     await tester.pumpAndSettle();
 
@@ -83,8 +87,7 @@ void main() {
     await tester.pumpWidget(NosApp(store: store));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('إضافة تذكير'));
-    await tester.pumpAndSettle();
+    await openReminderSheet(tester);
     await tester.tap(find.text('إلغاء'));
     await tester.pumpAndSettle();
 
