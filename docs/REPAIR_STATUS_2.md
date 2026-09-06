@@ -1,0 +1,1 @@
+The startup authentication path is user-driven; Google OAuth is not launched automatically at app startup.
