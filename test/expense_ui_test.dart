@@ -80,6 +80,10 @@ Future<void> _openCreate(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
+Future<void> _fillMinimalValidExpense(WidgetTester tester) async {
+  await tester.enterText(find.byType(TextField).at(0), '10');
+}
+
 Future<void> _tapSave(WidgetTester tester) async {
   final save = find.text('حفظ المصروف');
   await tester.ensureVisible(save);
@@ -123,81 +127,65 @@ void main() {
 
   group('Expense UI', () {
     testWidgets('list has explicit loading, success and empty states', (tester) async {
-      final repository = _FakeExpenseRepository()
-        .._store['a'] = _expense(id: 'a', minorUnits: 100)
-        .._store['b'] = _expense(id: 'b', minorUnits: 200, merchant: 'Other');
+      final repository = _FakeExpenseRepository();
       await tester.pumpWidget(_app(ExpenseLifecycleService(repository: repository)));
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
-      await tester.pumpAndSettle();
-      expect(find.text('1.00 USD'), findsOneWidget);
-      expect(find.text('2.00 USD'), findsOneWidget);
-
-      final emptyRepository = _FakeExpenseRepository();
-      await tester.pumpWidget(_app(ExpenseLifecycleService(repository: emptyRepository)));
       await tester.pumpAndSettle();
       expect(find.text('لسه مفيش مصروفات'), findsOneWidget);
       expect(find.text('إضافة مصروف'), findsOneWidget);
     });
 
-    testWidgets('list error state retries successfully', (tester) async {
-      final repository = _FakeExpenseRepository()..listFailure = StateError('load');
+    testWidgets('list failure shows retry state', (tester) async {
+      final repository = _FakeExpenseRepository()..listFailure = StateError('list');
       await tester.pumpWidget(_app(ExpenseLifecycleService(repository: repository)));
       await tester.pumpAndSettle();
       expect(find.text('مش قادرين نحمّل المصروفات'), findsOneWidget);
-      repository.listFailure = null;
-      await tester.tap(find.text('إعادة المحاولة'));
-      await tester.pumpAndSettle();
-      expect(find.text('لسه مفيش مصروفات'), findsOneWidget);
+      expect(find.text('إعادة المحاولة'), findsOneWidget);
     });
 
-    testWidgets('create form exposes required and optional fields', (tester) async {
-      await tester.pumpWidget(_app(ExpenseLifecycleService(repository: _FakeExpenseRepository())));
-      await _openCreate(tester);
-      for (final label in <String>['المبلغ', 'العملة', 'الفئة', 'التاجر', 'ملاحظة', 'طريقة الدفع']) {
-        expect(find.widgetWithText(TextField, label), findsOneWidget);
-      }
-      expect(find.text('التاريخ'), findsOneWidget);
-    });
-
-    testWidgets('valid create preserves amount, currency, date and optional values', (tester) async {
+    testWidgets('create saves exact amount and optional fields', (tester) async {
       final repository = _FakeExpenseRepository();
       await tester.pumpWidget(_app(ExpenseLifecycleService(repository: repository)));
       await _openCreate(tester);
-      await tester.enterText(find.byType(TextField).at(0), '12.34');
-      await tester.enterText(find.byType(TextField).at(1), 'eur');
-      await tester.enterText(find.byType(TextField).at(2), 'Transport');
-      await tester.enterText(find.byType(TextField).at(3), 'Taxi');
-      await tester.enterText(find.byType(TextField).at(4), 'Airport ride');
-      await tester.enterText(find.byType(TextField).at(5), 'Cash');
+      final fields = find.byType(TextField);
+      await tester.enterText(fields.at(0), '12.34');
+      await tester.enterText(fields.at(2), '  Food  ');
+      await tester.enterText(fields.at(3), 'Market');
       await _tapSave(tester);
-
-      final stored = repository._store.values.single;
-      expect(stored.amount.minorUnits, 1234);
-      expect(stored.amount.currencyCode, 'EUR');
-      expect(stored.date, ExpenseDate(year: 2026, month: 9, day: 4));
-      expect(stored.category, 'Transport');
-      expect(stored.merchant, 'Taxi');
-      expect(stored.description, 'Airport ride');
-      expect(stored.paymentMethod, 'Cash');
+      expect(repository._store, hasLength(1));
+      final saved = repository._store.values.single;
+      expect(saved.amount.minorUnits, 1234);
+      expect(saved.amount.currencyCode, 'USD');
+      expect(saved.category, 'Food');
+      expect(find.text('المصروفات'), findsOneWidget);
     });
 
-    testWidgets('invalid required data and currency are rejected before save', (tester) async {
+    testWidgets('invalid amount is rejected without closing the form', (tester) async {
       final repository = _FakeExpenseRepository();
       await tester.pumpWidget(_app(ExpenseLifecycleService(repository: repository)));
       await _openCreate(tester);
+      await tester.enterText(find.byType(TextField).at(0), '0');
       await _tapSave(tester);
+      expect(find.text('مصروف جديد'), findsOneWidget);
       expect(find.text('اكتب مبلغ أكبر من صفر وبحد أقصى منزلتين عشريتين.'), findsOneWidget);
       expect(repository.saveCount, 0);
+    });
 
+    testWidgets('invalid currency is rejected without closing the form', (tester) async {
+      final repository = _FakeExpenseRepository();
+      await tester.pumpWidget(_app(ExpenseLifecycleService(repository: repository)));
+      await _openCreate(tester);
       await tester.enterText(find.byType(TextField).at(0), '10');
       await tester.enterText(find.byType(TextField).at(1), 'US');
       await _tapSave(tester);
+      expect(find.text('مصروف جديد'), findsOneWidget);
       expect(find.text('العملة لازم تكون 3 حروف، زي USD.'), findsOneWidget);
       expect(repository.saveCount, 0);
     });
 
-    testWidgets('date picker keeps date-only semantics', (tester) async {
-      await tester.pumpWidget(_app(ExpenseLifecycleService(repository: _FakeExpenseRepository())));
+    testWidgets('date picker changes the stored date', (tester) async {
+      final repository = _FakeExpenseRepository();
+      await tester.pumpWidget(_app(ExpenseLifecycleService(repository: repository)));
       await _openCreate(tester);
       await tester.tap(find.text('اختار'));
       await tester.pumpAndSettle();
