@@ -70,5 +70,54 @@ void main() {
 
     expect(plan.status, BudgetStatus.healthy);
     expect(plan.reserve, 370);
+    expect(plan.plannedTotal, 6670);
+    expect(plan.remaining, 3330);
+  });
+
+  test('auto-allocates missing household categories from the remaining envelope', () {
+    final input = HouseholdBudgetInput(
+      monthlyIncome: 10000,
+      rent: 2500,
+      utilities: 700,
+      transport: 700,
+      debt: 500,
+      health: 300,
+    );
+
+    final plan = buildHouseholdBudgetPlan(input);
+
+    expect(plan.status, BudgetStatus.healthy);
+    expect(input.effectiveFood, 2385);
+    expect(input.effectiveClothing, 382);
+    expect(input.effectiveMaintenance, 382);
+    expect(input.effectiveFamilyFun, 382);
+    expect(input.effectiveOther, 286);
+    expect(plan.reserve, 530);
+    expect(plan.plannedTotal, 9047);
+    expect(plan.remaining, 953);
+    expect(plan.weeklyAllowance, 220);
+    expect(plan.recommendation, contains('توزيعًا مبدئيًا'));
+  });
+
+  test('manual category values override only the categories the user already knows', () {
+    final input = HouseholdBudgetInput(
+      monthlyIncome: 10000,
+      rent: 2500,
+      utilities: 700,
+      food: 2000,
+      transport: 700,
+      debt: 500,
+      health: 300,
+      clothing: 300,
+    );
+
+    final plan = buildHouseholdBudgetPlan(input);
+
+    expect(input.effectiveFood, 2000);
+    expect(input.effectiveClothing, 300);
+    expect(input.effectiveMaintenance, greaterThan(0));
+    expect(input.effectiveFamilyFun, greaterThan(0));
+    expect(input.effectiveOther, greaterThan(0));
+    expect(plan.status, BudgetStatus.healthy);
   });
 }
