@@ -91,10 +91,11 @@ Future<void> _revealSave(WidgetTester tester) async {
   await tester.pump();
 
   final save = find.text('حفظ المصروف');
+  final scrollable = find.byType(Scrollable).first;
   await tester.scrollUntilVisible(
     save,
     300,
-    scrollable: formList,
+    scrollable: scrollable,
   );
   await tester.ensureVisible(save);
   expect(save, findsOneWidget);
