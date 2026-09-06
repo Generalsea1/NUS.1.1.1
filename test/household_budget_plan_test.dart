@@ -51,7 +51,7 @@ void main() {
     expect(plan.recommendation, contains('الخطة أعلى من الدخل'));
   });
 
-  test('suggests an emergency reserve when no explicit target is provided', () {
+  test('does not invent an emergency reserve without a target or AI recommendation', () {
     final input = HouseholdBudgetInput(
       monthlyIncome: 10000,
       rent: 2500,
@@ -68,13 +68,14 @@ void main() {
 
     final plan = buildHouseholdBudgetPlan(input);
 
-    expect(plan.status, BudgetStatus.healthy);
-    expect(plan.reserve, 370);
-    expect(plan.plannedTotal, 6670);
-    expect(plan.remaining, 3330);
+    expect(plan.status, BudgetStatus.tight);
+    expect(plan.reserve, 0);
+    expect(plan.plannedTotal, 6300);
+    expect(plan.remaining, 3700);
+    expect(plan.weeklyAllowance, 855);
   });
 
-  test('auto-allocates missing household categories from the remaining envelope', () {
+  test('does not auto-allocate missing household categories', () {
     final input = HouseholdBudgetInput(
       monthlyIncome: 10000,
       rent: 2500,
@@ -86,20 +87,20 @@ void main() {
 
     final plan = buildHouseholdBudgetPlan(input);
 
-    expect(plan.status, BudgetStatus.healthy);
-    expect(input.effectiveFood, 2385);
-    expect(input.effectiveClothing, 382);
-    expect(input.effectiveMaintenance, 382);
-    expect(input.effectiveFamilyFun, 382);
-    expect(input.effectiveOther, 286);
-    expect(plan.reserve, 530);
-    expect(plan.plannedTotal, 9047);
-    expect(plan.remaining, 953);
-    expect(plan.weeklyAllowance, 220);
-    expect(plan.recommendation, contains('توزيعًا مبدئيًا'));
+    expect(plan.status, BudgetStatus.tight);
+    expect(input.effectiveFood, 0);
+    expect(input.effectiveClothing, 0);
+    expect(input.effectiveMaintenance, 0);
+    expect(input.effectiveFamilyFun, 0);
+    expect(input.effectiveOther, 0);
+    expect(plan.reserve, 0);
+    expect(plan.plannedTotal, 4700);
+    expect(plan.remaining, 5300);
+    expect(plan.weeklyAllowance, 0);
+    expect(plan.recommendation, contains('لسه في بنود مصروفات ناقصة'));
   });
 
-  test('manual category values override only the categories the user already knows', () {
+  test('manual category values remain authoritative while missing categories stay unplanned', () {
     final input = HouseholdBudgetInput(
       monthlyIncome: 10000,
       rent: 2500,
@@ -115,9 +116,10 @@ void main() {
 
     expect(input.effectiveFood, 2000);
     expect(input.effectiveClothing, 300);
-    expect(input.effectiveMaintenance, greaterThan(0));
-    expect(input.effectiveFamilyFun, greaterThan(0));
-    expect(input.effectiveOther, greaterThan(0));
-    expect(plan.status, BudgetStatus.healthy);
+    expect(input.effectiveMaintenance, 0);
+    expect(input.effectiveFamilyFun, 0);
+    expect(input.effectiveOther, 0);
+    expect(plan.status, BudgetStatus.tight);
+    expect(plan.weeklyAllowance, 0);
   });
 }

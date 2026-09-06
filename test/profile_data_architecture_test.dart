@@ -21,6 +21,13 @@ class _FakeAuthRepository implements AuthRepository {
   Future<AuthState> initialize() async => _state;
 
   @override
+  Future<void> signInWithGoogle() async {
+    _state = const AuthenticatedAuthState(
+      AuthSession(user: AuthUser(id: 'google-test-user')),
+    );
+  }
+
+  @override
   Future<void> signOut() async {
     _state = const UnauthenticatedAuthState();
   }
