@@ -10,9 +10,11 @@ class RecurrenceEngine {
     required DateTime windowStart,
     required DateTime windowEnd,
     bool includePastOccurrences = false,
+    int? maxOccurrences,
   }) sync* {
     if (!windowEnd.isAfter(windowStart)) return;
     if (rule.validate().isNotEmpty) return;
+    if (maxOccurrences != null && maxOccurrences <= 0) return;
 
     var occurrence = start;
     if (rule.isSelectedWeekdays) {
@@ -28,11 +30,16 @@ class RecurrenceEngine {
       );
     }
 
+    var yielded = 0;
     while (occurrence.isBefore(windowEnd)) {
       final eligible = includePastOccurrences
           ? !occurrence.isAfter(windowEnd)
           : occurrence.isAfter(windowStart);
-      if (eligible && _matches(rule, occurrence)) yield occurrence;
+      if (eligible && _matches(rule, occurrence)) {
+        yield occurrence;
+        yielded++;
+        if (maxOccurrences != null && yielded >= maxOccurrences) return;
+      }
 
       occurrence = _next(occurrence, rule);
       if (occurrence == start) return;
