@@ -184,7 +184,7 @@ void main() {
     expect(saveButton, findsOneWidget);
     await ensureHitTestable(saveButton);
     await tester.tap(saveButton);
-    await tester.pumpAndSettle();
+    await tester.pump();
 
     expect(find.byKey(const ValueKey<String>('household-onboarding-page')), findsOneWidget);
     expect(find.text('ماقدرناش نحفظ بيانات البيت دلوقتي. بياناتك مازالت موجودة، حاول تاني.'), findsOneWidget);
@@ -196,7 +196,7 @@ void main() {
     profiles.shouldFailSave = false;
     await ensureHitTestable(saveButton);
     await tester.tap(saveButton);
-    await tester.pumpAndSettle();
+    await tester.pump();
 
     expect(completed, isNotNull);
     expect(profiles.saveCalls, 2);
