@@ -53,8 +53,8 @@ void main() {
     final auth = FakeAuthRepository(_authenticatedState());
     await tester.pumpWidget(_host(AuthGate(authRepository: auth, profileRepository: FakeProfileRepository())));
     await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey<String>('household-onboarding-page')), findsOneWidget);
     expect(find.byType(HouseholdOnboardingPage), findsOneWidget);
-    expect(find.text('إعداد بيتك'), findsOneWidget);
   });
 
   testWidgets('existing valid profile bypasses onboarding', (tester) async {
@@ -90,27 +90,27 @@ void main() {
       userId: 'u1', repository: profiles, onCompleted: (profile) => completed = profile,
     )));
 
-    Future<void> enterField(String label, String value) async {
-      final field = find.bySemanticsLabel(label);
+    Future<void> enterField(Key key, String value) async {
+      final field = find.byKey(key);
       await tester.scrollUntilVisible(field, 300);
       await tester.enterText(field, value);
     }
 
-    await enterField('الدولة — كود من حرفين (مثل EG)', 'EG');
-    await enterField('المحافظة / الولاية — اختياري عند عدم انطباقها', 'Cairo');
-    await enterField('العملة — كود من 3 أحرف (مثل EGP)', 'EGP');
-    await enterField('إجمالي أفراد البيت', '3');
-    await enterField('عدد البالغين', '2');
-    await enterField('عدد الأطفال', '1');
-    await enterField('الدخل الشهري / المعادل الشهري', '10000');
-    await enterField('إجمالي الالتزامات الثابتة والأقساط الشهرية', '3000');
+    await enterField(const ValueKey<String>('onboarding-country'), 'EG');
+    await enterField(const ValueKey<String>('onboarding-region'), 'Cairo');
+    await enterField(const ValueKey<String>('onboarding-currency'), 'EGP');
+    await enterField(const ValueKey<String>('onboarding-household-size'), '3');
+    await enterField(const ValueKey<String>('onboarding-adults'), '2');
+    await enterField(const ValueKey<String>('onboarding-children'), '1');
+    await enterField(const ValueKey<String>('onboarding-monthly-income'), '10000');
+    await enterField(const ValueKey<String>('onboarding-recurring-obligations'), '3000');
 
-    final saveButton = find.text('حفظ وإظهار حالتي المالية');
+    final saveButton = find.byKey(const ValueKey<String>('onboarding-save'));
     await tester.scrollUntilVisible(saveButton, 400);
     await tester.tap(saveButton);
     await tester.pumpAndSettle();
 
-    expect(find.byType(HouseholdOnboardingPage), findsOneWidget);
+    expect(find.byKey(const ValueKey<String>('household-onboarding-page')), findsOneWidget);
     expect(find.text('ماقدرناش نحفظ بيانات البيت دلوقتي. بياناتك مازالت موجودة، حاول تاني.'), findsOneWidget);
     expect(find.text('10000'), findsOneWidget);
     expect(find.text('3000'), findsOneWidget);
