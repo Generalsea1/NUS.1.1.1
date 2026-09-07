@@ -95,4 +95,4 @@ $$;
 drop trigger if exists household_profiles_seed_legacy_income on public.household_profiles;
 create trigger household_profiles_seed_legacy_income
 after insert on public.household_profiles
-for each row execute function public.seed_legacy_income_source;
+for each row execute function public.seed_legacy_income_source();
