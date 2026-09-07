@@ -65,7 +65,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('حالتي المالية'), findsOneWidget);
     expect(find.text('10,000 EGP'), findsOneWidget);
-    expect(find.text('7,000 EGP'), findsOneWidget);
+    expect(find.text('غير متاح'), findsAtLeastNWidgets(1));
+    expect(find.textContaining('لن نعرض رقمًا قديمًا'), findsOneWidget);
     expect(find.text('إعداد بيتك'), findsNothing);
   });
 

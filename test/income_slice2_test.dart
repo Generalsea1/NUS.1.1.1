@@ -6,6 +6,9 @@ import 'package:nus/features/income/application/income_source_service.dart';
 import 'package:nus/features/income/application/income_source_validator.dart';
 import 'package:nus/features/income/domain/income_source.dart';
 import 'package:nus/features/income/presentation/income_management_page.dart';
+import 'package:nus/features/obligations/application/obligation_repository.dart';
+import 'package:nus/features/obligations/application/obligation_service.dart';
+import 'package:nus/features/obligations/domain/obligation.dart';
 import 'package:nus/features/onboarding/domain/household_profile.dart';
 import 'package:nus/features/onboarding/presentation/financial_dashboard_page.dart';
 
@@ -27,6 +30,19 @@ IncomeSource _source({
       currencyCode: currencyCode,
       frequency: frequency,
       enabled: enabled,
+      createdAt: DateTime.utc(2026, 9, 1),
+      updatedAt: DateTime.utc(2026, 9, 1),
+    );
+
+Obligation _dashboardObligation({int amount = 3000}) => Obligation(
+      id: 'dashboard-obligation',
+      userId: 'u1',
+      name: 'التزام اختبار',
+      type: 'rent',
+      amount: amount,
+      currencyCode: 'EGP',
+      frequency: 'monthly',
+      enabled: true,
       createdAt: DateTime.utc(2026, 9, 1),
       updatedAt: DateTime.utc(2026, 9, 1),
     );
@@ -97,6 +113,27 @@ class FakeIncomeSourceRepository implements IncomeSourceRepository {
     store[sourceId] = updated;
     return updated;
   }
+}
+
+class _DashboardObligationRepository implements ObligationRepository {
+  const _DashboardObligationRepository();
+
+  @override
+  Future<List<Obligation>> list(String userId) async =>
+      <Obligation>[_dashboardObligation()];
+
+  @override
+  Future<Obligation> create(Obligation obligation) async => obligation;
+
+  @override
+  Future<Obligation> update(Obligation obligation) async => obligation;
+
+  @override
+  Future<void> delete(String userId, String obligationId) async {}
+
+  @override
+  Future<Obligation> setEnabled(String userId, String obligationId, bool enabled) async =>
+      _dashboardObligation().copyWith(enabled: enabled);
 }
 
 Widget _app(Widget child) => MaterialApp(
@@ -358,21 +395,26 @@ void main() {
     final repository = FakeIncomeSourceRepository()
       ..store['salary'] = _source(id: 'salary', amount: 10000)
       ..store['freelance'] = _source(id: 'freelance', name: 'عمل حر', sourceType: 'freelance', amount: 4000, frequency: 'quarterly');
-    await tester.pumpWidget(_app(FinancialDashboardPage(profile: _profile, incomeRepository: repository)));
+    await tester.pumpWidget(_app(FinancialDashboardPage(
+      profile: _profile,
+      incomeRepository: repository,
+      obligationService: const ObligationService(repository: _DashboardObligationRepository()),
+    )));
     await tester.pumpAndSettle();
-    expect(find.byKey(const ValueKey<String>('dashboard-total-monthly-income')), findsOneWidget);
     expect(find.text('11,333 EGP'), findsOneWidget);
     expect(find.text('-?'), findsNothing);
     expect(find.text('8,333 EGP'), findsOneWidget);
-    expect(find.byKey(const ValueKey<String>('dashboard-income-management')), findsOneWidget);
+    expect(find.text('إدارة مصادر الدخل'), findsOneWidget);
   });
 
   testWidgets('dashboard preserves Slice 1 monthly income when income source read fails', (tester) async {
     final repository = FakeIncomeSourceRepository()..listFailure = StateError('offline');
-    await tester.pumpWidget(_app(FinancialDashboardPage(profile: _profile, incomeRepository: repository)));
+    await tester.pumpWidget(_app(FinancialDashboardPage(
+      profile: _profile,
+      incomeRepository: repository,
+      obligationService: const ObligationService(repository: _DashboardObligationRepository()),
+    )));
     await tester.pumpAndSettle();
-    final totalIncome = find.byKey(const ValueKey<String>('dashboard-total-monthly-income'));
-    expect(totalIncome, findsOneWidget);
     expect(find.text('10,000 EGP'), findsOneWidget);
     expect(find.text('7,000 EGP'), findsOneWidget);
     expect(find.textContaining('مصادر الدخل التفصيلية غير متاحة الآن'), findsOneWidget);
