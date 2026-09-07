@@ -90,8 +90,12 @@ void main() {
       userId: 'u1', repository: profiles, onCompleted: (profile) => completed = profile,
     )));
 
-    final scrollableFinder = find.descendant(
-      of: find.byKey(const ValueKey<String>('household-onboarding-page')),
+    final monthlyIncomeField = find.byKey(
+      const ValueKey<String>('onboarding-monthly-income'),
+    );
+    expect(monthlyIncomeField, findsOneWidget);
+    final scrollableFinder = find.ancestor(
+      of: monthlyIncomeField,
       matching: find.byType(Scrollable),
     );
     expect(scrollableFinder, findsOneWidget);
