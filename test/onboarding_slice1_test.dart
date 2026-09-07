@@ -111,19 +111,19 @@ void main() {
     }
 
     Future<void> scrollToFormEnd() async {
-      final formScrollables = tester
-          .allStates<ScrollableState>(find.byType(Scrollable))
-          .where((state) => state.context.findAncestorWidgetOfExactType<ListView>() != null)
-          .toList();
-      expect(formScrollables, hasLength(1));
-      final position = formScrollables.single.position;
+      final obligationsFinder = find.byKey(const ValueKey<String>('onboarding-recurring-obligations'));
+      expect(obligationsFinder, findsOneWidget);
+      final obligationsElement = tester.element(obligationsFinder);
+      final scrollableState = obligationsElement.findAncestorStateOfType<ScrollableState>();
+      expect(scrollableState, isNotNull);
+      final position = scrollableState!.position;
       final viewport = position.viewportDimension;
-      final maxGestures = (position.maxScrollExtent / viewport).ceil() + 3;
+      expect(viewport, greaterThan(0));
 
-      for (var attempt = 0; attempt < maxGestures; attempt++) {
+      while (true) {
         final before = position.pixels;
         final remaining = position.maxScrollExtent - before;
-        if (remaining <= 0.1) return;
+        if (remaining <= 0.1) break;
 
         final delta = remaining < viewport ? remaining : viewport;
         await tester.drag(listViewFinder, Offset(0, -delta));
