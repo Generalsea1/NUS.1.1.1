@@ -91,7 +91,7 @@ void main() {
     )));
 
     Future<void> enterField(Key key, String value) async {
-      final field = find.byKey(key);
+      final field = find.byKey(key, skipOffstage: false);
       expect(field, findsOneWidget);
       await tester.enterText(field, value);
     }
@@ -105,7 +105,7 @@ void main() {
     await enterField(const ValueKey<String>('onboarding-monthly-income'), '10000');
     await enterField(const ValueKey<String>('onboarding-recurring-obligations'), '3000');
 
-    final saveButton = find.byKey(const ValueKey<String>('onboarding-save'));
+    final saveButton = find.byKey(const ValueKey<String>('onboarding-save'), skipOffstage: false);
     expect(saveButton, findsOneWidget);
     await tester.tap(saveButton);
     await tester.pumpAndSettle();
