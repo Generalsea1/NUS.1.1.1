@@ -111,19 +111,26 @@ void main() {
     }
 
     Future<void> scrollToFormEnd() async {
-      final listViewElement = tester.element(listViewFinder);
-      final scrollable = Scrollable.of(listViewElement);
-      final position = scrollable.position;
+      final formScrollables = tester
+          .allStates<ScrollableState>(find.byType(Scrollable))
+          .where((state) => state.context.findAncestorWidgetOfExactType<ListView>() != null)
+          .toList();
+      expect(formScrollables, hasLength(1));
+      final position = formScrollables.single.position;
+      final viewport = position.viewportDimension;
+      final maxGestures = (position.maxScrollExtent / viewport).ceil() + 3;
 
-      while (position.pixels < position.maxScrollExtent) {
+      for (var attempt = 0; attempt < maxGestures; attempt++) {
         final before = position.pixels;
         final remaining = position.maxScrollExtent - before;
-        final delta = remaining < 280.0 ? remaining : 280.0;
+        if (remaining <= 0.1) return;
+
+        final delta = remaining < viewport ? remaining : viewport;
         await tester.drag(listViewFinder, Offset(0, -delta));
         await tester.pump();
-        expect(position.pixels, greaterThanOrEqualTo(before));
-        expect(position.pixels, lessThanOrEqualTo(position.maxScrollExtent));
+
         expect(position.pixels, greaterThan(before));
+        expect(position.pixels, lessThanOrEqualTo(position.maxScrollExtent));
       }
 
       expect(position.pixels, closeTo(position.maxScrollExtent, 0.1));
