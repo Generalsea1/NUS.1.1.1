@@ -71,7 +71,7 @@ IncomeSource _source({
 
 void main() {
   test('legacy-only income remains the Slice 1 monthly income', () {
-    const service = IncomeSourceService(repository: _FakeIncomeSourceRepository());
+    final service = IncomeSourceService(repository: _FakeIncomeSourceRepository());
     final sources = <IncomeSource>[
       _source(
         id: 'legacy',
@@ -85,7 +85,7 @@ void main() {
   });
 
   test('first real salary replaces the legacy compatibility representation for totals', () {
-    const service = IncomeSourceService(repository: _FakeIncomeSourceRepository());
+    final service = IncomeSourceService(repository: _FakeIncomeSourceRepository());
     final sources = <IncomeSource>[
       _source(
         id: 'legacy',
@@ -105,7 +105,7 @@ void main() {
   });
 
   test('legacy income does not double count when a real source exists and additional income is added', () {
-    const service = IncomeSourceService(repository: _FakeIncomeSourceRepository());
+    final service = IncomeSourceService(repository: _FakeIncomeSourceRepository());
     final sources = <IncomeSource>[
       _source(
         id: 'legacy',
@@ -131,7 +131,7 @@ void main() {
   });
 
   test('disabled real sources do not suppress an active legacy fallback', () {
-    const service = IncomeSourceService(repository: _FakeIncomeSourceRepository());
+    final service = IncomeSourceService(repository: _FakeIncomeSourceRepository());
     final sources = <IncomeSource>[
       _source(
         id: 'legacy',
@@ -152,7 +152,7 @@ void main() {
   });
 
   test('disabled legacy and disabled real sources both contribute zero', () {
-    const service = IncomeSourceService(repository: _FakeIncomeSourceRepository());
+    final service = IncomeSourceService(repository: _FakeIncomeSourceRepository());
     final sources = <IncomeSource>[
       _source(
         id: 'legacy',
