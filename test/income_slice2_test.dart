@@ -416,7 +416,11 @@ void main() {
     )));
     await tester.pumpAndSettle();
     expect(find.text('10,000 EGP'), findsOneWidget);
-    expect(find.text('7,000 EGP'), findsOneWidget);
+    expect(find.text('3,000 EGP'), findsOneWidget);
+    final remaining = find.text('7,000 EGP');
+    await tester.scrollUntilVisible(remaining, 200.0, scrollable: find.byType(Scrollable).first);
+    await tester.pumpAndSettle();
+    expect(remaining, findsOneWidget);
     expect(find.textContaining('مصادر الدخل التفصيلية غير متاحة الآن'), findsOneWidget);
   });
 }
