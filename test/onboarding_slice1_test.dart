@@ -90,7 +90,11 @@ void main() {
       userId: 'u1', repository: profiles, onCompleted: (profile) => completed = profile,
     )));
 
-    final scrollableFinder = find.byKey(const ValueKey<String>('onboarding-form-scroll'));
+    final scrollableFinder = find.descendant(
+      of: find.byKey(const ValueKey<String>('household-onboarding-page')),
+      matching: find.byType(Scrollable),
+    );
+    expect(scrollableFinder, findsOneWidget);
 
     Future<void> enterField(Key key, String value) async {
       final field = find.byKey(key, skipOffstage: false);
