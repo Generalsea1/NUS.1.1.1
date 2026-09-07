@@ -4,7 +4,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'core/supabase_service.dart';
 import 'notification_service.dart';
 import 'features/expenses/application/expense_lifecycle_service.dart';
-import 'features/expenses/data/local_expense_repository.dart';
 import 'features/medications/application/medication_lifecycle_service.dart';
 import 'features/medications/application/medication_reminder_coordinator.dart';
 import 'features/medications/data/local_medication_repository.dart';
@@ -13,6 +12,8 @@ import 'features/shopping/application/shopping_lifecycle_service.dart';
 import 'features/shopping/data/local_shopping_repository.dart';
 import 'features/onboarding/presentation/auth_gate.dart';
 import 'legacy_main.dart' as legacy;
+
+export 'legacy_main.dart' show HomePage, NosApp, ScheduleItem, ScheduleStore;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -27,7 +28,7 @@ Future<void> main() async {
     reminders: MedicationReminderCoordinator(MedicationReminderAdapter(notifications)),
   );
   final shoppingService = ShoppingLifecycleService(repository: LocalShoppingRepository());
-  final expenseService = ExpenseLifecycleService(repository: LocalExpenseRepository());
+  final expenseService = ExpenseLifecycleService(repository: legacy.LocalExpenseRepository());
   runApp(Nus2App(
     store: store,
     medicationService: medicationService,
