@@ -94,17 +94,22 @@ void main() {
     expect(pageFinder, findsOneWidget);
     expect(find.byType(HouseholdOnboardingPage), findsOneWidget);
 
-    final formListView = find.byType(ListView);
-    expect(formListView, findsOneWidget);
-
-    await tester.fling(formListView, const Offset(0, -1000), 1000);
-    await tester.pump();
+    final formFinder = find.byType(Form);
+    expect(formFinder, findsOneWidget);
+    final scrollableFinder = find.descendant(
+      of: formFinder,
+      matching: find.byType(Scrollable),
+    );
+    expect(scrollableFinder, findsOneWidget);
 
     Future<void> enterField(Key key, String value) async {
       final field = find.byKey(key);
+      await tester.scrollUntilVisible(
+        field,
+        400,
+        scrollable: scrollableFinder,
+      );
       expect(field, findsOneWidget);
-      await tester.ensureVisible(field);
-      await tester.pump();
       await tester.enterText(field, value);
     }
 
@@ -118,9 +123,12 @@ void main() {
     await enterField(const ValueKey<String>('onboarding-recurring-obligations'), '3000');
 
     final saveButton = find.byKey(const ValueKey<String>('onboarding-save'));
+    await tester.scrollUntilVisible(
+      saveButton,
+      400,
+      scrollable: scrollableFinder,
+    );
     expect(saveButton, findsOneWidget);
-    await tester.ensureVisible(saveButton);
-    await tester.pump();
     await tester.tap(saveButton);
     await tester.pumpAndSettle();
 
@@ -132,8 +140,12 @@ void main() {
     expect(profiles.saveCalls, 1);
 
     profiles.shouldFailSave = false;
-    await tester.ensureVisible(saveButton);
-    await tester.pump();
+    await tester.scrollUntilVisible(
+      saveButton,
+      400,
+      scrollable: scrollableFinder,
+    );
+    expect(saveButton, findsOneWidget);
     await tester.tap(saveButton);
     await tester.pumpAndSettle();
 
