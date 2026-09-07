@@ -4,11 +4,12 @@ class HouseholdProfileValidator {
   const HouseholdProfileValidator();
 
   static const _housingTypes = {'rent', 'owned', 'family', 'other'};
-  static const _incomeFrequencies = {
-    'monthly',
-    'weekly',
-    'biweekly',
-    'irregular',
+  static const _incomeFrequencies = {'monthly', 'weekly', 'biweekly', 'irregular'};
+  static const _currencyCodes = {
+    'AUD', 'BHD', 'BRL', 'CAD', 'CHF', 'CNY', 'CZK', 'DKK', 'DZD', 'EGP',
+    'EUR', 'GBP', 'HKD', 'HUF', 'ILS', 'INR', 'JOD', 'JPY', 'KES', 'KWD',
+    'MAD', 'MXN', 'NGN', 'NOK', 'NZD', 'OMR', 'PLN', 'QAR', 'RUB', 'SAR',
+    'SEK', 'SGD', 'THB', 'TND', 'TRY', 'USD', 'ZAR',
   };
 
   ValidationResult validate(HouseholdProfile profile) {
@@ -23,8 +24,8 @@ class HouseholdProfileValidator {
     if (_requiresRegion(country) && region.isEmpty) {
       errors['region'] = 'Region/state/province is required for this country.';
     }
-    if (!RegExp(r'^[A-Z]{3}$').hasMatch(currency)) {
-      errors['currency'] = 'Currency must be a valid 3-letter code.';
+    if (!_currencyCodes.contains(currency)) {
+      errors['currency'] = 'Currency must be a supported ISO-style currency code.';
     }
     if (profile.householdSize < 1 || profile.householdSize > 50) {
       errors['householdSize'] = 'Household size must be between 1 and 50.';
@@ -72,6 +73,5 @@ class ValidationResult {
   final Map<String, String> errors;
 
   bool get isValid => errors.isEmpty;
-  String get firstError =>
-      errors.values.isEmpty ? '' : errors.values.first;
+  String get firstError => errors.values.isEmpty ? '' : errors.values.first;
 }
