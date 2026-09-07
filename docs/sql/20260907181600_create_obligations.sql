@@ -26,7 +26,7 @@ create policy "obligations_update_own" on public.obligations for update to authe
 create policy "obligations_delete_own" on public.obligations for delete to authenticated using (auth.uid() = user_id);
 
 create or replace function public.touch_obligation_updated_at()
-returns trigger language plpgsql as $$
+returns trigger language plpgsql set search_path = public, pg_temp as $$
 begin
   new.updated_at = now();
   return new;
@@ -51,7 +51,7 @@ where hp.legacy_amount > 0
 on conflict do nothing;
 
 create or replace function public.seed_legacy_obligation()
-returns trigger language plpgsql as $$
+returns trigger language plpgsql set search_path = public, pg_temp as $$
 begin
   if new.recurring_debt > 0 then
     insert into public.obligations (user_id,name,type,amount,currency_code,frequency,enabled)
