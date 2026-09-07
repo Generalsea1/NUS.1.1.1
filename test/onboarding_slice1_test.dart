@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:nus/features/onboarding/application/household_profile_repository.dart';
@@ -110,10 +111,14 @@ void main() {
     }
 
     Future<void> ensureHitTestable(Finder target, {int maxScrolls = 4}) async {
+      final renderView = RendererBinding.instance.renderViews.singleWhere(
+        (view) => identical(view.flutterView, tester.view),
+      );
+
       for (var attempt = 0; attempt < maxScrolls; attempt++) {
         expect(target, findsOneWidget);
         final rect = tester.getRect(target);
-        final viewport = tester.binding.renderView.size;
+        final viewport = renderView.size;
         const margin = 8.0;
         if (rect.top >= margin && rect.bottom <= viewport.height - margin) return;
 
@@ -126,7 +131,7 @@ void main() {
 
       expect(target, findsOneWidget);
       final rect = tester.getRect(target);
-      final viewport = tester.binding.renderView.size;
+      final viewport = renderView.size;
       const margin = 8.0;
       expect(rect.top, greaterThanOrEqualTo(margin));
       expect(rect.bottom, lessThanOrEqualTo(viewport.height - margin));
