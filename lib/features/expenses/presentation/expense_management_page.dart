@@ -13,7 +13,7 @@ import '../domain/recurring_expense_definition.dart';
 int parseExpenseMinorUnits(String input, String currencyCode) {
   final metadata = CurrencyRegistry.get(currencyCode);
   final value = input.trim();
-  if (value.isEmpty || !RegExp(r'^\d+(?:\.\d+)?$').hasMatch(value)) {
+  if (!RegExp(r'^\d+(?:\.\d+)?$').hasMatch(value)) {
     throw const FormatException('Invalid amount.');
   }
   final parts = value.split('.');
@@ -30,7 +30,9 @@ int parseExpenseMinorUnits(String input, String currencyCode) {
 
 String formatExpenseMoney(Money money) {
   final metadata = CurrencyRegistry.get(money.currencyCode);
-  if (metadata.exponent == 0) return '${money.minorUnits} ${money.currencyCode}';
+  if (metadata.exponent == 0) {
+    return '${money.minorUnits} ${money.currencyCode}';
+  }
   final whole = money.minorUnits ~/ metadata.scale;
   final fraction = (money.minorUnits % metadata.scale)
       .toString()
@@ -54,7 +56,7 @@ class ExpenseManagementPage extends StatefulWidget {
 
 class _ExpenseManagementPageState extends State<ExpenseManagementPage>
     with SingleTickerProviderStateMixin {
-  late final TabController _tabs = TabController(length: 2, vsync: this);
+  late final TabController _tabs;
   bool _loading = true;
   String? _error;
   List<Expense> _expenses = const [];
@@ -69,13 +71,20 @@ class _ExpenseManagementPageState extends State<ExpenseManagementPage>
   @override
   void initState() {
     super.initState();
+    _tabs = TabController(length: 2, vsync: this);
+    _tabs.addListener(_onTabChanged);
     _currency = widget.householdCurrencyCode.trim().toUpperCase();
     if (!CurrencyRegistry.isSupported(_currency)) _currency = 'EGP';
     _load();
   }
 
+  void _onTabChanged() {
+    if (mounted) setState(() {});
+  }
+
   @override
   void dispose() {
+    _tabs.removeListener(_onTabChanged);
     _tabs.dispose();
     super.dispose();
   }
@@ -115,15 +124,15 @@ class _ExpenseManagementPageState extends State<ExpenseManagementPage>
     }
   }
 
-  void _message(String text) => ScaffoldMessenger.of(context)
-      .showSnackBar(SnackBar(content: Text(text)));
+  void _show(String message) =>
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
 
   Future<void> _openExpense([Expense? expense]) async {
     if (_userId.isEmpty) {
-      _message('لازم تكون مسجل دخول الأول.');
+      _show('لازم تكون مسجل دخول الأول.');
       return;
     }
-    final ok = await showDialog<bool>(
+    final saved = await showDialog<bool>(
       context: context,
       builder: (_) => ExpenseFormDialog(
         service: widget.service,
@@ -133,15 +142,15 @@ class _ExpenseManagementPageState extends State<ExpenseManagementPage>
         initial: expense,
       ),
     );
-    if (ok == true) await _load();
+    if (saved == true) await _load();
   }
 
   Future<void> _openRecurring([RecurringExpenseDefinition? definition]) async {
     if (_userId.isEmpty) {
-      _message('لازم تكون مسجل دخول الأول.');
+      _show('لازم تكون مسجل دخول الأول.');
       return;
     }
-    final ok = await showDialog<bool>(
+    final saved = await showDialog<bool>(
       context: context,
       builder: (_) => RecurringFormDialog(
         service: widget.service,
@@ -150,31 +159,16 @@ class _ExpenseManagementPageState extends State<ExpenseManagementPage>
         initial: definition,
       ),
     );
-    if (ok == true) await _load();
+    if (saved == true) await _load();
   }
 
   Future<void> _deleteExpense(Expense expense) async {
-    final yes = await _confirm('حذف المصروف؟', 'هيتحذف السجل الفعلي ده فقط.');
-    if (yes != true) return;
+    if (await _confirm('حذف المصروف؟', 'هيتحذف السجل الفعلي ده فقط.') != true) return;
     try {
       await widget.service.deleteExpense(expense.id);
       await _load();
     } catch (_) {
-      _message('تعذر الحذف. جرّب تاني.');
-    }
-  }
-
-  Future<void> _deleteRecurring(RecurringExpenseDefinition definition) async {
-    final yes = await _confirm(
-      'حذف المصروف المتكرر؟',
-      'الحذف لا يحذف المصروفات الفعلية القديمة.',
-    );
-    if (yes != true) return;
-    try {
-      await widget.service.deleteRecurring(definition.id);
-      await _load();
-    } catch (_) {
-      _message('تعذر الحذف.');
+      _show('تعذر الحذف. جرّب تاني.');
     }
   }
 
@@ -187,7 +181,19 @@ class _ExpenseManagementPageState extends State<ExpenseManagementPage>
       );
       await _load();
     } catch (_) {
-      _message('تعذر تغيير حالة المصروف المتكرر.');
+      _show('تعذر تغيير حالة المصروف المتكرر.');
+    }
+  }
+
+  Future<void> _deleteRecurring(RecurringExpenseDefinition definition) async {
+    if (await _confirm('حذف المصروف المتكرر؟',
+            'الحذف لا يحذف المصروفات الفعلية القديمة.') !=
+        true) return;
+    try {
+      await widget.service.deleteRecurring(definition.id);
+      await _load();
+    } catch (_) {
+      _show('تعذر الحذف.');
     }
   }
 
@@ -220,10 +226,7 @@ class _ExpenseManagementPageState extends State<ExpenseManagementPage>
         ),
         bottom: TabBar(
           controller: _tabs,
-          tabs: const [
-            Tab(text: 'الفعلية'),
-            Tab(text: 'المتكررة'),
-          ],
+          tabs: const [Tab(text: 'الفعلية'), Tab(text: 'المتكررة')],
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
@@ -239,10 +242,7 @@ class _ExpenseManagementPageState extends State<ExpenseManagementPage>
               ? ErrorState(message: _error!, onRetry: _load)
               : TabBarView(
                   controller: _tabs,
-                  children: [
-                    _actualView(),
-                    _recurringView(),
-                  ],
+                  children: [_actualView(), _recurringView()],
                 ),
     );
   }
@@ -263,28 +263,26 @@ class _ExpenseManagementPageState extends State<ExpenseManagementPage>
               const EmptyState(text: 'لسه مفيش مصروفات فعلية مسجلة.')
             else
               for (final expense in _expenses)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: Card(
-                    child: ListTile(
-                      title: Text(
-                        formatExpenseMoney(expense.amount),
-                        style: const TextStyle(fontWeight: FontWeight.w900),
-                      ),
-                      subtitle: Text(
-                        '${expense.date.toIsoString()} • '
-                        '${ExpenseCategories.labelsAr[expense.categoryCode] ?? 'أخرى'} • '
-                        '${expense.expenseType.code}',
-                      ),
-                      trailing: PopupMenuButton<String>(
-                        onSelected: (value) => value == 'edit'
-                            ? _openExpense(expense)
-                            : _deleteExpense(expense),
-                        itemBuilder: (_) => const [
-                          PopupMenuItem(value: 'edit', child: Text('تعديل')),
-                          PopupMenuItem(value: 'delete', child: Text('حذف')),
-                        ],
-                      ),
+                Card(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  child: ListTile(
+                    title: Text(
+                      formatExpenseMoney(expense.amount),
+                      style: const TextStyle(fontWeight: FontWeight.w900),
+                    ),
+                    subtitle: Text(
+                      '${expense.date.toIsoString()} • '
+                      '${ExpenseCategories.labelsAr[expense.categoryCode] ?? 'أخرى'} • '
+                      '${expense.expenseType.code}',
+                    ),
+                    trailing: PopupMenuButton<String>(
+                      onSelected: (value) => value == 'edit'
+                          ? _openExpense(expense)
+                          : _deleteExpense(expense),
+                      itemBuilder: (_) => const [
+                        PopupMenuItem(value: 'edit', child: Text('تعديل')),
+                        PopupMenuItem(value: 'delete', child: Text('حذف')),
+                      ],
                     ),
                   ),
                 ),
@@ -310,32 +308,30 @@ class _ExpenseManagementPageState extends State<ExpenseManagementPage>
               const EmptyState(text: 'لسه مفيش مصروفات متكررة.')
             else
               for (final definition in _recurring)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: Card(
-                    child: ListTile(
-                      title: Text(
-                        definition.name,
-                        style: const TextStyle(fontWeight: FontWeight.w900),
-                      ),
-                      subtitle: Text(
-                        '${formatExpenseMoney(definition.amount)} • '
-                        '${_frequencyLabel(definition.frequency)} • '
-                        '${definition.enabled ? 'مفعّل' : 'موقوف'}',
-                      ),
-                      leading: Switch(
-                        value: definition.enabled,
-                        onChanged: (_) => _toggleRecurring(definition),
-                      ),
-                      trailing: PopupMenuButton<String>(
-                        onSelected: (value) => value == 'edit'
-                            ? _openRecurring(definition)
-                            : _deleteRecurring(definition),
-                        itemBuilder: (_) => const [
-                          PopupMenuItem(value: 'edit', child: Text('تعديل')),
-                          PopupMenuItem(value: 'delete', child: Text('حذف')),
-                        ],
-                      ),
+                Card(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  child: ListTile(
+                    title: Text(
+                      definition.name,
+                      style: const TextStyle(fontWeight: FontWeight.w900),
+                    ),
+                    subtitle: Text(
+                      '${formatExpenseMoney(definition.amount)} • '
+                      '${_frequencyLabel(definition.frequency)} • '
+                      '${definition.enabled ? 'مفعّل' : 'موقوف'}',
+                    ),
+                    leading: Switch(
+                      value: definition.enabled,
+                      onChanged: (_) => _toggleRecurring(definition),
+                    ),
+                    trailing: PopupMenuButton<String>(
+                      onSelected: (value) => value == 'edit'
+                          ? _openRecurring(definition)
+                          : _deleteRecurring(definition),
+                      itemBuilder: (_) => const [
+                        PopupMenuItem(value: 'edit', child: Text('تعديل')),
+                        PopupMenuItem(value: 'delete', child: Text('حذف')),
+                      ],
                     ),
                   ),
                 ),
@@ -402,7 +398,7 @@ class SummaryCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 8),
-              Text('العملة: $currency — الفعلي والمتوقع منفصلين عمدًا.'),
+              Text('الفعلي والمتوقع منفصلين عمدًا.'),
             ],
           ),
         ),
@@ -479,7 +475,9 @@ class ExpenseFormDialog extends StatefulWidget {
   final String defaultCurrency;
   final List<RecurringExpenseDefinition> definitions;
   final Expense? initial;
-  @override State<ExpenseFormDialog> createState() => _ExpenseFormDialogState();
+
+  @override
+  State<ExpenseFormDialog> createState() => _ExpenseFormDialogState();
 }
 
 class _ExpenseFormDialogState extends State<ExpenseFormDialog> {
@@ -497,8 +495,12 @@ class _ExpenseFormDialogState extends State<ExpenseFormDialog> {
   void initState() {
     super.initState();
     final initial = widget.initial;
-    _amount = TextEditingController(text: initial == null ? '' : _asInput(initial.amount));
-    _currency = TextEditingController(text: initial?.amount.currencyCode ?? widget.defaultCurrency);
+    _amount = TextEditingController(
+      text: initial == null ? '' : _asInput(initial.amount),
+    );
+    _currency = TextEditingController(
+      text: initial?.amount.currencyCode ?? widget.defaultCurrency,
+    );
     _merchant = TextEditingController(text: initial?.merchant ?? '');
     _description = TextEditingController(text: initial?.description ?? '');
     _date = initial?.date ?? _today();
@@ -507,33 +509,58 @@ class _ExpenseFormDialogState extends State<ExpenseFormDialog> {
     _recurringId = initial?.recurringDefinitionId;
   }
 
-  ExpenseDate _today() { final n = DateTime.now(); return ExpenseDate(year:n.year,month:n.month,day:n.day); }
-  String _asInput(Money money) { final meta=CurrencyRegistry.get(money.currencyCode); if(meta.exponent==0)return '${money.minorUnits}'; return '${money.minorUnits~/meta.scale}.${(money.minorUnits%meta.scale).toString().padLeft(meta.exponent,'0')}'; }
-  @override void dispose(){_amount.dispose();_currency.dispose();_merchant.dispose();_description.dispose();super.dispose();}
+  ExpenseDate _today() {
+    final now = DateTime.now();
+    return ExpenseDate(year: now.year, month: now.month, day: now.day);
+  }
+
+  String _asInput(Money money) {
+    final metadata = CurrencyRegistry.get(money.currencyCode);
+    if (metadata.exponent == 0) return '${money.minorUnits}';
+    return '${money.minorUnits ~/ metadata.scale}.'
+        '${(money.minorUnits % metadata.scale).toString().padLeft(metadata.exponent, '0')}';
+  }
+
+  @override
+  void dispose() {
+    _amount.dispose();
+    _currency.dispose();
+    _merchant.dispose();
+    _description.dispose();
+    super.dispose();
+  }
 
   Future<void> _save() async {
     try {
       final currency = _currency.text.trim().toUpperCase();
-      if (_type == ExpenseType.recurring && _recurringId == null) {
+      final recurringId = _type == ExpenseType.recurring ? _recurringId : null;
+      if (_type == ExpenseType.recurring && recurringId == null) {
         throw const FormatException('Select a recurring definition.');
       }
       final expense = Expense(
         id: widget.initial?.id ?? 'expense-${DateTime.now().microsecondsSinceEpoch}',
         userId: widget.userId,
-        amount: Money(minorUnits: parseExpenseMinorUnits(_amount.text, currency), currencyCode: currency),
+        amount: Money(
+          minorUnits: parseExpenseMinorUnits(_amount.text, currency),
+          currencyCode: currency,
+        ),
         date: _date,
         categoryCode: _category,
         expenseType: _type,
-        recurringDefinitionId: _type == ExpenseType.recurring ? _recurringId : null,
+        recurringDefinitionId: recurringId,
         merchant: _merchant.text,
         description: _description.text,
         createdAt: widget.initial?.createdAt,
         updatedAt: DateTime.now().toUtc(),
       );
-      if (widget.initial == null) { await widget.service.createExpense(expense); } else { await widget.service.updateExpense(expense); }
+      if (widget.initial == null) {
+        await widget.service.createExpense(expense);
+      } else {
+        await widget.service.updateExpense(expense);
+      }
       if (mounted) Navigator.pop(context, true);
-    } catch (e) {
-      if (mounted) setState(() => _error = e.toString().replaceFirst('FormatException: ', ''));
+    } catch (error) {
+      if (mounted) setState(() => _error = error.toString());
     }
   }
 
@@ -544,34 +571,348 @@ class _ExpenseFormDialogState extends State<ExpenseFormDialog> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(controller: _amount, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'المبلغ')),
-              TextField(controller: _currency, textCapitalization: TextCapitalization.characters, maxLength: 3, decoration: const InputDecoration(labelText: 'العملة')),
-              DropdownButtonFormField<String>(initialValue: _category, decoration: const InputDecoration(labelText: 'الفئة'), items: [for (final code in ExpenseCategories.codes) DropdownMenuItem(value: code, child: Text(ExpenseCategories.labelsAr[code]!))], onChanged: (v) { if(v!=null)setState(()=>_category=v); }),
-              DropdownButtonFormField<ExpenseType>(initialValue: _type, decoration: const InputDecoration(labelText: 'نوع المصروف'), items: const [DropdownMenuItem(value: ExpenseType.oneTime, child: Text('مرة واحدة')), DropdownMenuItem(value: ExpenseType.variable, child: Text('متغير')), DropdownMenuItem(value: ExpenseType.recurring, child: Text('متكرر فعلي'))], onChanged: (v) { if(v!=null)setState(()=>_type=v); }),
+              TextField(
+                controller: _amount,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(labelText: 'المبلغ'),
+              ),
+              TextField(
+                controller: _currency,
+                textCapitalization: TextCapitalization.characters,
+                maxLength: 3,
+                decoration: const InputDecoration(labelText: 'العملة'),
+              ),
+              DropdownButtonFormField<String>(
+                initialValue: _category,
+                decoration: const InputDecoration(labelText: 'الفئة'),
+                items: [
+                  for (final code in ExpenseCategories.codes)
+                    DropdownMenuItem(
+                      value: code,
+                      child: Text(ExpenseCategories.labelsAr[code]!),
+                    ),
+                ],
+                onChanged: (value) {
+                  if (value != null) setState(() => _category = value);
+                },
+              ),
+              DropdownButtonFormField<ExpenseType>(
+                initialValue: _type,
+                decoration: const InputDecoration(labelText: 'نوع المصروف'),
+                items: const [
+                  DropdownMenuItem(
+                    value: ExpenseType.oneTime,
+                    child: Text('مرة واحدة'),
+                  ),
+                  DropdownMenuItem(
+                    value: ExpenseType.variable,
+                    child: Text('متغير'),
+                  ),
+                  DropdownMenuItem(
+                    value: ExpenseType.recurring,
+                    child: Text('متكرر فعلي'),
+                  ),
+                ],
+                onChanged: (value) {
+                  if (value != null) setState(() => _type = value);
+                },
+              ),
               if (_type == ExpenseType.recurring)
-                DropdownButtonFormField<String>(initialValue: _recurringId, decoration: const InputDecoration(labelText: 'تعريف المتكرر'), items: [for (final d in widget.definitions) DropdownMenuItem(value: d.id, child: Text(d.name))], onChanged: (v)=>setState(()=>_recurringId=v)),
-              ListTile(contentPadding: EdgeInsets.zero, title: const Text('التاريخ'), subtitle: Text(_date.toIsoString()), trailing: TextButton(onPressed: () async { final s=await showDatePicker(context:context,initialDate:DateTime(_date.year,_date.month,_date.day),firstDate:DateTime(2000),lastDate:DateTime(9999)); if(s!=null&&mounted)setState(()=>_date=ExpenseDate(year:s.year,month:s.month,day:s.day)); }, child: const Text('اختار')),
-              TextField(controller: _merchant, decoration: const InputDecoration(labelText: 'التاجر (اختياري)')),
-              TextField(controller: _description, maxLines: 2, decoration: const InputDecoration(labelText: 'وصف (اختياري)')),
-              if (_error != null) Padding(padding: const EdgeInsets.only(top: 8), child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error))),
+                DropdownButtonFormField<String>(
+                  initialValue: widget.definitions.any((d) => d.id == _recurringId)
+                      ? _recurringId
+                      : null,
+                  decoration: const InputDecoration(labelText: 'تعريف المتكرر'),
+                  items: [
+                    for (final definition in widget.definitions)
+                      DropdownMenuItem(
+                        value: definition.id,
+                        child: Text(definition.name),
+                      ),
+                  ],
+                  onChanged: (value) => setState(() => _recurringId = value),
+                ),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('التاريخ'),
+                subtitle: Text(_date.toIsoString()),
+                trailing: TextButton(
+                  onPressed: () async {
+                    final selected = await showDatePicker(
+                      context: context,
+                      initialDate: DateTime(_date.year, _date.month, _date.day),
+                      firstDate: DateTime(2000),
+                      lastDate: DateTime(9999),
+                    );
+                    if (selected != null && mounted) {
+                      setState(() {
+                        _date = ExpenseDate(
+                          year: selected.year,
+                          month: selected.month,
+                          day: selected.day,
+                        );
+                      });
+                    }
+                  },
+                  child: const Text('اختار'),
+                ),
+              ),
+              TextField(
+                controller: _merchant,
+                decoration: const InputDecoration(labelText: 'التاجر (اختياري)'),
+              ),
+              TextField(
+                controller: _description,
+                maxLines: 2,
+                decoration: const InputDecoration(labelText: 'وصف (اختياري)'),
+              ),
+              if (_error != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    _error!,
+                    style: TextStyle(color: Theme.of(context).colorScheme.error),
+                  ),
+                ),
             ],
           ),
         ),
-        actions: [TextButton(onPressed:()=>Navigator.pop(context,false),child:const Text('إلغاء')),FilledButton(onPressed:_save,child:const Text('حفظ'))],
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton(onPressed: _save, child: const Text('حفظ')),
+        ],
       );
 }
 
 class RecurringFormDialog extends StatefulWidget {
-  const RecurringFormDialog({super.key, required this.service, required this.userId, required this.defaultCurrency, this.initial});
-  final ExpenseManagementService service; final String userId; final String defaultCurrency; final RecurringExpenseDefinition? initial;
-  @override State<RecurringFormDialog> createState()=>_RecurringFormDialogState();
+  const RecurringFormDialog({
+    super.key,
+    required this.service,
+    required this.userId,
+    required this.defaultCurrency,
+    this.initial,
+  });
+  final ExpenseManagementService service;
+  final String userId;
+  final String defaultCurrency;
+  final RecurringExpenseDefinition? initial;
+
+  @override
+  State<RecurringFormDialog> createState() => _RecurringFormDialogState();
 }
+
 class _RecurringFormDialogState extends State<RecurringFormDialog> {
-  late final TextEditingController _name; late final TextEditingController _amount; late final TextEditingController _currency;
-  late String _category; late String _frequency; late bool _enabled; late ExpenseDate _start; late ExpenseDate? _end; String? _error;
-  @override void initState(){super.initState();final d=widget.initial;_name=TextEditingController(text:d?.name??'');_amount=TextEditingController(text:d==null?'':_asInput(d.amount));_currency=TextEditingController(text:d?.amount.currencyCode??widget.defaultCurrency);_category=d?.categoryCode??'subscriptions';_frequency=d?.frequency??'monthly';_enabled=d?.enabled??true;_start=d?.startDate??_today();_end=d?.endDate;}
-  ExpenseDate _today(){final n=DateTime.now();return ExpenseDate(year:n.year,month:n.month,day:n.day);} String _asInput(Money m){final meta=CurrencyRegistry.get(m.currencyCode);if(meta.exponent==0)return '${m.minorUnits}';return '${m.minorUnits~/meta.scale}.${(m.minorUnits%meta.scale).toString().padLeft(meta.exponent,'0')}';}
-  @override void dispose(){_name.dispose();_amount.dispose();_currency.dispose();super.dispose();}
-  Future<void> _save() async {try{final currency=_currency.text.trim().toUpperCase();final d=RecurringExpenseDefinition(id:widget.initial?.id??'recurring-${DateTime.now().microsecondsSinceEpoch}',userId:widget.userId,name:_name.text,amount:Money(minorUnits:parseExpenseMinorUnits(_amount.text,currency),currencyCode:currency),categoryCode:_category,frequency:_frequency,enabled:_enabled,startDate:_start,endDate:_end,createdAt:widget.initial?.createdAt,updatedAt:DateTime.now().toUtc());if(widget.initial==null){await widget.service.createRecurring(d);}else{await widget.service.updateRecurring(d);}if(mounted)Navigator.pop(context,true);}catch(e){if(mounted)setState(()=>_error=e.toString().replaceFirst('FormatException: ',''));}}
-  @override Widget build(BuildContext context)=>AlertDialog(title:Text(widget.initial==null?'تعريف مصروف متكرر':'تعديل مصروف متكرر'),content:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,children:[TextField(controller:_name,decoration:const InputDecoration(labelText:'الاسم')),TextField(controller:_amount,keyboardType:const TextInputType.numberWithOptions(decimal:true),decoration:const InputDecoration(labelText:'المبلغ')),TextField(controller:_currency,textCapitalization:TextCapitalization.characters,maxLength:3,decoration:const InputDecoration(labelText:'العملة')),DropdownButtonFormField<String>(initialValue:_category,decoration:const InputDecoration(labelText:'الفئة'),items:[for(final code in ExpenseCategories.codes)DropdownMenuItem(value:code,child:Text(ExpenseCategories.labelsAr[code]!))],onChanged:(v){if(v!=null)setState(()=>_category=v);}),DropdownButtonFormField<String>(initialValue:_frequency,decoration:const InputDecoration(labelText:'التكرار'),items:const[DropdownMenuItem(value:'monthly',child:Text('شهري')),DropdownMenuItem(value:'weekly',child:Text('أسبوعي')),DropdownMenuItem(value:'biweekly',child:Text('كل أسبوعين')),DropdownMenuItem(value:'quarterly',child:Text('ربع سنوي')),DropdownMenuItem(value:'yearly',child:Text('سنوي'))],onChanged:(v){if(v!=null)setState(()=>_frequency=v);}),SwitchListTile(contentPadding:EdgeInsets.zero,title:const Text('مفعّل'),value:_enabled,onChanged:(v)=>setState(()=>_enabled=v)),ListTile(contentPadding:EdgeInsets.zero,title:const Text('يبدأ من'),subtitle:Text(_start.toIsoString()),trailing:TextButton(onPressed:()async{final s=await showDatePicker(context:context,initialDate:DateTime(_start.year,_start.month,_start.day),firstDate:DateTime(2000),lastDate:DateTime(9999));if(s!=null&&mounted)setState(()=>_start=ExpenseDate(year:s.year,month:s.month,day:s.day));},child:const Text('اختار')),ListTile(contentPadding:EdgeInsets.zero,title:Text(_end==null?'بدون نهاية':'ينتهي ${_end!.toIsoString()}'),trailing:_end==null?TextButton(onPressed:()async{final s=await showDatePicker(context:context,initialDate:DateTime(_start.year,_start.month,_start.day),firstDate:DateTime(2000),lastDate:DateTime(9999));if(s!=null&&mounted)setState(()=>_end=ExpenseDate(year:s.year,month:s.month,day:s.day));},child:const Text('تحديد نهاية')):TextButton(onPressed:()=>setState(()=>_end=null),child:const Text('مسح')),if(_error!=null)Padding(padding:const EdgeInsets.only(top:8),child:Text(_error!,style:TextStyle(color:Theme.of(context).colorScheme.error)))])),actions:[TextButton(onPressed:()=>Navigator.pop(context,false),child:const Text('إلغاء')),FilledButton(onPressed:_save,child:const Text('حفظ'))]);
+  late final TextEditingController _name;
+  late final TextEditingController _amount;
+  late final TextEditingController _currency;
+  late String _category;
+  late String _frequency;
+  late bool _enabled;
+  late ExpenseDate _start;
+  late ExpenseDate? _end;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    final initial = widget.initial;
+    _name = TextEditingController(text: initial?.name ?? '');
+    _amount = TextEditingController(
+      text: initial == null ? '' : _asInput(initial.amount),
+    );
+    _currency = TextEditingController(
+      text: initial?.amount.currencyCode ?? widget.defaultCurrency,
+    );
+    _category = initial?.categoryCode ?? 'subscriptions';
+    _frequency = initial?.frequency ?? 'monthly';
+    _enabled = initial?.enabled ?? true;
+    _start = initial?.startDate ?? _today();
+    _end = initial?.endDate;
+  }
+
+  ExpenseDate _today() {
+    final now = DateTime.now();
+    return ExpenseDate(year: now.year, month: now.month, day: now.day);
+  }
+
+  String _asInput(Money money) {
+    final metadata = CurrencyRegistry.get(money.currencyCode);
+    if (metadata.exponent == 0) return '${money.minorUnits}';
+    return '${money.minorUnits ~/ metadata.scale}.'
+        '${(money.minorUnits % metadata.scale).toString().padLeft(metadata.exponent, '0')}';
+  }
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _amount.dispose();
+    _currency.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    try {
+      final currency = _currency.text.trim().toUpperCase();
+      final definition = RecurringExpenseDefinition(
+        id: widget.initial?.id ?? 'recurring-${DateTime.now().microsecondsSinceEpoch}',
+        userId: widget.userId,
+        name: _name.text,
+        amount: Money(
+          minorUnits: parseExpenseMinorUnits(_amount.text, currency),
+          currencyCode: currency,
+        ),
+        categoryCode: _category,
+        frequency: _frequency,
+        enabled: _enabled,
+        startDate: _start,
+        endDate: _end,
+        createdAt: widget.initial?.createdAt,
+        updatedAt: DateTime.now().toUtc(),
+      );
+      if (widget.initial == null) {
+        await widget.service.createRecurring(definition);
+      } else {
+        await widget.service.updateRecurring(definition);
+      }
+      if (mounted) Navigator.pop(context, true);
+    } catch (error) {
+      if (mounted) setState(() => _error = error.toString());
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+        title: Text(widget.initial == null ? 'تعريف مصروف متكرر' : 'تعديل مصروف متكرر'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: _name,
+                decoration: const InputDecoration(labelText: 'الاسم'),
+              ),
+              TextField(
+                controller: _amount,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(labelText: 'المبلغ'),
+              ),
+              TextField(
+                controller: _currency,
+                textCapitalization: TextCapitalization.characters,
+                maxLength: 3,
+                decoration: const InputDecoration(labelText: 'العملة'),
+              ),
+              DropdownButtonFormField<String>(
+                initialValue: _category,
+                decoration: const InputDecoration(labelText: 'الفئة'),
+                items: [
+                  for (final code in ExpenseCategories.codes)
+                    DropdownMenuItem(
+                      value: code,
+                      child: Text(ExpenseCategories.labelsAr[code]!),
+                    ),
+                ],
+                onChanged: (value) {
+                  if (value != null) setState(() => _category = value);
+                },
+              ),
+              DropdownButtonFormField<String>(
+                initialValue: _frequency,
+                decoration: const InputDecoration(labelText: 'التكرار'),
+                items: const [
+                  DropdownMenuItem(value: 'monthly', child: Text('شهري')),
+                  DropdownMenuItem(value: 'weekly', child: Text('أسبوعي')),
+                  DropdownMenuItem(value: 'biweekly', child: Text('كل أسبوعين')),
+                  DropdownMenuItem(value: 'quarterly', child: Text('ربع سنوي')),
+                  DropdownMenuItem(value: 'yearly', child: Text('سنوي')),
+                ],
+                onChanged: (value) {
+                  if (value != null) setState(() => _frequency = value);
+                },
+              ),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('مفعّل'),
+                value: _enabled,
+                onChanged: (value) => setState(() => _enabled = value),
+              ),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('يبدأ من'),
+                subtitle: Text(_start.toIsoString()),
+                trailing: TextButton(
+                  onPressed: () async {
+                    final selected = await showDatePicker(
+                      context: context,
+                      initialDate: DateTime(_start.year, _start.month, _start.day),
+                      firstDate: DateTime(2000),
+                      lastDate: DateTime(9999),
+                    );
+                    if (selected != null && mounted) {
+                      setState(() {
+                        _start = ExpenseDate(
+                          year: selected.year,
+                          month: selected.month,
+                          day: selected.day,
+                        );
+                      });
+                    }
+                  },
+                  child: const Text('اختار'),
+                ),
+              ),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(
+                  _end == null ? 'بدون نهاية' : 'ينتهي ${_end!.toIsoString()}',
+                ),
+                trailing: _end == null
+                    ? TextButton(
+                        onPressed: () async {
+                          final selected = await showDatePicker(
+                            context: context,
+                            initialDate:
+                                DateTime(_start.year, _start.month, _start.day),
+                            firstDate: DateTime(2000),
+                            lastDate: DateTime(9999),
+                          );
+                          if (selected != null && mounted) {
+                            setState(() {
+                              _end = ExpenseDate(
+                                year: selected.year,
+                                month: selected.month,
+                                day: selected.day,
+                              );
+                            });
+                          }
+                        },
+                        child: const Text('تحديد نهاية'),
+                      )
+                    : TextButton(
+                        onPressed: () => setState(() => _end = null),
+                        child: const Text('مسح'),
+                      ),
+              ),
+              if (_error != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    _error!,
+                    style: TextStyle(color: Theme.of(context).colorScheme.error),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton(onPressed: _save, child: const Text('حفظ')),
+        ],
+      );
 }
