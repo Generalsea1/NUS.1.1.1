@@ -164,7 +164,6 @@ class _HouseholdOnboardingPageState extends State<HouseholdOnboardingPage> {
         child: Form(
           key: _formKey,
           child: ListView(
-            key: const ValueKey<String>('onboarding-form-scroll'),
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
             children: [
               Text(
