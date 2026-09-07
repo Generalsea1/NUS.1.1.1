@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nus/main.dart';
 import 'package:nus/notification_service.dart';
+import 'package:nus/features/ai/presentation/ai_hub_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class _FakeReminderScheduler implements ReminderScheduler {
@@ -36,7 +37,7 @@ void main() {
     expect(find.text('ملخص يومك'), findsOneWidget);
   });
 
-  testWidgets('home AI Center opens the real AI manager', (tester) async {
+  testWidgets('home AI Center opens the current real AI hub', (tester) async {
     final store = ScheduleStore();
 
     await tester.pumpWidget(NosApp(store: store));
@@ -47,8 +48,9 @@ void main() {
     await tester.tap(find.text('مركز الذكاء الاصطناعي'));
     await tester.pumpAndSettle();
 
-    expect(find.text('مدير الذكاء الاصطناعي'), findsOneWidget);
-    expect(find.text('الدخول بحساب Google'), findsOneWidget);
+    expect(find.byType(AiHubPage), findsOneWidget);
+    expect(find.text('حساب NUS والذكاء الاصطناعي'), findsOneWidget);
+    expect(find.text('ذكاء البيت بتاعك'), findsOneWidget);
     expect(find.text('NUS AI Center'), findsNothing);
     expect(tester.takeException(), isNull);
   });
