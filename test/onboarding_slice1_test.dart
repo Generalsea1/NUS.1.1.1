@@ -109,6 +109,29 @@ void main() {
       expect(target, findsOneWidget);
     }
 
+    Future<void> ensureHitTestable(Finder target, {int maxScrolls = 4}) async {
+      for (var attempt = 0; attempt < maxScrolls; attempt++) {
+        expect(target, findsOneWidget);
+        final rect = tester.getRect(target);
+        final viewport = tester.binding.renderView.size;
+        const margin = 8.0;
+        if (rect.top >= margin && rect.bottom <= viewport.height - margin) return;
+
+        final delta = rect.bottom > viewport.height - margin
+            ? rect.bottom - (viewport.height - margin)
+            : rect.top - margin;
+        await tester.drag(listViewFinder, Offset(0, -delta));
+        await tester.pump();
+      }
+
+      expect(target, findsOneWidget);
+      final rect = tester.getRect(target);
+      final viewport = tester.binding.renderView.size;
+      const margin = 8.0;
+      expect(rect.top, greaterThanOrEqualTo(margin));
+      expect(rect.bottom, lessThanOrEqualTo(viewport.height - margin));
+    }
+
     Future<void> enterField(Key key, String value) async {
       final field = find.byKey(key);
       await ensureMounted(field);
@@ -126,7 +149,7 @@ void main() {
     await enterField(const ValueKey<String>('onboarding-recurring-obligations'), '3000');
 
     final saveButton = find.byKey(const ValueKey<String>('onboarding-save'));
-    await ensureMounted(saveButton);
+    await ensureHitTestable(saveButton);
     await tester.tap(saveButton);
     await tester.pumpAndSettle();
 
@@ -138,7 +161,7 @@ void main() {
     expect(profiles.saveCalls, 1);
 
     profiles.shouldFailSave = false;
-    await ensureMounted(saveButton);
+    await ensureHitTestable(saveButton);
     await tester.tap(saveButton);
     await tester.pumpAndSettle();
 
