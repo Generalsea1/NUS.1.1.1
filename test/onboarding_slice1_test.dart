@@ -110,6 +110,25 @@ void main() {
       expect(target, findsOneWidget);
     }
 
+    Future<void> scrollToFormEnd() async {
+      final listViewElement = tester.element(listViewFinder);
+      final scrollable = Scrollable.of(listViewElement);
+      final position = scrollable.position;
+
+      while (position.pixels < position.maxScrollExtent) {
+        final before = position.pixels;
+        final remaining = position.maxScrollExtent - before;
+        final delta = remaining < 280.0 ? remaining : 280.0;
+        await tester.drag(listViewFinder, Offset(0, -delta));
+        await tester.pump();
+        expect(position.pixels, greaterThanOrEqualTo(before));
+        expect(position.pixels, lessThanOrEqualTo(position.maxScrollExtent));
+        expect(position.pixels, greaterThan(before));
+      }
+
+      expect(position.pixels, closeTo(position.maxScrollExtent, 0.1));
+    }
+
     Future<void> ensureHitTestable(Finder target, {int maxScrolls = 4}) async {
       final renderView = RendererBinding.instance.renderViews.singleWhere(
         (view) => identical(view.flutterView, tester.view),
@@ -153,7 +172,9 @@ void main() {
     await enterField(const ValueKey<String>('onboarding-monthly-income'), '10000');
     await enterField(const ValueKey<String>('onboarding-recurring-obligations'), '3000');
 
+    await scrollToFormEnd();
     final saveButton = find.byKey(const ValueKey<String>('onboarding-save'));
+    expect(saveButton, findsOneWidget);
     await ensureHitTestable(saveButton);
     await tester.tap(saveButton);
     await tester.pumpAndSettle();
