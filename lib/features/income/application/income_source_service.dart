@@ -19,9 +19,13 @@ class IncomeSourceService {
 
   int totalMonthlyIncome(Iterable<IncomeSource> sources, {String? currencyCode}) {
     final normalizedCurrency = currencyCode?.trim().toUpperCase();
-    return sources
+    final enabledSources = sources
         .where((source) => source.enabled)
-        .where((source) => normalizedCurrency == null || source.currencyCode == normalizedCurrency)
+        .where((source) => normalizedCurrency == null || source.currencyCode == normalizedCurrency);
+    final hasEnabledRealSource = enabledSources.any((source) => source.sourceType != 'legacy');
+
+    return enabledSources
+        .where((source) => source.sourceType != 'legacy' || !hasEnabledRealSource)
         .fold<int>(0, (total, source) => total + source.normalizedMonthlyAmount);
   }
 }
