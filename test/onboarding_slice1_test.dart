@@ -94,23 +94,26 @@ void main() {
     expect(pageFinder, findsOneWidget);
     expect(find.byType(HouseholdOnboardingPage), findsOneWidget);
 
-    final formFinder = find.byType(Form);
-    expect(formFinder, findsOneWidget);
-    final scrollableFinder = find.descendant(
-      of: formFinder,
-      matching: find.byType(Scrollable),
+    final listViewFinder = find.descendant(
+      of: pageFinder,
+      matching: find.byType(ListView),
     );
-    expect(scrollableFinder, findsOneWidget);
+    expect(listViewFinder, findsOneWidget);
+
+    Future<void> ensureMounted(Finder target, {int maxScrolls = 4}) async {
+      for (var attempt = 0; attempt < maxScrolls; attempt++) {
+        if (tester.any(target)) return;
+        await tester.drag(listViewFinder, const Offset(0, -280));
+        await tester.pump();
+      }
+      expect(target, findsOneWidget);
+    }
 
     Future<void> enterField(Key key, String value) async {
       final field = find.byKey(key);
-      await tester.scrollUntilVisible(
-        field,
-        400,
-        scrollable: scrollableFinder,
-      );
-      expect(field, findsOneWidget);
+      await ensureMounted(field);
       await tester.enterText(field, value);
+      expect(field, findsOneWidget);
     }
 
     await enterField(const ValueKey<String>('onboarding-country'), 'EG');
@@ -123,12 +126,7 @@ void main() {
     await enterField(const ValueKey<String>('onboarding-recurring-obligations'), '3000');
 
     final saveButton = find.byKey(const ValueKey<String>('onboarding-save'));
-    await tester.scrollUntilVisible(
-      saveButton,
-      400,
-      scrollable: scrollableFinder,
-    );
-    expect(saveButton, findsOneWidget);
+    await ensureMounted(saveButton);
     await tester.tap(saveButton);
     await tester.pumpAndSettle();
 
@@ -140,12 +138,7 @@ void main() {
     expect(profiles.saveCalls, 1);
 
     profiles.shouldFailSave = false;
-    await tester.scrollUntilVisible(
-      saveButton,
-      400,
-      scrollable: scrollableFinder,
-    );
-    expect(saveButton, findsOneWidget);
+    await ensureMounted(saveButton);
     await tester.tap(saveButton);
     await tester.pumpAndSettle();
 
