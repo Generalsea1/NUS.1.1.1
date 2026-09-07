@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../application/household_intelligence_service.dart';
 import '../../expenses/domain/currency_registry.dart';
 import '../../expenses/domain/expense_category.dart';
+import '../application/household_intelligence_service.dart';
+import 'financial_goals_page.dart';
 
 class HouseholdIntelligencePage extends StatefulWidget {
   const HouseholdIntelligencePage({
@@ -61,6 +62,17 @@ class _HouseholdIntelligencePageState extends State<HouseholdIntelligencePage> {
     }
   }
 
+  void _openGoals() {
+    Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => FinancialGoalsPage(
+          userId: widget.userId,
+          householdCurrencyCode: widget.currencyCode,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -73,13 +85,29 @@ class _HouseholdIntelligencePageState extends State<HouseholdIntelligencePage> {
             children: [
               Text(
                 'ذكاء البيت',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900),
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w900,
+                    ),
               ),
               const SizedBox(height: 6),
-              Text('تحليل موثوق لبياناتك المسجلة فقط — بدون توقعات أو تخمينات.'),
+              const Text(
+                'تحليل موثوق لبياناتك المسجلة فقط — بدون توقعات أو تخمينات.',
+              ),
+              const SizedBox(height: 14),
+              FilledButton.icon(
+                key: const ValueKey<String>('financial-goals-section-entry'),
+                onPressed: _openGoals,
+                icon: const Icon(Icons.flag_rounded),
+                label: const Text('الأهداف المالية'),
+              ),
               const SizedBox(height: 18),
               if (_loading)
-                const Card(child: Padding(padding: EdgeInsets.all(24), child: Center(child: CircularProgressIndicator())))
+                const Card(
+                  child: Padding(
+                    padding: EdgeInsets.all(24),
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
+                )
               else if (_error != null)
                 Card(
                   key: const ValueKey<String>('household-intelligence-error'),
@@ -90,7 +118,11 @@ class _HouseholdIntelligencePageState extends State<HouseholdIntelligencePage> {
                       children: [
                         const Text('تعذر تحميل ذكاء البيت الآن.'),
                         const SizedBox(height: 10),
-                        TextButton.icon(onPressed: _load, icon: const Icon(Icons.refresh_rounded), label: const Text('إعادة المحاولة')),
+                        TextButton.icon(
+                          onPressed: _load,
+                          icon: const Icon(Icons.refresh_rounded),
+                          label: const Text('إعادة المحاولة'),
+                        ),
                       ],
                     ),
                   ),
@@ -104,92 +136,137 @@ class _HouseholdIntelligencePageState extends State<HouseholdIntelligencePage> {
     );
   }
 
-  List<Widget> _buildInsights(BuildContext context, HouseholdIntelligenceSnapshot snapshot) {
+  List<Widget> _buildInsights(
+    BuildContext context,
+    HouseholdIntelligenceSnapshot snapshot,
+  ) {
     final widgets = <Widget>[];
-    final sufficient = snapshot.insights.where((i) => i.dataState == HouseholdDataState.sufficient).toList();
-    final insufficient = snapshot.insights.where((i) => i.dataState == HouseholdDataState.insufficient).toList();
+    final sufficient = snapshot.insights
+        .where((i) => i.dataState == HouseholdDataState.sufficient)
+        .toList();
+    final insufficient = snapshot.insights
+        .where((i) => i.dataState == HouseholdDataState.insufficient)
+        .toList();
 
     final highest = _first(snapshot, 'highest_category');
-    widgets.add(_sectionCard(
-      context,
-      key: const ValueKey<String>('highest-spending-card'),
-      title: 'أعلى بنود الإنفاق',
-      icon: Icons.bar_chart_rounded,
-      child: highest == null ? _insufficientText('مفيش بيانات كفاية.') : _insightBody(highest, context),
-    ));
+    widgets.add(
+      _sectionCard(
+        context,
+        key: const ValueKey<String>('highest-spending-card'),
+        title: 'أعلى بنود الإنفاق',
+        icon: Icons.bar_chart_rounded,
+        child: highest == null
+            ? _insufficientText('مفيش بيانات كفاية.')
+            : _insightBody(highest, context),
+      ),
+    );
 
     final trend = _first(snapshot, 'monthly_trend');
-    widgets.add(_sectionCard(
-      context,
-      key: const ValueKey<String>('spending-trend-card'),
-      title: 'اتجاه المصروفات',
-      icon: Icons.show_chart_rounded,
-      child: trend == null ? _insufficientText('مفيش بيانات كفاية.') : _insightBody(trend, context, showSeries: true),
-    ));
+    widgets.add(
+      _sectionCard(
+        context,
+        key: const ValueKey<String>('spending-trend-card'),
+        title: 'اتجاه المصروفات',
+        icon: Icons.show_chart_rounded,
+        child: trend == null
+            ? _insufficientText('مفيش بيانات كفاية.')
+            : _insightBody(trend, context, showSeries: true),
+      ),
+    );
 
     final recurring = _first(snapshot, 'recurring_vs_actual');
-    widgets.add(_sectionCard(
-      context,
-      key: const ValueKey<String>('recurring-burden-card'),
-      title: 'المصروفات المتكررة',
-      icon: Icons.repeat_rounded,
-      child: recurring == null ? _insufficientText('مفيش بيانات كفاية.') : _insightBody(recurring, context),
-    ));
+    widgets.add(
+      _sectionCard(
+        context,
+        key: const ValueKey<String>('recurring-burden-card'),
+        title: 'المصروفات المتكررة',
+        icon: Icons.repeat_rounded,
+        child: recurring == null
+            ? _insufficientText('مفيش بيانات كفاية.')
+            : _insightBody(recurring, context),
+      ),
+    );
 
     final obligation = _first(snapshot, 'obligation_burden');
-    widgets.add(_sectionCard(
-      context,
-      key: const ValueKey<String>('obligation-burden-card'),
-      title: 'ضغط الالتزامات',
-      icon: Icons.event_note_rounded,
-      child: obligation == null ? _insufficientText('مفيش بيانات كفاية.') : _insightBody(obligation, context),
-    ));
+    widgets.add(
+      _sectionCard(
+        context,
+        key: const ValueKey<String>('obligation-burden-card'),
+        title: 'ضغط الالتزامات',
+        icon: Icons.event_note_rounded,
+        child: obligation == null
+            ? _insufficientText('مفيش بيانات كفاية.')
+            : _insightBody(obligation, context),
+      ),
+    );
 
     final comparison = _first(snapshot, 'unusual_months');
-    widgets.add(_sectionCard(
-      context,
-      key: const ValueKey<String>('monthly-comparison-card'),
-      title: 'مقارنة الأشهر',
-      icon: Icons.compare_arrows_rounded,
-      child: comparison == null ? _insufficientText('مفيش بيانات كفاية.') : _insightBody(comparison, context, showSeries: true),
-    ));
+    widgets.add(
+      _sectionCard(
+        context,
+        key: const ValueKey<String>('monthly-comparison-card'),
+        title: 'مقارنة الأشهر',
+        icon: Icons.compare_arrows_rounded,
+        child: comparison == null
+            ? _insufficientText('مفيش بيانات كفاية.')
+            : _insightBody(comparison, context, showSeries: true),
+      ),
+    );
 
     final categoryChanges = sufficient
-        .where((insight) =>
-            insight.type == 'category_increasing' || insight.type == 'category_decreasing')
+        .where(
+          (insight) =>
+              insight.type == 'category_increasing' ||
+              insight.type == 'category_decreasing',
+        )
         .take(4)
         .toList(growable: false);
     if (categoryChanges.isNotEmpty) {
-      widgets.add(_sectionCard(
-        context,
-        key: const ValueKey<String>('category-changes-card'),
-        title: 'بنود بتزيد أو بتقل',
-        icon: Icons.swap_vert_rounded,
-        child: Column(
-          children: [for (final insight in categoryChanges) _insightBody(insight, context, compact: true)],
+      widgets.add(
+        _sectionCard(
+          context,
+          key: const ValueKey<String>('category-changes-card'),
+          title: 'بنود بتزيد أو بتقل',
+          icon: Icons.swap_vert_rounded,
+          child: Column(
+            children: [
+              for (final insight in categoryChanges)
+                _insightBody(insight, context, compact: true),
+            ],
+          ),
         ),
-      ));
+      );
     }
 
     final stability = _first(snapshot, 'income_stability');
-    final messages = insufficient.where((i) =>
-        i.type == 'income_stability' || i.dataState == HouseholdDataState.insufficient).toList(growable: false);
-    widgets.add(_sectionCard(
-      context,
-      key: const ValueKey<String>('insufficient-data-card'),
-      title: 'بيانات غير كافية',
-      icon: Icons.info_outline_rounded,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (messages.isEmpty && stability != null) _insightBody(stability, context)
-          else for (final insight in messages.take(4)) Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: Text('• ${insight.title}: ${insight.explanation}'),
-          ),
-        ],
+    final messages = insufficient
+        .where(
+          (i) =>
+              i.type == 'income_stability' ||
+              i.dataState == HouseholdDataState.insufficient,
+        )
+        .toList(growable: false);
+    widgets.add(
+      _sectionCard(
+        context,
+        key: const ValueKey<String>('insufficient-data-card'),
+        title: 'بيانات غير كافية',
+        icon: Icons.info_outline_rounded,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (messages.isEmpty && stability != null)
+              _insightBody(stability, context)
+            else
+              for (final insight in messages.take(4))
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Text('• ${insight.title}: ${insight.explanation}'),
+                ),
+          ],
+        ),
       ),
-    ));
+    );
 
     return [
       for (var i = 0; i < widgets.length; i++) ...[
@@ -199,7 +276,10 @@ class _HouseholdIntelligencePageState extends State<HouseholdIntelligencePage> {
     ];
   }
 
-  HouseholdInsight? _first(HouseholdIntelligenceSnapshot snapshot, String type) {
+  HouseholdInsight? _first(
+    HouseholdIntelligenceSnapshot snapshot,
+    String type,
+  ) {
     for (final insight in snapshot.insights) {
       if (insight.type == type) return insight;
     }
@@ -212,26 +292,35 @@ class _HouseholdIntelligencePageState extends State<HouseholdIntelligencePage> {
     required String title,
     required IconData icon,
     required Widget child,
-  }) => Card(
-        key: key,
-        child: Padding(
-          padding: const EdgeInsets.all(18),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  CircleAvatar(child: Icon(icon)),
-                  const SizedBox(width: 12),
-                  Expanded(child: Text(title, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900))),
-                ],
-              ),
-              const SizedBox(height: 12),
-              child,
-            ],
-          ),
+  }) {
+    return Card(
+      key: key,
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                CircleAvatar(child: Icon(icon)),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w900,
+                        ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            child,
+          ],
         ),
-      );
+      ),
+    );
+  }
 
   Widget _insightBody(
     HouseholdInsight insight,
@@ -241,19 +330,38 @@ class _HouseholdIntelligencePageState extends State<HouseholdIntelligencePage> {
   }) {
     final label = insight.categoryCode == null
         ? null
-        : ExpenseCategories.labelsAr[insight.categoryCode!] ?? insight.categoryCode!;
-    final value = insight.valueMinorUnits == null ? null : _minorMoney(insight.valueMinorUnits!);
-    final comparison = insight.comparisonValueMinorUnits == null ? null : _minorMoney(insight.comparisonValueMinorUnits!);
+        : ExpenseCategories.labelsAr[insight.categoryCode!] ??
+            insight.categoryCode!;
+    final value = insight.valueMinorUnits == null
+        ? null
+        : _minorMoney(insight.valueMinorUnits!);
+    final comparison = insight.comparisonValueMinorUnits == null
+        ? null
+        : _minorMoney(insight.comparisonValueMinorUnits!);
     return Padding(
       padding: EdgeInsets.only(bottom: compact ? 8 : 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (label != null) Text(label, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900)),
+          if (label != null)
+            Text(
+              label,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w900,
+                  ),
+            ),
           Text(insight.explanation),
           const SizedBox(height: 8),
-          if (value != null) Text('القيمة المسجلة: $value', style: const TextStyle(fontWeight: FontWeight.w800)),
-          if (comparison != null) Text('المقارنة: $comparison', style: const TextStyle(fontWeight: FontWeight.w800)),
+          if (value != null)
+            Text(
+              'القيمة المسجلة: $value',
+              style: const TextStyle(fontWeight: FontWeight.w800),
+            ),
+          if (comparison != null)
+            Text(
+              'المقارنة: $comparison',
+              style: const TextStyle(fontWeight: FontWeight.w800),
+            ),
           if (insight.dataState == HouseholdDataState.insufficient)
             const Padding(
               padding: EdgeInsets.only(top: 6),
@@ -262,7 +370,9 @@ class _HouseholdIntelligencePageState extends State<HouseholdIntelligencePage> {
           if (showSeries && insight.periodValues.isNotEmpty) ...[
             const SizedBox(height: 8),
             for (final point in insight.periodValues)
-              Text('${point.periodLabel}: ${_minorMoney(point.valueMinorUnits)}'),
+              Text(
+                '${point.periodLabel}: ${_minorMoney(point.valueMinorUnits)}',
+              ),
           ],
         ],
       ),
@@ -273,11 +383,14 @@ class _HouseholdIntelligencePageState extends State<HouseholdIntelligencePage> {
 
   String _minorMoney(int minorUnits) {
     final metadata = CurrencyRegistry.get(widget.currencyCode.trim().toUpperCase());
-    if (metadata.exponent == 0) return '${_format(minorUnits)} ${metadata.code}';
-    final scale = metadata.scale;
+    if (metadata.exponent == 0) {
+      return '${_format(minorUnits)} ${metadata.code}';
+    }
     final absolute = minorUnits.abs();
-    final whole = absolute ~/ scale;
-    final fraction = (absolute % scale).toString().padLeft(metadata.exponent, '0');
+    final whole = absolute ~/ metadata.scale;
+    final fraction = (absolute % metadata.scale)
+        .toString()
+        .padLeft(metadata.exponent, '0');
     return '${minorUnits < 0 ? '-' : ''}${_format(whole)}.$fraction ${metadata.code}';
   }
 
