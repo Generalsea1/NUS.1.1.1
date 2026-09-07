@@ -133,8 +133,10 @@ class _HouseholdOnboardingPageState extends State<HouseholdOnboardingPage> {
     String label,
     String key, {
     IconData? icon,
+    Key? fieldKey,
   }) {
     return TextFormField(
+      key: fieldKey,
       controller: controller,
       keyboardType: const TextInputType.numberWithOptions(decimal: false),
       textInputAction: TextInputAction.next,
@@ -153,6 +155,7 @@ class _HouseholdOnboardingPageState extends State<HouseholdOnboardingPage> {
     final regionRequired = const {'US', 'CA', 'AU', 'IN', 'BR', 'MX'}.contains(country);
 
     return Scaffold(
+      key: const ValueKey<String>('household-onboarding-page'),
       appBar: AppBar(
         title: const Text('إعداد بيتك', style: TextStyle(fontWeight: FontWeight.w900)),
         automaticallyImplyLeading: false,
@@ -172,6 +175,7 @@ class _HouseholdOnboardingPageState extends State<HouseholdOnboardingPage> {
               const SizedBox(height: 22),
               _section(context, title: 'المكان والعملة', children: [
                 TextFormField(
+                  key: const ValueKey<String>('onboarding-country'),
                   controller: _countryController,
                   textCapitalization: TextCapitalization.characters,
                   decoration: _decoration('الدولة — كود من حرفين (مثل EG)', icon: Icons.public_outlined),
@@ -183,6 +187,7 @@ class _HouseholdOnboardingPageState extends State<HouseholdOnboardingPage> {
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
+                  key: const ValueKey<String>('onboarding-region'),
                   controller: _regionController,
                   decoration: _decoration(regionRequired ? 'المحافظة / الولاية — مطلوبة هنا' : 'المحافظة / الولاية — اختياري عند عدم انطباقها', icon: Icons.location_on_outlined),
                   validator: (_) {
@@ -192,6 +197,7 @@ class _HouseholdOnboardingPageState extends State<HouseholdOnboardingPage> {
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
+                  key: const ValueKey<String>('onboarding-currency'),
                   controller: _currencyController,
                   textCapitalization: TextCapitalization.characters,
                   decoration: _decoration('العملة — كود من 3 أحرف (مثل EGP)', icon: Icons.currency_exchange_rounded),
@@ -203,12 +209,12 @@ class _HouseholdOnboardingPageState extends State<HouseholdOnboardingPage> {
               ]),
               const SizedBox(height: 14),
               _section(context, title: 'أفراد البيت', children: [
-                _numberField(_householdSizeController, 'إجمالي أفراد البيت', 'householdSize', icon: Icons.groups_outlined),
+                _numberField(_householdSizeController, 'إجمالي أفراد البيت', 'householdSize', icon: Icons.groups_outlined, fieldKey: const ValueKey<String>('onboarding-household-size')),
                 const SizedBox(height: 12),
                 Row(children: [
-                  Expanded(child: _numberField(_adultsController, 'عدد البالغين', 'adults', icon: Icons.person_outline)),
+                  Expanded(child: _numberField(_adultsController, 'عدد البالغين', 'adults', icon: Icons.person_outline, fieldKey: const ValueKey<String>('onboarding-adults'))),
                   const SizedBox(width: 12),
-                  Expanded(child: _numberField(_childrenController, 'عدد الأطفال', 'children', icon: Icons.child_care_outlined)),
+                  Expanded(child: _numberField(_childrenController, 'عدد الأطفال', 'children', icon: Icons.child_care_outlined, fieldKey: const ValueKey<String>('onboarding-children'))),
                 ]),
                 const SizedBox(height: 8),
                 Text('لازم عدد البالغين + الأطفال يساوي إجمالي أفراد البيت.', style: Theme.of(context).textTheme.bodySmall),
@@ -239,11 +245,11 @@ class _HouseholdOnboardingPageState extends State<HouseholdOnboardingPage> {
                   onChanged: (value) => setState(() => _incomeFrequency = value ?? 'monthly'),
                 ),
                 const SizedBox(height: 12),
-                _numberField(_incomeController, 'الدخل الشهري / المعادل الشهري', 'monthlyIncome', icon: Icons.account_balance_wallet_outlined),
+                _numberField(_incomeController, 'الدخل الشهري / المعادل الشهري', 'monthlyIncome', icon: Icons.account_balance_wallet_outlined, fieldKey: const ValueKey<String>('onboarding-monthly-income')),
               ]),
               const SizedBox(height: 14),
               _section(context, title: 'الالتزامات الشهرية الأولية', children: [
-                _numberField(_obligationsController, 'إجمالي الالتزامات الثابتة والأقساط الشهرية', 'recurringObligations', icon: Icons.receipt_long_outlined),
+                _numberField(_obligationsController, 'إجمالي الالتزامات الثابتة والأقساط الشهرية', 'recurringObligations', icon: Icons.receipt_long_outlined, fieldKey: const ValueKey<String>('onboarding-recurring-obligations')),
                 const SizedBox(height: 8),
                 Text('اكتب الإجمالي الحقيقي للالتزامات المتكررة فقط. المصروفات اليومية ستدخل لاحقًا في إدارة المصروفات.', style: Theme.of(context).textTheme.bodySmall),
               ]),
@@ -259,6 +265,7 @@ class _HouseholdOnboardingPageState extends State<HouseholdOnboardingPage> {
               SizedBox(
                 height: 52,
                 child: FilledButton.icon(
+                  key: const ValueKey<String>('onboarding-save'),
                   onPressed: _saving ? null : _save,
                   icon: _saving ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.arrow_forward_rounded),
                   label: Text(_saving ? 'جاري الحفظ...' : 'حفظ وإظهار حالتي المالية'),
