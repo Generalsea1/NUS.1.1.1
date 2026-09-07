@@ -255,16 +255,22 @@ class _HouseholdOnboardingPageState extends State<HouseholdOnboardingPage> {
                 Text('اكتب الإجمالي الحقيقي للالتزامات المتكررة فقط. المصروفات اليومية ستدخل لاحقًا في إدارة المصروفات.', style: Theme.of(context).textTheme.bodySmall),
               ]),
               const SizedBox(height: 18),
-              if (_error != null)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Text(_error!, style: TextStyle(color: scheme.error, fontWeight: FontWeight.w800)),
+              if (_error != null) ...[
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(color: scheme.errorContainer, borderRadius: BorderRadius.circular(16)),
+                  child: Text(_error!, style: TextStyle(color: scheme.onErrorContainer)),
                 ),
-              FilledButton.icon(
-                key: const ValueKey<String>('onboarding-save'),
-                onPressed: _saving ? null : _save,
-                icon: const Icon(Icons.lock_outline),
-                label: Text(_saving ? 'جاري الحفظ...' : 'حفظ وإظهار حالتي المالية'),
+                const SizedBox(height: 12),
+              ],
+              SizedBox(
+                height: 52,
+                child: FilledButton.icon(
+                  key: const ValueKey<String>('onboarding-save'),
+                  onPressed: _saving ? null : _save,
+                  icon: _saving ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.arrow_forward_rounded),
+                  label: Text(_saving ? 'جاري الحفظ...' : 'حفظ وإظهار حالتي المالية'),
+                ),
               ),
             ],
           ),
@@ -274,13 +280,18 @@ class _HouseholdOnboardingPageState extends State<HouseholdOnboardingPage> {
   }
 
   Widget _section(BuildContext context, {required String title, required List<Widget> children}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text(title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900)),
-        const SizedBox(height: 10),
-        ...children,
-      ],
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900)),
+            const SizedBox(height: 14),
+            ...children,
+          ],
+        ),
+      ),
     );
   }
 }
