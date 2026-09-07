@@ -94,7 +94,7 @@ class _Nus2AppState extends State<Nus2App> {
       themeMode: _themeMode,
       home: AuthGate(
         expenseService: widget.expenseService,
-        onOpenGeneralHome: () {
+        onOpenGeneralHome: (context) {
           Navigator.of(context).push(MaterialPageRoute(
             builder: (_) => Directionality(
               textDirection: TextDirection.rtl,
