@@ -7,7 +7,9 @@ import '../../expenses/presentation/household_expense_manager_page.dart';
 import '../../expenses/domain/currency_registry.dart';
 import '../../finance/application/financial_advisor.dart';
 import '../../finance/application/financial_engine.dart';
+import '../../finance/application/household_intelligence_service.dart';
 import '../../finance/presentation/financial_advisor_page.dart';
+import '../../finance/presentation/household_intelligence_page.dart';
 import '../../income/application/income_source_service.dart';
 import '../../income/application/income_source_repository.dart';
 import '../../income/data/supabase_income_source_repository.dart';
@@ -55,6 +57,14 @@ class _FinancialDashboardPageState extends State<FinancialDashboardPage> {
           obligationService: _obligationService,
           expenseService: widget.expenseManagementService!,
         );
+  late final HouseholdIntelligenceService? _householdIntelligence =
+      _financialEngine == null || widget.expenseManagementService == null
+          ? null
+          : HouseholdIntelligenceService(
+              financialEngine: _financialEngine,
+              expenseService: widget.expenseManagementService!,
+              incomeService: _incomeService,
+            );
 
   List<IncomeSource> _incomeSources = const [];
   List<Obligation> _obligationItems = const [];
@@ -263,6 +273,22 @@ class _FinancialDashboardPageState extends State<FinancialDashboardPage> {
     );
   }
 
+  void _openHouseholdIntelligence() {
+    final service = _householdIntelligence;
+    if (service == null) return;
+    Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => HouseholdIntelligencePage(
+          service: service,
+          userId: widget.profile.userId,
+          year: _selectedYear,
+          month: _selectedMonth,
+          currencyCode: widget.profile.currencyCode,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -396,6 +422,32 @@ class _FinancialDashboardPageState extends State<FinancialDashboardPage> {
                             ),
                           ),
                         ],
+                        if (_householdIntelligence != null) ...[
+                          const SizedBox(height: 12),
+                          Card(
+                            key: const ValueKey<String>('household-intelligence-card'),
+                            margin: EdgeInsets.zero,
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  Row(
+                                    children: [
+                                      const CircleAvatar(child: Icon(Icons.insights_rounded)),
+                                      const SizedBox(width: 12),
+                                      Expanded(child: Text('ذكاء البيت', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900))),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  const Text('تحليل deterministic لبيانات الدخل والمصروفات والالتزامات: أعلى البنود، الاتجاهات، المتكرر، وضغط الالتزامات — بدون توقعات أو تخمينات.'),
+                                  const SizedBox(height: 10),
+                                  FilledButton.icon(key: const ValueKey<String>('open-household-intelligence'), onPressed: _openHouseholdIntelligence, icon: const Icon(Icons.insights_rounded), label: const Text('فتح ذكاء البيت')),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
                       ],
                     ],
                   ),
@@ -434,11 +486,26 @@ class _FinancialDashboardPageState extends State<FinancialDashboardPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Row(children: [CircleAvatar(child: Icon(icon)), const SizedBox(width: 12), Expanded(child: Text(title, style: Theme.of(c).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)))]),
-              const SizedBox(height: 6),
-              Text(value, style: Theme.of(c).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900)),
-              if (loading) const Padding(padding: EdgeInsets.only(top: 8), child: LinearProgressIndicator()),
-              if (error != null) ...[
+              Row(
+                children: [
+                  CircleAvatar(child: Icon(icon)),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+                        const SizedBox(height: 4),
+                        Text(value, style: Theme.of(c).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              if (loading) ...[
+                const SizedBox(height: 10),
+                const LinearProgressIndicator(),
+              ] else if (error != null) ...[
                 const SizedBox(height: 8),
                 Text(error, style: Theme.of(c).textTheme.bodySmall),
                 if (retry != null) TextButton.icon(onPressed: retry, icon: const Icon(Icons.refresh_rounded), label: const Text('إعادة المحاولة')),
