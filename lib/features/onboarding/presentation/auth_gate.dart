@@ -26,17 +26,15 @@ class AuthGate extends StatefulWidget {
   final AuthRepository? authRepository;
   final HouseholdProfileRepository? profileRepository;
   final ExpenseLifecycleService? expenseService;
-  final VoidCallback? onOpenGeneralHome;
+  final void Function(BuildContext context)? onOpenGeneralHome;
 
   @override
   State<AuthGate> createState() => _AuthGateState();
 }
 
 class _AuthGateState extends State<AuthGate> {
-  late final AuthRepository _authRepository =
-      widget.authRepository ?? SupabaseAuthRepository();
-  late final HouseholdProfileRepository _profileRepository =
-      widget.profileRepository ?? const SupabaseHouseholdProfileRepository();
+  late final AuthRepository _authRepository = widget.authRepository ?? SupabaseAuthRepository();
+  late final HouseholdProfileRepository _profileRepository = widget.profileRepository ?? const SupabaseHouseholdProfileRepository();
   late final bool _ownsAuthRepository = widget.authRepository == null;
   late final StreamSubscription<AuthState> _authSubscription;
   AuthState _authState = const UnauthenticatedAuthState();
@@ -44,6 +42,7 @@ class _AuthGateState extends State<AuthGate> {
   bool _initializing = true;
   bool _loadingProfile = false;
   String? _profileError;
+  bool _receivedAuthEvent = false;
 
   @override
   void initState() {
@@ -55,7 +54,7 @@ class _AuthGateState extends State<AuthGate> {
   @override
   void dispose() {
     _authSubscription.cancel();
-    if (_ownsAuthRepository) _authRepository.dispose();
+    if (_ownsAuthRepository) unawaited(_authRepository.dispose());
     super.dispose();
   }
 
@@ -64,7 +63,7 @@ class _AuthGateState extends State<AuthGate> {
       final state = await _authRepository.initialize();
       if (!mounted) return;
       setState(() => _authState = state);
-      await _resolveAuthenticatedUser(state);
+      if (!_receivedAuthEvent) await _resolveAuthenticatedUser(state);
     } catch (error) {
       if (!mounted) return;
       setState(() {
@@ -76,15 +75,14 @@ class _AuthGateState extends State<AuthGate> {
 
   void _onAuthState(AuthState state) {
     if (!mounted) return;
+    _receivedAuthEvent = true;
     setState(() {
       _authState = state;
       _profile = null;
       _profileError = null;
       _loadingProfile = state.isAuthenticated;
     });
-    if (state.isAuthenticated) {
-      unawaited(_resolveAuthenticatedUser(state));
-    }
+    unawaited(_resolveAuthenticatedUser(state));
   }
 
   Future<void> _resolveAuthenticatedUser(AuthState state) async {
@@ -112,29 +110,25 @@ class _AuthGateState extends State<AuthGate> {
 
     try {
       final profile = await _profileRepository.load(userId);
-      final valid = profile != null &&
-          const HouseholdProfileValidator().isValid(profile);
       if (!mounted) return;
       setState(() {
-        _profile = valid ? profile : profile;
+        _profile = profile;
         _profileError = null;
         _loadingProfile = false;
         _initializing = false;
       });
-    } catch (error) {
+    } catch (_) {
       if (!mounted) return;
       setState(() {
         _profile = null;
-        _profileError =
-            'تعذر قراءة الملف المالي المحفوظ. لن نعتبر الإعداد مكتملًا قبل التأكد من البيانات.';
+        _profileError = 'تعذر قراءة الملف المالي المحفوظ. لن نعتبر الإعداد مكتملًا قبل التأكد من البيانات.';
         _loadingProfile = false;
         _initializing = false;
       });
     }
   }
 
-  String _readableError(Object error) =>
-      'تعذر بدء جلسة NUS الآن. راجع إعدادات الاتصال ثم حاول مرة أخرى.';
+  String _readableError(Object error) => 'تعذر بدء جلسة NUS الآن. راجع إعدادات الاتصال ثم حاول مرة أخرى.';
 
   Future<void> _retryProfile() async {
     if (_loadingProfile) return;
@@ -149,10 +143,7 @@ class _AuthGateState extends State<AuthGate> {
     }
 
     if (!_authState.isAuthenticated) {
-      return const Directionality(
-        textDirection: TextDirection.rtl,
-        child: AuthPage(),
-      );
+      return const Directionality(textDirection: TextDirection.rtl, child: AuthPage());
     }
 
     final userId = _authState.session!.user.id;
@@ -211,11 +202,7 @@ class _ErrorView extends StatelessWidget {
                       const SizedBox(height: 16),
                       Text(message, textAlign: TextAlign.center),
                       const SizedBox(height: 16),
-                      FilledButton.icon(
-                        onPressed: onRetry,
-                        icon: const Icon(Icons.refresh_rounded),
-                        label: const Text('إعادة المحاولة'),
-                      ),
+                      FilledButton.icon(onPressed: onRetry, icon: const Icon(Icons.refresh_rounded), label: const Text('إعادة المحاولة')),
                     ],
                   ),
                 ),
