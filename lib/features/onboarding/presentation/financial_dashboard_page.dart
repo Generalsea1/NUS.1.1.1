@@ -15,7 +15,7 @@ class FinancialDashboardPage extends StatelessWidget {
 
   final HouseholdProfile profile;
   final ExpenseLifecycleService? expenseService;
-  final VoidCallback? onOpenGeneralHome;
+  final void Function(BuildContext context)? onOpenGeneralHome;
   final VoidCallback? onSignOut;
 
   String _format(int value) {
@@ -40,37 +40,20 @@ class FinancialDashboardPage extends StatelessWidget {
         title: const Text('حالتي المالية', style: TextStyle(fontWeight: FontWeight.w900)),
         actions: [
           if (onSignOut != null)
-            IconButton(
-              tooltip: 'تسجيل الخروج',
-              onPressed: onSignOut,
-              icon: const Icon(Icons.logout_rounded),
-            ),
+            IconButton(tooltip: 'تسجيل الخروج', onPressed: onSignOut, icon: const Icon(Icons.logout_rounded)),
         ],
       ),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
           children: [
-            Text(
-              'دي نقطة البداية الحقيقية لاقتصاد بيتك.',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900),
-            ),
+            Text('دي نقطة البداية الحقيقية لاقتصاد بيتك.', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900)),
             const SizedBox(height: 6),
             Text('${profile.householdSize} أفراد · ${profile.adults} بالغين · ${profile.children} أطفال · ${profile.currencyCode}'),
             const SizedBox(height: 18),
-            _metricCard(
-              context,
-              title: 'الدخل الشهري',
-              value: _money(profile.monthlyIncome),
-              icon: Icons.account_balance_wallet_rounded,
-            ),
+            _metricCard(context, title: 'الدخل الشهري', value: _money(profile.monthlyIncome), icon: Icons.account_balance_wallet_rounded),
             const SizedBox(height: 12),
-            _metricCard(
-              context,
-              title: 'الالتزامات المتكررة الأولية',
-              value: _money(profile.recurringObligations),
-              icon: Icons.receipt_long_rounded,
-            ),
+            _metricCard(context, title: 'الالتزامات المتكررة الأولية', value: _money(profile.recurringObligations), icon: Icons.receipt_long_rounded),
             const SizedBox(height: 12),
             Card(
               child: Padding(
@@ -78,15 +61,9 @@ class FinancialDashboardPage extends StatelessWidget {
                 child: Row(
                   children: [
                     CircleAvatar(
-                      backgroundColor: remainingPositive
-                          ? scheme.primaryContainer
-                          : scheme.errorContainer,
-                      foregroundColor: remainingPositive
-                          ? scheme.onPrimaryContainer
-                          : scheme.onErrorContainer,
-                      child: Icon(remainingPositive
-                          ? Icons.savings_outlined
-                          : Icons.warning_amber_rounded),
+                      backgroundColor: remainingPositive ? scheme.primaryContainer : scheme.errorContainer,
+                      foregroundColor: remainingPositive ? scheme.onPrimaryContainer : scheme.onErrorContainer,
+                      child: Icon(remainingPositive ? Icons.savings_outlined : Icons.warning_amber_rounded),
                     ),
                     const SizedBox(width: 14),
                     Expanded(
@@ -95,13 +72,7 @@ class FinancialDashboardPage extends StatelessWidget {
                         children: [
                           Text('المتبقي بعد الالتزامات', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
                           const SizedBox(height: 4),
-                          Text(
-                            _money(remaining),
-                            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                  fontWeight: FontWeight.w900,
-                                  color: remainingPositive ? scheme.primary : scheme.error,
-                                ),
-                          ),
+                          Text(_money(remaining), style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900, color: remainingPositive ? scheme.primary : scheme.error)),
                         ],
                       ),
                     ),
@@ -129,54 +100,34 @@ class FinancialDashboardPage extends StatelessWidget {
             const SizedBox(height: 18),
             if (expenseService != null)
               FilledButton.icon(
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => HouseholdExpenseManagerPage(
-                      service: expenseService!,
-                      isArabic: true,
-                    ),
-                  ),
-                ),
+                onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => HouseholdExpenseManagerPage(service: expenseService!, isArabic: true))),
                 icon: const Icon(Icons.receipt_long_rounded),
                 label: const Text('إدارة مصروفات البيت'),
               ),
             if (onOpenGeneralHome != null) ...[
               const SizedBox(height: 10),
               OutlinedButton.icon(
-                onPressed: onOpenGeneralHome,
+                onPressed: () => onOpenGeneralHome!(context),
                 icon: const Icon(Icons.apps_rounded),
                 label: const Text('فتح باقي أدوات NUS'),
               ),
             ],
             const SizedBox(height: 10),
-            Text(
-              'الأرقام دي مبنية على بياناتك المحفوظة فقط. NUS لم يضع أي قيمة افتراضية مكان بياناتك.',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
+            Text('الأرقام دي مبنية على بياناتك المحفوظة فقط. NUS لم يضع أي قيمة افتراضية مكان بياناتك.', textAlign: TextAlign.center, style: Theme.of(context).textTheme.bodySmall),
           ],
         ),
       ),
     );
   }
 
-  Widget _metricCard(
-    BuildContext context, {
-    required String title,
-    required String value,
-    required IconData icon,
-  }) {
+  Widget _metricCard(BuildContext context, {required String title, required String value, required IconData icon}) {
     final scheme = Theme.of(context).colorScheme;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(18),
         child: Row(
           children: [
-            CircleAvatar(
-              backgroundColor: scheme.secondaryContainer,
-              foregroundColor: scheme.onSecondaryContainer,
-              child: Icon(icon),
-            ),
+            CircleAvatar(backgroundColor: scheme.secondaryContainer, foregroundColor: scheme.onSecondaryContainer, child: Icon(icon)),
             const SizedBox(width: 14),
             Expanded(
               child: Column(
