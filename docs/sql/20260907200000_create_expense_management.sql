@@ -28,11 +28,15 @@ create table if not exists public.expense_records (
   merchant text,
   description text,
   payment_method text,
-  recurring_definition_id uuid references public.recurring_expense_definitions(id) on delete set null,
+  recurring_definition_id uuid references public.recurring_expense_definitions(id) on delete restrict,
   obligation_id uuid references public.obligations(id) on delete set null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  constraint expense_recurring_link_valid check (expense_type = 'recurring' or recurring_definition_id is null)
+  constraint expense_recurring_link_valid check (
+    (expense_type = 'recurring' and recurring_definition_id is not null)
+    or
+    (expense_type <> 'recurring' and recurring_definition_id is null)
+  )
 );
 
 create index if not exists expense_records_user_occurred_idx on public.expense_records(user_id, occurred_on);
@@ -63,8 +67,7 @@ drop policy if exists "expense_records_insert_own" on public.expense_records;
 create policy "expense_records_insert_own" on public.expense_records for insert to authenticated with check (auth.uid() = user_id);
 drop policy if exists "expense_records_update_own" on public.expense_records;
 create policy "expense_records_update_own" on public.expense_records for update to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id);
-drop policy if exists "expense_records_delete_own" on public.expense_records;
-create policy "expense_records_delete_own" on public.expense_records for delete to authenticated using (auth.uid() = user_id);
+drop policy if exists "expense_records_delete_own" on public.expense_records for delete to authenticated using (auth.uid() = user_id);
 
 create or replace function public.touch_recurring_expense_updated_at()
 returns trigger language plpgsql set search_path = public, pg_temp as $$
