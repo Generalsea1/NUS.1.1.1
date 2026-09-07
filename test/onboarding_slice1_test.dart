@@ -90,24 +90,21 @@ void main() {
       userId: 'u1', repository: profiles, onCompleted: (profile) => completed = profile,
     )));
 
-    final monthlyIncomeField = find.byKey(
-      const ValueKey<String>('onboarding-monthly-income'),
-    );
-    expect(monthlyIncomeField, findsOneWidget);
-    final scrollableFinder = find.ancestor(
-      of: monthlyIncomeField,
-      matching: find.byType(Scrollable),
-    );
-    expect(scrollableFinder, findsOneWidget);
+    final pageFinder = find.byKey(const ValueKey<String>('household-onboarding-page'));
+    expect(pageFinder, findsOneWidget);
+    expect(find.byType(HouseholdOnboardingPage), findsOneWidget);
+
+    final formListView = find.byType(ListView);
+    expect(formListView, findsOneWidget);
+
+    await tester.fling(formListView, const Offset(0, -1000), 1000);
+    await tester.pump();
 
     Future<void> enterField(Key key, String value) async {
-      final field = find.byKey(key, skipOffstage: false);
-      await tester.scrollUntilVisible(
-        field,
-        400,
-        scrollable: scrollableFinder,
-      );
+      final field = find.byKey(key);
       expect(field, findsOneWidget);
+      await tester.ensureVisible(field);
+      await tester.pump();
       await tester.enterText(field, value);
     }
 
@@ -120,13 +117,10 @@ void main() {
     await enterField(const ValueKey<String>('onboarding-monthly-income'), '10000');
     await enterField(const ValueKey<String>('onboarding-recurring-obligations'), '3000');
 
-    final saveButton = find.byKey(const ValueKey<String>('onboarding-save'), skipOffstage: false);
-    await tester.scrollUntilVisible(
-      saveButton,
-      400,
-      scrollable: scrollableFinder,
-    );
+    final saveButton = find.byKey(const ValueKey<String>('onboarding-save'));
     expect(saveButton, findsOneWidget);
+    await tester.ensureVisible(saveButton);
+    await tester.pump();
     await tester.tap(saveButton);
     await tester.pumpAndSettle();
 
@@ -138,6 +132,8 @@ void main() {
     expect(profiles.saveCalls, 1);
 
     profiles.shouldFailSave = false;
+    await tester.ensureVisible(saveButton);
+    await tester.pump();
     await tester.tap(saveButton);
     await tester.pumpAndSettle();
 
