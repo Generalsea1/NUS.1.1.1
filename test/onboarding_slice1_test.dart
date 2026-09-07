@@ -117,8 +117,12 @@ void main() {
     expect(completed, isNull);
     expect(profiles.saveCalls, 1);
 
-    await tester.scrollUntilVisible(saveButton, 400);
-    expect(saveButton, findsOneWidget);
+    profiles.shouldFailSave = false;
+    await tester.tap(saveButton);
+    await tester.pumpAndSettle();
+
+    expect(completed, isNotNull);
+    expect(profiles.saveCalls, 2);
   });
 }
 
