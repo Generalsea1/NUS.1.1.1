@@ -28,7 +28,7 @@ Future<void> main() async {
     reminders: MedicationReminderCoordinator(MedicationReminderAdapter(notifications)),
   );
   final shoppingService = ShoppingLifecycleService(repository: LocalShoppingRepository());
-  final expenseService = ExpenseLifecycleService(repository: legacy.LocalExpenseRepository());
+  final expenseService = ExpenseLifecycleService(repository: LocalExpenseRepository());
   runApp(Nus2App(
     store: store,
     medicationService: medicationService,
