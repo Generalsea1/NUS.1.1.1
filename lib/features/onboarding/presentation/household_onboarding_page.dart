@@ -73,9 +73,6 @@ class _HouseholdOnboardingPageState extends State<HouseholdOnboardingPage> {
     super.dispose();
   }
 
-  String _required(String? value, String label) =>
-      value?.trim().isEmpty ?? true ? 'اكتب $label.' : null;
-
   int _number(TextEditingController controller) =>
       int.tryParse(controller.text.trim()) ?? 0;
 
@@ -114,7 +111,7 @@ class _HouseholdOnboardingPageState extends State<HouseholdOnboardingPage> {
       await widget.repository.save(profile);
       if (!mounted) return;
       widget.onCompleted(profile);
-    } catch (error) {
+    } catch (_) {
       if (!mounted) return;
       setState(() {
         _saving = false;
@@ -124,8 +121,7 @@ class _HouseholdOnboardingPageState extends State<HouseholdOnboardingPage> {
   }
 
   String _fieldError(String key) {
-    final profile = _profileFromForm();
-    final errors = widget.validator.validate(profile).errors;
+    final errors = widget.validator.validate(_profileFromForm()).errors;
     return errors[key] ?? '';
   }
 
@@ -145,8 +141,7 @@ class _HouseholdOnboardingPageState extends State<HouseholdOnboardingPage> {
       decoration: _decoration(label, icon: icon),
       validator: (_) {
         final direct = _fieldError(key);
-        if (direct.isNotEmpty) return direct;
-        return null;
+        return direct.isEmpty ? null : direct;
       },
     );
   }
@@ -170,120 +165,93 @@ class _HouseholdOnboardingPageState extends State<HouseholdOnboardingPage> {
             children: [
               Text(
                 'خلّي NUS يعرف نقطة البداية الحقيقية لاقتصاد بيتك.',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w900,
-                    ),
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900),
               ),
               const SizedBox(height: 8),
               const Text('المعلومات دي هتتحفظ على حسابك، ومن خلالها نحسب لك أول ملخص مالي حقيقي.'),
               const SizedBox(height: 22),
-              _section(
-                context,
-                title: 'المكان والعملة',
-                children: [
-                  TextFormField(
-                    controller: _countryController,
-                    textCapitalization: TextCapitalization.characters,
-                    decoration: _decoration('الدولة — كود من حرفين (مثل EG)', icon: Icons.public_outlined),
-                    onChanged: (_) => setState(() {}),
-                    validator: (_) => _fieldError('country').isEmpty ? null : _fieldError('country'),
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: _regionController,
-                    decoration: _decoration(
-                      regionRequired ? 'المحافظة / الولاية — مطلوبة هنا' : 'المحافظة / الولاية — اختياري عند عدم انطباقها',
-                      icon: Icons.location_on_outlined,
-                    ),
-                    validator: (_) => _fieldError('region').isEmpty ? null : _fieldError('region'),
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: _currencyController,
-                    textCapitalization: TextCapitalization.characters,
-                    decoration: _decoration('العملة — كود من 3 أحرف (مثل EGP)', icon: Icons.currency_exchange_rounded),
-                    validator: (_) => _fieldError('currency').isEmpty ? null : _fieldError('currency'),
-                  ),
-                ],
-              ),
+              _section(context, title: 'المكان والعملة', children: [
+                TextFormField(
+                  controller: _countryController,
+                  textCapitalization: TextCapitalization.characters,
+                  decoration: _decoration('الدولة — كود من حرفين (مثل EG)', icon: Icons.public_outlined),
+                  onChanged: (_) => setState(() {}),
+                  validator: (_) {
+                    final error = _fieldError('country');
+                    return error.isEmpty ? null : error;
+                  },
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _regionController,
+                  decoration: _decoration(regionRequired ? 'المحافظة / الولاية — مطلوبة هنا' : 'المحافظة / الولاية — اختياري عند عدم انطباقها', icon: Icons.location_on_outlined),
+                  validator: (_) {
+                    final error = _fieldError('region');
+                    return error.isEmpty ? null : error;
+                  },
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _currencyController,
+                  textCapitalization: TextCapitalization.characters,
+                  decoration: _decoration('العملة — كود من 3 أحرف (مثل EGP)', icon: Icons.currency_exchange_rounded),
+                  validator: (_) {
+                    final error = _fieldError('currency');
+                    return error.isEmpty ? null : error;
+                  },
+                ),
+              ]),
               const SizedBox(height: 14),
-              _section(
-                context,
-                title: 'أفراد البيت',
-                children: [
-                  _numberField(_householdSizeController, 'إجمالي أفراد البيت', 'householdSize', icon: Icons.groups_outlined),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(child: _numberField(_adultsController, 'عدد البالغين', 'adults', icon: Icons.person_outline)),
-                      const SizedBox(width: 12),
-                      Expanded(child: _numberField(_childrenController, 'عدد الأطفال', 'children', icon: Icons.child_care_outlined)),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text('لازم عدد البالغين + الأطفال يساوي إجمالي أفراد البيت.', style: Theme.of(context).textTheme.bodySmall),
-                ],
-              ),
+              _section(context, title: 'أفراد البيت', children: [
+                _numberField(_householdSizeController, 'إجمالي أفراد البيت', 'householdSize', icon: Icons.groups_outlined),
+                const SizedBox(height: 12),
+                Row(children: [
+                  Expanded(child: _numberField(_adultsController, 'عدد البالغين', 'adults', icon: Icons.person_outline)),
+                  const SizedBox(width: 12),
+                  Expanded(child: _numberField(_childrenController, 'عدد الأطفال', 'children', icon: Icons.child_care_outlined)),
+                ]),
+                const SizedBox(height: 8),
+                Text('لازم عدد البالغين + الأطفال يساوي إجمالي أفراد البيت.', style: Theme.of(context).textTheme.bodySmall),
+              ]),
               const SizedBox(height: 14),
-              _section(
-                context,
-                title: 'السكن والدخل',
-                children: [
-                  DropdownButtonFormField<String>(
-                    value: _housingType,
-                    decoration: _decoration('نوع السكن', icon: Icons.home_outlined),
-                    items: const [
-                      DropdownMenuItem(value: 'rent', child: Text('إيجار')),
-                      DropdownMenuItem(value: 'owned', child: Text('تمليك')),
-                      DropdownMenuItem(value: 'family', child: Text('مع الأسرة')),
-                      DropdownMenuItem(value: 'other', child: Text('أخرى')),
-                    ],
-                    onChanged: (value) => setState(() => _housingType = value ?? 'rent'),
-                    validator: (_) => _fieldError('housingType').isEmpty ? null : _fieldError('housingType'),
-                  ),
-                  const SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
-                    value: _incomeFrequency,
-                    decoration: _decoration('تكرار الدخل', icon: Icons.event_repeat_outlined),
-                    items: const [
-                      DropdownMenuItem(value: 'monthly', child: Text('شهري')),
-                      DropdownMenuItem(value: 'weekly', child: Text('أسبوعي')),
-                      DropdownMenuItem(value: 'biweekly', child: Text('كل أسبوعين')),
-                      DropdownMenuItem(value: 'irregular', child: Text('غير منتظم')),
-                    ],
-                    onChanged: (value) => setState(() => _incomeFrequency = value ?? 'monthly'),
-                    validator: (_) => _fieldError('incomeFrequency').isEmpty ? null : _fieldError('incomeFrequency'),
-                  ),
-                  const SizedBox(height: 12),
-                  _numberField(_incomeController, 'الدخل الشهري / المعادل الشهري', 'monthlyIncome', icon: Icons.account_balance_wallet_outlined),
-                ],
-              ),
+              _section(context, title: 'السكن والدخل', children: [
+                DropdownButtonFormField<String>(
+                  initialValue: _housingType,
+                  decoration: _decoration('نوع السكن', icon: Icons.home_outlined),
+                  items: const [
+                    DropdownMenuItem(value: 'rent', child: Text('إيجار')),
+                    DropdownMenuItem(value: 'owned', child: Text('تمليك')),
+                    DropdownMenuItem(value: 'family', child: Text('مع الأسرة')),
+                    DropdownMenuItem(value: 'other', child: Text('أخرى')),
+                  ],
+                  onChanged: (value) => setState(() => _housingType = value ?? 'rent'),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  initialValue: _incomeFrequency,
+                  decoration: _decoration('تكرار الدخل', icon: Icons.event_repeat_outlined),
+                  items: const [
+                    DropdownMenuItem(value: 'monthly', child: Text('شهري')),
+                    DropdownMenuItem(value: 'weekly', child: Text('أسبوعي')),
+                    DropdownMenuItem(value: 'biweekly', child: Text('كل أسبوعين')),
+                    DropdownMenuItem(value: 'irregular', child: Text('غير منتظم')),
+                  ],
+                  onChanged: (value) => setState(() => _incomeFrequency = value ?? 'monthly'),
+                ),
+                const SizedBox(height: 12),
+                _numberField(_incomeController, 'الدخل الشهري / المعادل الشهري', 'monthlyIncome', icon: Icons.account_balance_wallet_outlined),
+              ]),
               const SizedBox(height: 14),
-              _section(
-                context,
-                title: 'الالتزامات الشهرية الأولية',
-                children: [
-                  _numberField(
-                    _obligationsController,
-                    'إجمالي الالتزامات الثابتة والأقساط الشهرية',
-                    'recurringObligations',
-                    icon: Icons.receipt_long_outlined,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'اكتب الإجمالي الحقيقي للالتزامات المتكررة فقط. المصروفات اليومية ستدخل لاحقًا في إدارة المصروفات.',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ],
-              ),
+              _section(context, title: 'الالتزامات الشهرية الأولية', children: [
+                _numberField(_obligationsController, 'إجمالي الالتزامات الثابتة والأقساط الشهرية', 'recurringObligations', icon: Icons.receipt_long_outlined),
+                const SizedBox(height: 8),
+                Text('اكتب الإجمالي الحقيقي للالتزامات المتكررة فقط. المصروفات اليومية ستدخل لاحقًا في إدارة المصروفات.', style: Theme.of(context).textTheme.bodySmall),
+              ]),
               const SizedBox(height: 18),
               if (_error != null) ...[
                 Container(
                   padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: scheme.errorContainer,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
+                  decoration: BoxDecoration(color: scheme.errorContainer, borderRadius: BorderRadius.circular(16)),
                   child: Text(_error!, style: TextStyle(color: scheme.onErrorContainer)),
                 ),
                 const SizedBox(height: 12),
@@ -292,9 +260,7 @@ class _HouseholdOnboardingPageState extends State<HouseholdOnboardingPage> {
                 height: 52,
                 child: FilledButton.icon(
                   onPressed: _saving ? null : _save,
-                  icon: _saving
-                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Icon(Icons.arrow_forward_rounded),
+                  icon: _saving ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.arrow_forward_rounded),
                   label: Text(_saving ? 'جاري الحفظ...' : 'حفظ وإظهار حالتي المالية'),
                 ),
               ),
