@@ -32,7 +32,7 @@ void main() {
     test('rejects impossible counts, invalid currency, and negative money', () {
       const profile = HouseholdProfile(
         userId: 'u1', countryCode: 'EG', region: null, currencyCode: 'BAD',
-        householdSize: 2, adults: 3, children: -1, housingType: 'rent',
+        householdSize: 4, adults: 3, children: -1, housingType: 'rent',
         incomeFrequency: 'monthly', monthlyIncome: 0, recurringObligations: -1,
       );
       final result = validator.validate(profile);
@@ -53,8 +53,8 @@ void main() {
     final auth = FakeAuthRepository(_authenticatedState());
     await tester.pumpWidget(_host(AuthGate(authRepository: auth, profileRepository: FakeProfileRepository())));
     await tester.pumpAndSettle();
+    expect(find.byType(HouseholdOnboardingPage), findsOneWidget);
     expect(find.text('إعداد بيتك'), findsOneWidget);
-    expect(find.text('حفظ وإظهار حالتي المالية'), findsOneWidget);
   });
 
   testWidgets('existing valid profile bypasses onboarding', (tester) async {
@@ -89,22 +89,36 @@ void main() {
     await tester.pumpWidget(MaterialApp(home: HouseholdOnboardingPage(
       userId: 'u1', repository: profiles, onCompleted: (profile) => completed = profile,
     )));
-    final fields = find.byType(TextFormField);
-    await tester.enterText(fields.at(0), 'EG');
-    await tester.enterText(fields.at(1), 'Cairo');
-    await tester.enterText(fields.at(2), 'EGP');
-    await tester.enterText(fields.at(3), '3');
-    await tester.enterText(fields.at(4), '2');
-    await tester.enterText(fields.at(5), '1');
-    await tester.enterText(fields.at(6), '10000');
-    await tester.enterText(fields.at(7), '3000');
-    await tester.tap(find.text('حفظ وإظهار حالتي المالية'));
+
+    Future<void> enterField(String label, String value) async {
+      final field = find.bySemanticsLabel(label);
+      await tester.scrollUntilVisible(field, 300);
+      await tester.enterText(field, value);
+    }
+
+    await enterField('الدولة — كود من حرفين (مثل EG)', 'EG');
+    await enterField('المحافظة / الولاية — اختياري عند عدم انطباقها', 'Cairo');
+    await enterField('العملة — كود من 3 أحرف (مثل EGP)', 'EGP');
+    await enterField('إجمالي أفراد البيت', '3');
+    await enterField('عدد البالغين', '2');
+    await enterField('عدد الأطفال', '1');
+    await enterField('الدخل الشهري / المعادل الشهري', '10000');
+    await enterField('إجمالي الالتزامات الثابتة والأقساط الشهرية', '3000');
+
+    final saveButton = find.text('حفظ وإظهار حالتي المالية');
+    await tester.scrollUntilVisible(saveButton, 400);
+    await tester.tap(saveButton);
     await tester.pumpAndSettle();
+
+    expect(find.byType(HouseholdOnboardingPage), findsOneWidget);
     expect(find.text('ماقدرناش نحفظ بيانات البيت دلوقتي. بياناتك مازالت موجودة، حاول تاني.'), findsOneWidget);
     expect(find.text('10000'), findsOneWidget);
     expect(find.text('3000'), findsOneWidget);
     expect(completed, isNull);
     expect(profiles.saveCalls, 1);
+
+    await tester.scrollUntilVisible(saveButton, 400);
+    expect(saveButton, findsOneWidget);
   });
 }
 
