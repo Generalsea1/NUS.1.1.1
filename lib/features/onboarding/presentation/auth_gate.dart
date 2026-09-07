@@ -6,6 +6,8 @@ import '../../../core/auth/auth_repository.dart';
 import '../../../core/auth/auth_state.dart';
 import '../../../core/auth/supabase_auth_repository.dart';
 import '../../expenses/application/expense_lifecycle_service.dart';
+import '../../income/application/income_source_repository.dart';
+import '../../income/data/supabase_income_source_repository.dart';
 import '../application/household_profile_repository.dart';
 import '../application/household_profile_validator.dart';
 import '../data/supabase_household_profile_repository.dart';
@@ -19,12 +21,14 @@ class AuthGate extends StatefulWidget {
     super.key,
     this.authRepository,
     this.profileRepository,
+    this.incomeRepository,
     this.expenseService,
     this.onOpenGeneralHome,
   });
 
   final AuthRepository? authRepository;
   final HouseholdProfileRepository? profileRepository;
+  final IncomeSourceRepository? incomeRepository;
   final ExpenseLifecycleService? expenseService;
   final void Function(BuildContext context)? onOpenGeneralHome;
 
@@ -35,6 +39,7 @@ class AuthGate extends StatefulWidget {
 class _AuthGateState extends State<AuthGate> {
   late final AuthRepository _authRepository = widget.authRepository ?? SupabaseAuthRepository();
   late final HouseholdProfileRepository _profileRepository = widget.profileRepository ?? const SupabaseHouseholdProfileRepository();
+  late final IncomeSourceRepository _incomeRepository = widget.incomeRepository ?? const SupabaseIncomeSourceRepository();
   late final bool _ownsAuthRepository = widget.authRepository == null;
   late final StreamSubscription<AuthState> _authSubscription;
   AuthState _authState = const UnauthenticatedAuthState();
@@ -171,6 +176,7 @@ class _AuthGateState extends State<AuthGate> {
       textDirection: TextDirection.rtl,
       child: FinancialDashboardPage(
         profile: profile,
+        incomeRepository: _incomeRepository,
         expenseService: widget.expenseService,
         onOpenGeneralHome: widget.onOpenGeneralHome,
         onSignOut: () => _authRepository.signOut(),
