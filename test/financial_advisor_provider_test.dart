@@ -20,6 +20,19 @@ class _RecordingTransport implements FinancialAdvisorTransport {
   }
 }
 
+class _ThrowingTransport implements FinancialAdvisorTransport {
+  _ThrowingTransport(this.error);
+  final FinancialAdvisorException error;
+
+  @override
+  Future<FinancialAdvisorTransportResponse> invoke({
+    required String accessToken,
+    required Map<String, dynamic> body,
+  }) async {
+    throw error;
+  }
+}
+
 AiInsightRequest _request() => const AiInsightRequest(
       objective: 'User question: أين يذهب إنفاقي؟',
       context: [
@@ -27,7 +40,7 @@ AiInsightRequest _request() => const AiInsightRequest(
           domain: 'financial_engine',
           entityId: 'monthly:2026-09',
           summary:
-              'income=10000;obligations=2500;actualExpensesMinor=180000;expectedRecurringMinor=90000;currency=EGP;actualByCategory=food:120000|transport:60000',
+              'income=10000;obligations=2500;actualExpensesMinor=180000;expectedRecurringMinor=90000;actualPositionMinor=820000;positionAfterObligations=7500;currency=EGP;actualByCategory=food:120000|transport:60000',
         ),
       ],
     );
@@ -43,72 +56,65 @@ Map<String, dynamic> _successResponse() => {
     };
 
 void main() {
-  test('provider sends the Financial Engine request unchanged and requires authentication', () async {
-    final transport = _RecordingTransport(
-      FinancialAdvisorTransportResponse(statusCode: 200, data: _successResponse()),
-    );
-    const provider = FinancialAdvisorProvider(
-      transport: null,
-      accessTokenReader: _token,
-    );
-
-    final actual = await provider.generateInsight(_request());
-
-    expect(transport.body, isNull);
-    expect(actual.sourceDomain, 'financial_advisor');
-
-    final injected = _RecordingTransport(
-      FinancialAdvisorTransportResponse(statusCode: 200, data: _successResponse()),
-    );
-    final injectedProvider = FinancialAdvisorProvider(
-      transport: injected,
-      accessTokenReader: _token,
-    );
-    await injectedProvider.generateInsight(_request());
-
-    expect(injected.accessToken, 'test-user-token');
-    expect(injected.body?['objective'], _request().objective);
-    expect(injected.body?['context'], [
-      {
-        'domain': 'financial_engine',
-        'entityId': 'monthly:2026-09',
-        'summary': _request().context.single.summary,
-      },
-    ]);
-  });
-
-  test('provider is read-only and does not call any financial repository', () async {
+  test('provider sends authoritative Financial Engine context unchanged', () async {
     final transport = _RecordingTransport(
       FinancialAdvisorTransportResponse(statusCode: 200, data: _successResponse()),
     );
     final provider = FinancialAdvisorProvider(
       transport: transport,
-      accessTokenReader: _token,
+      accessTokenReader: () => 'test-user-token',
     );
 
-    final snapshot = _request().context.single.summary;
-    await provider.generateInsight(_request());
+    final request = _request();
+    final result = await provider.generateInsight(request);
 
-    expect(snapshot, contains('income=10000'));
-    expect(snapshot, contains('obligations=2500'));
-    expect(snapshot, contains('actualExpensesMinor=180000'));
+    expect(result.sourceDomain, 'financial_advisor');
+    expect(transport.accessToken, 'test-user-token');
+    expect(transport.body?['objective'], request.objective);
+    expect(transport.body?['context'], [
+      {
+        'domain': 'financial_engine',
+        'entityId': 'monthly:2026-09',
+        'summary': request.context.single.summary,
+      },
+    ]);
   });
 
-  test('structured response parses facts, advice and warnings', () async {
+  test('provider is read-only: it has no financial repository and only transports supplied data', () async {
+    final transport = _RecordingTransport(
+      FinancialAdvisorTransportResponse(statusCode: 200, data: _successResponse()),
+    );
+    final provider = FinancialAdvisorProvider(
+      transport: transport,
+      accessTokenReader: () => 'test-user-token',
+    );
+
+    final before = _request().context.single.summary;
+    await provider.generateInsight(_request());
+    final after = _request().context.single.summary;
+
+    expect(after, before);
+    expect(transport.body?['context'].toString(), contains('income=10000'));
+    expect(transport.body?['context'].toString(), contains('obligations=2500'));
+    expect(transport.body?['context'].toString(), contains('actualExpensesMinor=180000'));
+  });
+
+  test('structured response parses correctly', () async {
     final provider = FinancialAdvisorProvider(
       transport: _RecordingTransport(
         FinancialAdvisorTransportResponse(statusCode: 200, data: _successResponse()),
       ),
-      accessTokenReader: _token,
+      accessTokenReader: () => 'test-user-token',
     );
 
     final result = await provider.generateInsight(_request());
+    expect(result.id, 'advisor-1');
     expect(result.summary, contains('راجع بند الإنفاق الأعلى أولًا.'));
     expect(result.summary, contains('الحقائق'));
     expect(result.summary, contains('النصيحة'));
   });
 
-  test('malformed structured response fails safely', () async {
+  test('malformed response fails safely', () async {
     final provider = FinancialAdvisorProvider(
       transport: _RecordingTransport(
         const FinancialAdvisorTransportResponse(
@@ -116,7 +122,7 @@ void main() {
           data: {'ok': true, 'summary': 'missing required fields'},
         ),
       ),
-      accessTokenReader: _token,
+      accessTokenReader: () => 'test-user-token',
     );
 
     await expectLater(
@@ -162,8 +168,14 @@ void main() {
 
     for (final entry in cases.entries) {
       final provider = FinancialAdvisorProvider(
-        transport: _ThrowingTransport(entry.key),
-        accessTokenReader: _token,
+        transport: _ThrowingTransport(
+          FinancialAdvisorException(
+            kind: entry.value,
+            statusCode: entry.key,
+            message: 'test failure',
+          ),
+        ),
+        accessTokenReader: () => 'test-user-token',
       );
       await expectLater(
         provider.generateInsight(_request()),
@@ -175,24 +187,4 @@ void main() {
       );
     }
   });
-}
-
-String? _token() => 'test-user-token';
-
-class _ThrowingTransport implements FinancialAdvisorTransport {
-  _ThrowingTransport(this.statusCode);
-  final int statusCode;
-
-  @override
-  Future<FinancialAdvisorTransportResponse> invoke({
-    required String accessToken,
-    required Map<String, dynamic> body,
-  }) async {
-    throw _FakeFunctionException(statusCode);
-  }
-}
-
-class _FakeFunctionException implements Exception {
-  _FakeFunctionException(this.statusCode);
-  final int statusCode;
 }
