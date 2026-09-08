@@ -57,10 +57,15 @@ class _FailingProvider implements AiInsightProvider {
 }
 
 Future<void> _scrollUntilVisible(WidgetTester tester, Finder finder) async {
+  final advisorScrollables = find.descendant(
+    of: find.byType(FinancialAdvisorPage),
+    matching: find.byType(Scrollable),
+  );
+  expect(advisorScrollables, findsOneWidget);
   await tester.scrollUntilVisible(
     finder,
     500,
-    scrollable: find.byType(Scrollable),
+    scrollable: advisorScrollables,
   );
 }
 
