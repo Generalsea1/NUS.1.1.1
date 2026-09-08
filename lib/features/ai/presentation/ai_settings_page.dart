@@ -19,11 +19,13 @@ class _AiSettingsPageState extends State<AiSettingsPage>
   String _provider = 'gemini';
   bool _loading = true;
   bool _connecting = false;
+  bool _savingApiKey = false;
   bool _signingIn = false;
   bool _connected = false;
   String? _model;
   String? _statusMessage;
   bool _statusIsError = false;
+  final _apiKeyController = TextEditingController();
 
   String _t(String en, String ar) => widget.isArabic ? ar : en;
 
@@ -37,6 +39,7 @@ class _AiSettingsPageState extends State<AiSettingsPage>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _apiKeyController.dispose();
     super.dispose();
   }
 
@@ -149,8 +152,8 @@ class _AiSettingsPageState extends State<AiSettingsPage>
         setState(() {
           _statusIsError = true;
           _statusMessage = _t(
-            'Sign in with your Google account to NUS first.',
-            'سجّل دخولك بحساب Google في NUS الأول.',
+            'Sign in to NUS first.',
+            'سجّل دخولك في NUS الأول.',
           );
         });
       }
@@ -220,6 +223,99 @@ class _AiSettingsPageState extends State<AiSettingsPage>
     }
   }
 
+  Future<void> _saveGeminiApiKey() async {
+    final client = SupabaseService.client;
+    final user = client?.auth.currentUser;
+    final apiKey = _apiKeyController.text.trim();
+    if (client == null || user == null) {
+      if (mounted) {
+        setState(() {
+          _statusIsError = true;
+          _statusMessage = _t(
+            'Sign in to NUS before connecting Gemini.',
+            'سجّل دخولك في NUS قبل ربط Gemini.',
+          );
+        });
+      }
+      return;
+    }
+    if (apiKey.length < 20) {
+      setState(() {
+        _statusIsError = true;
+        _statusMessage = _t(
+          'Enter a valid Gemini API key.',
+          'اكتب مفتاح Gemini API صالح.',
+        );
+      });
+      return;
+    }
+
+    setState(() {
+      _savingApiKey = true;
+      _statusMessage = null;
+      _statusIsError = false;
+    });
+
+    try {
+      final response = await client.functions.invoke(
+        'ai-provider-connect',
+        body: {
+          'provider': 'gemini',
+          'action': 'save_api_key',
+          'apiKey': apiKey,
+        },
+      );
+      final data = response.data;
+      if (data is! Map || data['ok'] != true) {
+        throw const _AiSettingsException(
+          'Gemini API key could not be verified.',
+        );
+      }
+
+      _apiKeyController.clear();
+      if (!mounted) return;
+      setState(() {
+        _connected = true;
+        _model = data['model'] as String?;
+        _statusIsError = false;
+        _statusMessage = _t(
+          'Gemini is connected and the key was verified by Google.',
+          'تم ربط Gemini والتحقق من المفتاح فعليًا مع Google.',
+        );
+      });
+      await _loadConnection();
+    } on FunctionException catch (error) {
+      if (mounted) {
+        setState(() {
+          _statusIsError = true;
+          _statusMessage = error.reasonPhrase ?? error.toString();
+        });
+      }
+    } catch (error) {
+      if (mounted) {
+        setState(() {
+          _statusIsError = true;
+          _statusMessage = error.toString();
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _savingApiKey = false);
+    }
+  }
+
+  Future<void> _openGeminiKeyPage() async {
+    final uri = Uri.parse('https://aistudio.google.com/app/apikey');
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication) && mounted) {
+      setState(() {
+        _statusIsError = true;
+        _statusMessage = _t(
+          'Could not open Google AI Studio.',
+          'تعذر فتح Google AI Studio.',
+        );
+      });
+    }
+  }
+
   Future<void> _disconnect() async {
     final client = SupabaseService.client;
     final user = client?.auth.currentUser;
@@ -238,6 +334,7 @@ class _AiSettingsPageState extends State<AiSettingsPage>
         'refresh_token_encrypted': null,
         'token_expires_at': null,
         'last_error': null,
+        'metadata': {},
       }).eq('user_id', user.id).eq('provider', _provider);
 
       if (mounted) {
@@ -369,8 +466,8 @@ class _AiSettingsPageState extends State<AiSettingsPage>
                       const SizedBox(height: 9),
                       Text(
                         _t(
-                          'Sign in with the Google account you use for NUS. Then authorize Gemini separately for real AI household planning.',
-                          'سجّل بالحساب اللي بتستخدمه مع Google، وبعدها فوّض Gemini بشكل منفصل عشان التخطيط المالي يكون حقيقي.',
+                          'Sign in to NUS, then authorize Gemini or connect a Gemini API key. NUS never needs your Google password.',
+                          'سجّل دخولك في NUS، وبعدها فوّض Gemini أو اربط مفتاح Gemini API. NUS مش محتاج باسورد Google.',
                         ),
                         textAlign: TextAlign.center,
                         style: const TextStyle(height: 1.45),
@@ -448,7 +545,7 @@ class _AiSettingsPageState extends State<AiSettingsPage>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            user.email ?? _t('Google account', 'حساب Google'),
+                            user.email ?? _t('NUS account', 'حساب NUS'),
                             style: const TextStyle(fontWeight: FontWeight.w900),
                           ),
                           const SizedBox(height: 3),
@@ -480,68 +577,149 @@ class _AiSettingsPageState extends State<AiSettingsPage>
               onSelectionChanged: (value) => _selectProvider(value.first),
             ),
             const SizedBox(height: 12),
-            Card(
-              elevation: 0,
-              child: Padding(
-                padding: const EdgeInsets.all(18),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _provider == 'gemini'
-                          ? _t('Google Gemini', 'Google Gemini')
-                          : _t('OpenAI', 'OpenAI'),
-                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
-                    ),
-                    const SizedBox(height: 7),
-                    Text(
-                      _provider == 'gemini'
-                          ? _t(
-                              'NUS uses Gemini only after you explicitly authorize your Google account. Your Google password is never entered into NUS.',
-                              'NUS بيستخدم Gemini فقط بعد ما تفوّض حساب Google بنفسك. باسورد Google مش بيتكتب في NUS.',
-                            )
-                          : _t(
-                              'OpenAI remains disabled until a supported user-authorization flow is implemented. NUS will never ask for a ChatGPT password.',
-                              'OpenAI لسه مقفول لحد ما طريقة التفويض الرسمية للمستخدم تكتمل. NUS عمره ما هيطلب باسورد ChatGPT.',
-                            ),
-                    ),
-                    const SizedBox(height: 16),
-                    SizedBox(
-                      width: double.infinity,
-                      child: _connected && _provider == 'gemini'
-                          ? OutlinedButton.icon(
-                              onPressed: _connecting ? null : _disconnect,
-                              icon: const Icon(Icons.link_off_rounded),
-                              label: Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 12),
-                                child: Text(_t('Disconnect Gemini', 'فصل Gemini')),
-                              ),
-                            )
-                          : FilledButton.icon(
-                              onPressed: _connecting || _provider != 'gemini'
-                                  ? null
-                                  : _connectGemini,
-                              icon: _connecting
-                                  ? const SizedBox(
-                                      width: 18,
-                                      height: 18,
-                                      child: CircularProgressIndicator(strokeWidth: 2),
-                                    )
-                                  : const Icon(Icons.link_rounded),
-                              label: Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 12),
-                                child: Text(
-                                  _connecting
-                                      ? _t('Connecting…', 'جاري الربط…')
-                                      : _t('Connect Google Gemini', 'ربط Google Gemini'),
+            if (_provider == 'gemini') ...[
+              Card(
+                elevation: 0,
+                child: Padding(
+                  padding: const EdgeInsets.all(18),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        _t('Connect Google Gemini', 'ربط Google Gemini'),
+                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+                      ),
+                      const SizedBox(height: 7),
+                      Text(
+                        _t(
+                          'Use the secure Google authorization flow when it is configured on the server.',
+                          'استخدم التفويض الآمن من Google لما إعداداته تكون متظبطة على الخادم.',
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      SizedBox(
+                        width: double.infinity,
+                        child: _connected
+                            ? OutlinedButton.icon(
+                                onPressed: _connecting ? null : _disconnect,
+                                icon: const Icon(Icons.link_off_rounded),
+                                label: Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  child: Text(_t('Disconnect Gemini', 'فصل Gemini')),
+                                ),
+                              )
+                            : FilledButton.icon(
+                                onPressed: _connecting ? null : _connectGemini,
+                                icon: _connecting
+                                    ? const SizedBox(
+                                        width: 18,
+                                        height: 18,
+                                        child: CircularProgressIndicator(strokeWidth: 2),
+                                      )
+                                    : const Icon(Icons.link_rounded),
+                                label: Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  child: Text(
+                                    _connecting
+                                        ? _t('Connecting…', 'جاري الربط…')
+                                        : _t('Authorize with Google', 'التفويض من Google'),
+                                  ),
                                 ),
                               ),
-                            ),
-                    ),
-                  ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
+              const SizedBox(height: 12),
+              Card(
+                elevation: 0,
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                child: Padding(
+                  padding: const EdgeInsets.all(18),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.key_rounded),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              _t('Connect with a Gemini API key', 'اربط Gemini بمفتاح API'),
+                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        _t(
+                          'Create a Gemini API key in Google AI Studio. NUS sends it only to the authenticated server, verifies it with Google, and stores it encrypted. The key is never saved in Flutter or the APK.',
+                          'اعمل مفتاح Gemini API من Google AI Studio. NUS بيبعته للخادم الموثّق فقط، بيتحقق منه مع Google، وبيخزنه مشفّر. المفتاح مش بيتحفظ في Flutter ولا داخل الـAPK.',
+                        ),
+                        style: const TextStyle(height: 1.45),
+                      ),
+                      const SizedBox(height: 12),
+                      OutlinedButton.icon(
+                        onPressed: _savingApiKey ? null : _openGeminiKeyPage,
+                        icon: const Icon(Icons.open_in_new_rounded),
+                        label: Text(_t('Open Google AI Studio', 'فتح Google AI Studio')),
+                      ),
+                      const SizedBox(height: 10),
+                      TextField(
+                        controller: _apiKeyController,
+                        obscureText: true,
+                        enableSuggestions: false,
+                        autocorrect: false,
+                        keyboardType: TextInputType.visiblePassword,
+                        decoration: InputDecoration(
+                          labelText: _t('Gemini API key', 'مفتاح Gemini API'),
+                          hintText: _t('Paste your key here', 'الصق المفتاح هنا'),
+                          prefixIcon: const Icon(Icons.vpn_key_outlined),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      FilledButton.icon(
+                        onPressed: _savingApiKey ? null : _saveGeminiApiKey,
+                        icon: _savingApiKey
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.verified_rounded),
+                        label: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          child: Text(
+                            _savingApiKey
+                                ? _t('Verifying with Google…', 'جاري التحقق مع Google…')
+                                : _t('Verify and connect Gemini', 'تحقق واربط Gemini'),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ] else
+              Card(
+                elevation: 0,
+                child: Padding(
+                  padding: const EdgeInsets.all(18),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('OpenAI', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
+                      const SizedBox(height: 7),
+                      Text(_t(
+                        'OpenAI remains disabled until a supported user-authorization flow is implemented. NUS will never ask for a ChatGPT password.',
+                        'OpenAI لسه مقفول لحد ما طريقة التفويض الرسمية للمستخدم تكتمل. NUS عمره ما هيطلب باسورد ChatGPT.',
+                      )),
+                    ],
+                  ),
+                ),
+              ),
             const SizedBox(height: 12),
             Card(
               elevation: 0,
