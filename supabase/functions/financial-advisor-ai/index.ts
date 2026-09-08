@@ -9,7 +9,7 @@ const CORS_HEADERS = {
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
 const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-const encryptionSecret = Deno.env.get("AI_TOKEN_ENCRYPTION_KEY");
+const encryptionSecret = Deno.env.get("AI_TOKEN_ENCRYPTION_KEY") ?? serviceKey;
 const googleCloudProject = Deno.env.get("GEMINI_GOOGLE_CLOUD_PROJECT_ID");
 const defaultModel = Deno.env.get("GEMINI_MODEL") || "gemini-3.8-flash";
 const admin = serviceKey ? createClient(supabaseUrl, serviceKey) : null;
@@ -91,26 +91,33 @@ async function encryptToken(value: string) {
 }
 
 async function getGeminiAccess(userId: string) {
-  if (!admin || !googleCloudProject) {
-    throw Object.assign(new Error("AI server configuration is incomplete."), {
-      status: 503,
-    });
+  if (!admin) {
+    throw Object.assign(new Error("AI server configuration is incomplete."), { status: 503 });
   }
 
   const { data: connection, error } = await admin
     .from("user_ai_connections")
-    .select("id,model,status,access_token_encrypted,refresh_token_encrypted,token_expires_at")
+    .select("id,model,status,access_token_encrypted,refresh_token_encrypted,token_expires_at,metadata")
     .eq("user_id", userId)
     .eq("provider", "gemini")
     .maybeSingle();
 
   if (error) throw error;
-  if (
-    !connection ||
-    connection.status !== "connected" ||
-    typeof connection.access_token_encrypted !== "string"
-  ) {
+  if (!connection || connection.status !== "connected" || typeof connection.access_token_encrypted !== "string") {
     return null;
+  }
+
+  const authMode = connection.metadata?.authMode === "api_key" ? "api_key" : "oauth";
+  if (authMode === "api_key") {
+    return {
+      token: await decryptToken(connection.access_token_encrypted),
+      model: connection.model || defaultModel,
+      authMode,
+    } as const;
+  }
+
+  if (!googleCloudProject) {
+    throw Object.assign(new Error("Gemini OAuth project is not configured."), { status: 503 });
   }
 
   const expiresAt = connection.token_expires_at
@@ -121,21 +128,18 @@ async function getGeminiAccess(userId: string) {
     return {
       token: await decryptToken(connection.access_token_encrypted),
       model: connection.model || defaultModel,
-    };
+      authMode,
+    } as const;
   }
 
   if (typeof connection.refresh_token_encrypted !== "string") {
-    throw Object.assign(new Error("Gemini refresh token is missing."), {
-      status: 502,
-    });
+    throw Object.assign(new Error("Gemini refresh token is missing."), { status: 502 });
   }
 
   const clientId = Deno.env.get("GEMINI_GOOGLE_CLIENT_ID");
   const clientSecret = Deno.env.get("GEMINI_GOOGLE_CLIENT_SECRET");
   if (!clientId || !clientSecret) {
-    throw Object.assign(new Error("Gemini OAuth client is not configured."), {
-      status: 503,
-    });
+    throw Object.assign(new Error("Gemini OAuth client is not configured."), { status: 503 });
   }
 
   const refreshToken = await decryptToken(connection.refresh_token_encrypted);
@@ -151,16 +155,12 @@ async function getGeminiAccess(userId: string) {
   });
 
   if (!tokenResponse.ok) {
-    throw Object.assign(new Error("Gemini access token refresh failed."), {
-      status: 502,
-    });
+    throw Object.assign(new Error("Gemini access token refresh failed."), { status: 502 });
   }
 
   const refreshed = await tokenResponse.json() as JsonObject;
   if (typeof refreshed.access_token !== "string") {
-    throw Object.assign(new Error("Gemini did not return a refreshed access token."), {
-      status: 502,
-    });
+    throw Object.assign(new Error("Gemini did not return a refreshed access token."), { status: 502 });
   }
 
   const accessToken = refreshed.access_token;
@@ -173,34 +173,24 @@ async function getGeminiAccess(userId: string) {
         : null,
       last_error: null,
     })
-    .eq("id", connection.id);
+    .eq("id", connection.id)
+    .eq("user_id", userId);
 
-  return {
-    token: accessToken,
-    model: connection.model || defaultModel,
-  };
+  return { token: accessToken, model: connection.model || defaultModel, authMode } as const;
 }
 
 function validateRequest(body: unknown) {
   if (!body || typeof body !== "object") return "Invalid JSON request.";
   const record = body as JsonObject;
-  if (typeof record.objective !== "string" || !record.objective.trim()) {
-    return "Advisor objective is required.";
-  }
-  if (record.objective.length > MAX_OBJECTIVE_LENGTH) {
-    return "Advisor objective is too long.";
-  }
-  if (!Array.isArray(record.context) || record.context.length < 1 || record.context.length > MAX_CONTEXT_ITEMS) {
-    return "Advisor context is invalid.";
-  }
+  if (typeof record.objective !== "string" || !record.objective.trim()) return "Advisor objective is required.";
+  if (record.objective.length > MAX_OBJECTIVE_LENGTH) return "Advisor objective is too long.";
+  if (!Array.isArray(record.context) || record.context.length < 1 || record.context.length > MAX_CONTEXT_ITEMS) return "Advisor context is invalid.";
 
   for (const item of record.context) {
     if (!item || typeof item !== "object") return "Advisor context item is invalid.";
     const entry = item as JsonObject;
     if (entry.domain !== "financial_engine") return "Advisor accepts Financial Engine context only.";
-    if (typeof entry.entityId !== "string" || !/^monthly:\d{4}-(0[1-9]|1[0-2])$/.test(entry.entityId)) {
-      return "Advisor context entity is invalid.";
-    }
+    if (typeof entry.entityId !== "string" || !/^monthly:\d{4}-(0[1-9]|1[0-2])$/.test(entry.entityId)) return "Advisor context entity is invalid.";
     if (typeof entry.summary !== "string" || !entry.summary.trim()) return "Advisor context summary is required.";
     if (entry.summary.length > MAX_CONTEXT_SUMMARY_LENGTH) return "Advisor context summary is too long.";
   }
@@ -219,8 +209,7 @@ const schema = {
 };
 
 function asStringArray(value: unknown) {
-  if (!Array.isArray(value)) return null;
-  if (value.length > 8) return null;
+  if (!Array.isArray(value) || value.length > 8) return null;
   const result: string[] = [];
   for (const item of value) {
     if (typeof item !== "string" || !item.trim()) return null;
@@ -232,7 +221,7 @@ function asStringArray(value: unknown) {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS_HEADERS });
   if (req.method !== "POST") return json({ ok: false, error: "POST is required." }, 405);
-  if (!admin || !googleCloudProject || !encryptionSecret) {
+  if (!admin || !encryptionSecret) {
     return json({ ok: false, error: "خدمة المستشار المالي غير مُهيأة على الخادم." }, 503);
   }
 
@@ -253,30 +242,15 @@ Deno.serve(async (req) => {
   try {
     ai = await getGeminiAccess(user.id);
   } catch (error) {
-    const status = typeof error === "object" && error && "status" in error && typeof error.status === "number"
-      ? error.status
-      : 503;
+    const status = typeof error === "object" && error && "status" in error && typeof error.status === "number" ? error.status : 503;
     console.error("financial-advisor-ai provider setup failed", { status });
-    return json({
-      ok: false,
-      error: status === 503
-        ? "تعذر تجهيز اتصال Gemini على الخادم."
-        : "تعذر تجهيز اتصال Gemini.",
-    }, status);
+    return json({ ok: false, error: status === 503 ? "تعذر تجهيز اتصال Gemini على الخادم." : "تعذر تجهيز اتصال Gemini." }, status);
   }
 
-  if (!ai) {
-    return json({ ok: false, error: "اربط حساب Gemini من مركز الذكاء الاصطناعي أولًا." }, 409);
-  }
+  if (!ai) return json({ ok: false, error: "اربط Gemini من مركز الذكاء الاصطناعي أولًا." }, 409);
 
   const context = body.context as JsonObject[];
-  const prompt = `أنت المستشار المالي للمنزل داخل NUS. تعامل مع البيانات التالية باعتبارها الحقائق المالية الوحيدة المسموح باستخدامها. هذه البيانات مصدرها Financial Engine الحالي، ولا يجوز لك اختراع أو تعديل أو تقدير أي رقم. لا تحسب رقمًا جديدًا غير موجود صراحة في البيانات. لا تستخدم أسعار سوق، ولا FX، ولا تحويل عملات، ولا معلومات مالية خارجية. لا تنشئ معاملات ولا تدّعي تنفيذ أي إجراء.
-
-أجب على سؤال المستخدم عمليًا باللهجة المصرية الواضحة. افصل بوضوح بين FACTS وADVICE. لأن facts سيعيدها الخادم حرفيًا من Financial Engine، لا تنشئ قائمة facts من عندك. ركّز على شرح الوضع، ترتيب الأولويات، وما يمكن للمستخدم التفكير فيه أو فعله يدويًا. إذا كانت البيانات غير كافية لإجابة موثوقة، قل ذلك صراحة. لا تستنتج سمات شخصية أو صحية أو دينية أو سياسية حساسة من الأرقام. لا تقدم تعليمات مالية خطرة أو مضللة.
-
-أعد JSON فقط وفق العقد: summary (نص يجيب السؤال)، advice (قائمة نصائح عملية)، warnings (قائمة تحذيرات عند الحاجة). لا تضع أرقامًا جديدة غير موجودة في السياق.
-
-السياق:\n${JSON.stringify({ objective: body.objective, context })}`;
+  const prompt = `أنت المستشار المالي للمنزل داخل NUS. تعامل مع البيانات التالية باعتبارها الحقائق المالية الوحيدة المسموح باستخدامها. هذه البيانات مصدرها Financial Engine الحالي، ولا يجوز لك اختراع أو تعديل أو تقدير أي رقم. لا تحسب رقمًا جديدًا غير موجود صراحة في البيانات. لا تستخدم أسعار سوق، ولا FX، ولا تحويل عملات، ولا معلومات مالية خارجية. لا تنشئ معاملات ولا تدّعي تنفيذ أي إجراء.\n\nأجب على سؤال المستخدم عمليًا باللهجة المصرية الواضحة. افصل بوضوح بين FACTS وADVICE. لأن facts سيعيدها الخادم حرفيًا من Financial Engine، لا تنشئ قائمة facts من عندك. ركّز على شرح الوضع، ترتيب الأولويات، وما يمكن للمستخدم التفكير فيه أو فعله يدويًا. إذا كانت البيانات غير كافية لإجابة موثوقة، قل ذلك صراحة. لا تستنتج سمات شخصية أو صحية أو دينية أو سياسية حساسة من الأرقام. لا تقدم تعليمات مالية خطرة أو مضللة.\n\nأعد JSON فقط وفق العقد: summary (نص يجيب السؤال)، advice (قائمة نصائح عملية)، warnings (قائمة تحذيرات عند الحاجة). لا تضع أرقامًا جديدة غير موجودة في السياق.\n\nالسياق:\n${JSON.stringify({ objective: body.objective, context })}`;
 
   const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(ai.model)}:generateContent`;
   const controller = new AbortController();
@@ -284,13 +258,17 @@ Deno.serve(async (req) => {
 
   let response: Response;
   try {
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (ai.authMode === "api_key") {
+      headers["x-goog-api-key"] = ai.token;
+    } else {
+      headers.Authorization = `Bearer ${ai.token}`;
+      headers["x-goog-user-project"] = googleCloudProject!;
+    }
+
     response = await fetch(endpoint, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${ai.token}`,
-        "Content-Type": "application/json",
-        "x-goog-user-project": googleCloudProject,
-      },
+      headers,
       signal: controller.signal,
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
@@ -307,10 +285,7 @@ Deno.serve(async (req) => {
     console.error("financial-advisor-ai provider request failed", {
       reason: timedOut ? "timeout" : error instanceof Error ? error.name : "unknown",
     });
-    return json(
-      { ok: false, error: timedOut ? "انتهت مهلة الاتصال بـGemini." : "تعذر الوصول إلى Gemini الآن." },
-      timedOut ? 504 : 502,
-    );
+    return json({ ok: false, error: timedOut ? "انتهت مهلة خدمة المستشار المالي." : "تعذر الوصول إلى Gemini الآن." }, timedOut ? 504 : 502);
   }
   clearTimeout(timeout);
 
@@ -319,25 +294,30 @@ Deno.serve(async (req) => {
     console.error("financial-advisor-ai provider authentication failed", { status: response.status });
     return json({ ok: false, error: "صلاحية اتصال Gemini غير متاحة حاليًا." }, 502);
   }
-  if (!response.ok) {
-    console.error("financial-advisor-ai provider returned non-success", { status: response.status });
-    return json({ ok: false, error: "خدمة Gemini غير متاحة حاليًا." }, 502);
-  }
+  if (!response.ok) return json({ ok: false, error: "خدمة Gemini غير متاحة حاليًا." }, 502);
 
   let payload: JsonObject;
-  try { payload = await response.json() as JsonObject; }
-  catch { return json({ ok: false, error: "Gemini returned malformed response data." }, 422); }
+  try {
+    payload = await response.json() as JsonObject;
+  } catch {
+    return json({ ok: false, error: "Gemini returned malformed response data." }, 422);
+  }
 
   const candidates = Array.isArray(payload.candidates) ? payload.candidates as JsonObject[] : [];
-  const content = candidates.length > 0 && candidates[0] && typeof candidates[0].content === "object" ? candidates[0].content as JsonObject : null;
+  const content = candidates.length > 0 && candidates[0] && typeof candidates[0].content === "object"
+    ? candidates[0].content as JsonObject
+    : null;
   const parts = content && Array.isArray(content.parts) ? content.parts as JsonObject[] : [];
   const textPart = parts.find((part) => part && typeof part.text === "string");
   const rawText = textPart && typeof textPart.text === "string" ? textPart.text : null;
   if (!rawText) return json({ ok: false, error: "Gemini returned no advisor response." }, 422);
 
   let result: JsonObject;
-  try { result = JSON.parse(rawText) as JsonObject; }
-  catch { return json({ ok: false, error: "Gemini returned malformed advisor JSON." }, 422); }
+  try {
+    result = JSON.parse(rawText) as JsonObject;
+  } catch {
+    return json({ ok: false, error: "Gemini returned malformed advisor JSON." }, 422);
+  }
 
   const summary = typeof result.summary === "string" ? result.summary.trim() : "";
   const advice = asStringArray(result.advice);
