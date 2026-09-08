@@ -1,338 +1,60 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
-
+const CORS_HEADERS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type", "Access-Control-Allow-Methods": "POST, OPTIONS" };
 const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
 const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 const encryptionSecret = Deno.env.get("AI_TOKEN_ENCRYPTION_KEY") ?? serviceKey;
 const googleCloudProject = Deno.env.get("GEMINI_GOOGLE_CLOUD_PROJECT_ID");
 const defaultModel = Deno.env.get("GEMINI_MODEL") || "gemini-3.8-flash";
 const admin = serviceKey ? createClient(supabaseUrl, serviceKey) : null;
-
-const MAX_OBJECTIVE_LENGTH = 4000;
-const MAX_CONTEXT_ITEMS = 8;
-const MAX_CONTEXT_SUMMARY_LENGTH = 20000;
-const GEMINI_TIMEOUT_MS = 30000;
-
+const MAX_OBJECTIVE_LENGTH = 4000, MAX_CONTEXT_ITEMS = 8, MAX_CONTEXT_SUMMARY_LENGTH = 20000, GEMINI_TIMEOUT_MS = 30000;
 type JsonObject = Record<string, unknown>;
-
-const json = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
-  });
-
-async function getAuthenticatedUser(req: Request) {
-  if (!admin) return null;
-  const header = req.headers.get("Authorization");
-  if (!header) return null;
-  const jwt = header.replace(/^Bearer\s+/i, "").trim();
-  if (!jwt) return null;
-  const { data, error } = await admin.auth.getUser(jwt);
-  if (error) return null;
-  return data.user ?? null;
-}
-
-async function deriveEncryptionKey(secret: string) {
-  const digest = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(secret),
-  );
-  return crypto.subtle.importKey(
-    "raw",
-    digest,
-    "AES-GCM",
-    false,
-    ["decrypt", "encrypt"],
-  );
-}
-
-function decodeBase64(value: string) {
-  const bytes = atob(value);
-  return Uint8Array.from(bytes, (char) => char.charCodeAt(0));
-}
-
-function encodeBase64(value: Uint8Array) {
-  return btoa(String.fromCharCode(...value));
-}
-
-async function decryptToken(value: string) {
-  if (!encryptionSecret) throw new Error("AI token encryption is not configured.");
-  const packed = decodeBase64(value);
-  const iv = packed.slice(0, 12);
-  const ciphertext = packed.slice(12);
-  const key = await deriveEncryptionKey(encryptionSecret);
-  const clear = await crypto.subtle.decrypt(
-    { name: "AES-GCM", iv },
-    key,
-    ciphertext,
-  );
-  return new TextDecoder().decode(clear);
-}
-
-async function encryptToken(value: string) {
-  if (!encryptionSecret) throw new Error("AI token encryption is not configured.");
-  const key = await deriveEncryptionKey(encryptionSecret);
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-  const ciphertext = new Uint8Array(await crypto.subtle.encrypt(
-    { name: "AES-GCM", iv },
-    key,
-    new TextEncoder().encode(value),
-  ));
-  const packed = new Uint8Array(iv.length + ciphertext.length);
-  packed.set(iv, 0);
-  packed.set(ciphertext, iv.length);
-  return encodeBase64(packed);
-}
-
+const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
+async function getAuthenticatedUser(req: Request) { if (!admin) return null; const header = req.headers.get("Authorization"); if (!header) return null; const jwt = header.replace(/^Bearer\s+/i, "").trim(); if (!jwt) return null; const { data, error } = await admin.auth.getUser(jwt); if (error) return null; return data.user ?? null; }
+async function deriveEncryptionKey(secret: string) { const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(secret)); return crypto.subtle.importKey("raw", digest, "AES-GCM", false, ["decrypt", "encrypt"]); }
+function decodeBase64(value: string) { const bytes = atob(value); return Uint8Array.from(bytes, (char) => char.charCodeAt(0)); }
+function encodeBase64(value: Uint8Array) { return btoa(String.fromCharCode(...value)); }
+async function decryptToken(value: string) { if (!encryptionSecret) throw new Error("AI token encryption is not configured."); const packed = decodeBase64(value), iv = packed.slice(0, 12), ciphertext = packed.slice(12), key = await deriveEncryptionKey(encryptionSecret); const clear = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, ciphertext); return new TextDecoder().decode(clear); }
+async function encryptToken(value: string) { if (!encryptionSecret) throw new Error("AI token encryption is not configured."); const key = await deriveEncryptionKey(encryptionSecret), iv = crypto.getRandomValues(new Uint8Array(12)); const ciphertext = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, new TextEncoder().encode(value))); const packed = new Uint8Array(iv.length + ciphertext.length); packed.set(iv, 0); packed.set(ciphertext, iv.length); return encodeBase64(packed); }
 async function getGeminiAccess(userId: string) {
-  if (!admin) {
-    throw Object.assign(new Error("AI server configuration is incomplete."), { status: 503 });
-  }
-
-  const { data: connection, error } = await admin
-    .from("user_ai_connections")
-    .select("id,model,status,access_token_encrypted,refresh_token_encrypted,token_expires_at,metadata")
-    .eq("user_id", userId)
-    .eq("provider", "gemini")
-    .maybeSingle();
-
-  if (error) throw error;
-  if (!connection || connection.status !== "connected" || typeof connection.access_token_encrypted !== "string") {
-    return null;
-  }
-
+  if (!admin) throw Object.assign(new Error("AI server configuration is incomplete."), { status: 503 });
+  const { data: connection, error } = await admin.from("user_ai_connections").select("id,model,status,access_token_encrypted,refresh_token_encrypted,token_expires_at,metadata").eq("user_id", userId).eq("provider", "gemini").maybeSingle();
+  if (error) throw error; if (!connection || connection.status !== "connected" || typeof connection.access_token_encrypted !== "string") return null;
   const authMode = connection.metadata?.authMode === "api_key" ? "api_key" : "oauth";
-  if (authMode === "api_key") {
-    return {
-      token: await decryptToken(connection.access_token_encrypted),
-      model: connection.model || defaultModel,
-      authMode,
-    } as const;
-  }
-
-  if (!googleCloudProject) {
-    throw Object.assign(new Error("Gemini OAuth project is not configured."), { status: 503 });
-  }
-
-  const expiresAt = connection.token_expires_at
-    ? Date.parse(String(connection.token_expires_at))
-    : 0;
-
-  if (!expiresAt || expiresAt > Date.now() + 60_000) {
-    return {
-      token: await decryptToken(connection.access_token_encrypted),
-      model: connection.model || defaultModel,
-      authMode,
-    } as const;
-  }
-
-  if (typeof connection.refresh_token_encrypted !== "string") {
-    throw Object.assign(new Error("Gemini refresh token is missing."), { status: 502 });
-  }
-
-  const clientId = Deno.env.get("GEMINI_GOOGLE_CLIENT_ID");
-  const clientSecret = Deno.env.get("GEMINI_GOOGLE_CLIENT_SECRET");
-  if (!clientId || !clientSecret) {
-    throw Object.assign(new Error("Gemini OAuth client is not configured."), { status: 503 });
-  }
-
+  if (authMode === "api_key") return { token: await decryptToken(connection.access_token_encrypted), model: connection.model || defaultModel, authMode } as const;
+  if (!googleCloudProject) throw Object.assign(new Error("Gemini OAuth project is not configured."), { status: 503 });
+  const expiresAt = connection.token_expires_at ? Date.parse(String(connection.token_expires_at)) : 0;
+  if (!expiresAt || expiresAt > Date.now() + 60000) return { token: await decryptToken(connection.access_token_encrypted), model: connection.model || defaultModel, authMode } as const;
+  if (typeof connection.refresh_token_encrypted !== "string") throw Object.assign(new Error("Gemini refresh token is missing."), { status: 502 });
+  const clientId = Deno.env.get("GEMINI_GOOGLE_CLIENT_ID"), clientSecret = Deno.env.get("GEMINI_GOOGLE_CLIENT_SECRET");
+  if (!clientId || !clientSecret) throw Object.assign(new Error("Gemini OAuth client is not configured."), { status: 503 });
   const refreshToken = await decryptToken(connection.refresh_token_encrypted);
-  const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      client_id: clientId,
-      client_secret: clientSecret,
-      refresh_token: refreshToken,
-      grant_type: "refresh_token",
-    }),
-  });
-
-  if (!tokenResponse.ok) {
-    throw Object.assign(new Error("Gemini access token refresh failed."), { status: 502 });
-  }
-
-  const refreshed = await tokenResponse.json() as JsonObject;
-  if (typeof refreshed.access_token !== "string") {
-    throw Object.assign(new Error("Gemini did not return a refreshed access token."), { status: 502 });
-  }
-
-  const accessToken = refreshed.access_token;
-  await admin
-    .from("user_ai_connections")
-    .update({
-      access_token_encrypted: await encryptToken(accessToken),
-      token_expires_at: typeof refreshed.expires_in === "number"
-        ? new Date(Date.now() + refreshed.expires_in * 1000).toISOString()
-        : null,
-      last_error: null,
-    })
-    .eq("id", connection.id)
-    .eq("user_id", userId);
-
-  return { token: accessToken, model: connection.model || defaultModel, authMode } as const;
+  const tokenResponse = await fetch("https://oauth2.googleapis.com/token", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ client_id: clientId, client_secret: clientSecret, refresh_token: refreshToken, grant_type: "refresh_token" }) });
+  if (!tokenResponse.ok) throw Object.assign(new Error("Gemini access token refresh failed."), { status: 502 });
+  const refreshed = await tokenResponse.json() as JsonObject; if (typeof refreshed.access_token !== "string") throw Object.assign(new Error("Gemini did not return a refreshed access token."), { status: 502 });
+  await admin.from("user_ai_connections").update({ access_token_encrypted: await encryptToken(refreshed.access_token), token_expires_at: typeof refreshed.expires_in === "number" ? new Date(Date.now() + refreshed.expires_in * 1000).toISOString() : null, last_error: null }).eq("id", connection.id).eq("user_id", userId);
+  return { token: refreshed.access_token, model: connection.model || defaultModel, authMode } as const;
 }
-
-function validateRequest(body: unknown) {
-  if (!body || typeof body !== "object") return "Invalid JSON request.";
-  const record = body as JsonObject;
-  if (typeof record.objective !== "string" || !record.objective.trim()) return "Advisor objective is required.";
-  if (record.objective.length > MAX_OBJECTIVE_LENGTH) return "Advisor objective is too long.";
-  if (!Array.isArray(record.context) || record.context.length < 1 || record.context.length > MAX_CONTEXT_ITEMS) return "Advisor context is invalid.";
-
-  for (const item of record.context) {
-    if (!item || typeof item !== "object") return "Advisor context item is invalid.";
-    const entry = item as JsonObject;
-    if (entry.domain !== "financial_engine") return "Advisor accepts Financial Engine context only.";
-    if (typeof entry.entityId !== "string" || !/^monthly:\d{4}-(0[1-9]|1[0-2])$/.test(entry.entityId)) return "Advisor context entity is invalid.";
-    if (typeof entry.summary !== "string" || !entry.summary.trim()) return "Advisor context summary is required.";
-    if (entry.summary.length > MAX_CONTEXT_SUMMARY_LENGTH) return "Advisor context summary is too long.";
-  }
-  return null;
-}
-
-const schema = {
-  type: "object",
-  additionalProperties: false,
-  properties: {
-    summary: { type: "string" },
-    advice: { type: "array", items: { type: "string" }, maxItems: 8 },
-    warnings: { type: "array", items: { type: "string" }, maxItems: 8 },
-  },
-  required: ["summary", "advice", "warnings"],
-};
-
-function asStringArray(value: unknown) {
-  if (!Array.isArray(value) || value.length > 8) return null;
-  const result: string[] = [];
-  for (const item of value) {
-    if (typeof item !== "string" || !item.trim()) return null;
-    result.push(item.trim());
-  }
-  return result;
-}
-
+function validateRequest(body: unknown) { if (!body || typeof body !== "object") return "Invalid JSON request."; const record = body as JsonObject; if (typeof record.objective !== "string" || !record.objective.trim()) return "Advisor objective is required."; if (record.objective.length > MAX_OBJECTIVE_LENGTH) return "Advisor objective is too long."; if (!Array.isArray(record.context) || record.context.length < 1 || record.context.length > MAX_CONTEXT_ITEMS) return "Advisor context is invalid."; for (const item of record.context) { if (!item || typeof item !== "object") return "Advisor context item is invalid."; const entry = item as JsonObject; if (entry.domain !== "financial_engine") return "Advisor accepts Financial Engine context only."; if (typeof entry.entityId !== "string" || !/^monthly:\d{4}-(0[1-9]|1[0-2])$/.test(entry.entityId)) return "Advisor context entity is invalid."; if (typeof entry.summary !== "string" || !entry.summary.trim()) return "Advisor context summary is required."; if (entry.summary.length > MAX_CONTEXT_SUMMARY_LENGTH) return "Advisor context summary is too long."; } return null; }
+const schema = { type: "object", additionalProperties: false, properties: { summary: { type: "string" }, advice: { type: "array", items: { type: "string" }, maxItems: 8 }, warnings: { type: "array", items: { type: "string" }, maxItems: 8 } }, required: ["summary", "advice", "warnings"] };
+function asStringArray(value: unknown) { if (!Array.isArray(value) || value.length > 8) return null; const result: string[] = []; for (const item of value) { if (typeof item !== "string" || !item.trim()) return null; result.push(item.trim()); } return result; }
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: CORS_HEADERS });
-  if (req.method !== "POST") return json({ ok: false, error: "POST is required." }, 405);
-  if (!admin || !encryptionSecret) {
-    return json({ ok: false, error: "خدمة المستشار المالي غير مُهيأة على الخادم." }, 503);
-  }
-
-  const user = await getAuthenticatedUser(req);
-  if (!user) return json({ ok: false, error: "Authentication required." }, 401);
-
-  let body: JsonObject;
-  try {
-    body = await req.json() as JsonObject;
-  } catch {
-    return json({ ok: false, error: "Invalid JSON request." }, 400);
-  }
-
-  const validationError = validateRequest(body);
-  if (validationError) return json({ ok: false, error: validationError }, 400);
-
-  let ai;
-  try {
-    ai = await getGeminiAccess(user.id);
-  } catch (error) {
-    const status = typeof error === "object" && error && "status" in error && typeof error.status === "number" ? error.status : 503;
-    console.error("financial-advisor-ai provider setup failed", { status });
-    return json({ ok: false, error: status === 503 ? "تعذر تجهيز اتصال Gemini على الخادم." : "تعذر تجهيز اتصال Gemini." }, status);
-  }
-
+  if (req.method === "OPTIONS") return new Response("ok", { headers: CORS_HEADERS }); if (req.method !== "POST") return json({ ok: false, error: "POST is required." }, 405); if (!admin || !encryptionSecret) return json({ ok: false, error: "خدمة المستشار المالي غير مُهيأة على الخادم." }, 503);
+  const user = await getAuthenticatedUser(req); if (!user) return json({ ok: false, error: "Authentication required." }, 401);
+  let body: JsonObject; try { body = await req.json() as JsonObject; } catch { return json({ ok: false, error: "Invalid JSON request." }, 400); }
+  const validationError = validateRequest(body); if (validationError) return json({ ok: false, error: validationError }, 400);
+  let ai; try { ai = await getGeminiAccess(user.id); } catch (error) { const status = typeof error === "object" && error && "status" in error && typeof error.status === "number" ? error.status : 503; console.error("financial-advisor-ai provider setup failed", { status }); return json({ ok: false, error: status === 503 ? "تعذر تجهيز اتصال Gemini على الخادم." : "تعذر تجهيز اتصال Gemini." }, status); }
   if (!ai) return json({ ok: false, error: "اربط Gemini من مركز الذكاء الاصطناعي أولًا." }, 409);
-
   const context = body.context as JsonObject[];
   const prompt = `أنت المستشار المالي للمنزل داخل NUS. تعامل مع البيانات التالية باعتبارها الحقائق المالية الوحيدة المسموح باستخدامها. هذه البيانات مصدرها Financial Engine الحالي، ولا يجوز لك اختراع أو تعديل أو تقدير أي رقم. لا تحسب رقمًا جديدًا غير موجود صراحة في البيانات. لا تستخدم أسعار سوق، ولا FX، ولا تحويل عملات، ولا معلومات مالية خارجية. لا تنشئ معاملات ولا تدّعي تنفيذ أي إجراء.\n\nأجب على سؤال المستخدم عمليًا باللهجة المصرية الواضحة. افصل بوضوح بين FACTS وADVICE. لأن facts سيعيدها الخادم حرفيًا من Financial Engine، لا تنشئ قائمة facts من عندك. ركّز على شرح الوضع، ترتيب الأولويات، وما يمكن للمستخدم التفكير فيه أو فعله يدويًا. إذا كانت البيانات غير كافية لإجابة موثوقة، قل ذلك صراحة. لا تستنتج سمات شخصية أو صحية أو دينية أو سياسية حساسة من الأرقام. لا تقدم تعليمات مالية خطرة أو مضللة.\n\nأعد JSON فقط وفق العقد: summary (نص يجيب السؤال)، advice (قائمة نصائح عملية)، warnings (قائمة تحذيرات عند الحاجة). لا تضع أرقامًا جديدة غير موجودة في السياق.\n\nالسياق:\n${JSON.stringify({ objective: body.objective, context })}`;
-
   const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(ai.model)}:generateContent`;
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
-
-  let response: Response;
-  try {
-    const headers: Record<string, string> = { "Content-Type": "application/json" };
-    if (ai.authMode === "api_key") {
-      headers["x-goog-api-key"] = ai.token;
-    } else {
-      headers.Authorization = `Bearer ${ai.token}`;
-      headers["x-goog-user-project"] = googleCloudProject!;
-    }
-
-    response = await fetch(endpoint, {
-      method: "POST",
-      headers,
-      signal: controller.signal,
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          temperature: 0.2,
-          responseMimeType: "application/json",
-          responseSchema: schema,
-        },
-      }),
-    });
-  } catch (error) {
-    clearTimeout(timeout);
-    const timedOut = error instanceof DOMException && error.name === "AbortError";
-    console.error("financial-advisor-ai provider request failed", {
-      reason: timedOut ? "timeout" : error instanceof Error ? error.name : "unknown",
-    });
-    return json({ ok: false, error: timedOut ? "انتهت مهلة خدمة المستشار المالي." : "تعذر الوصول إلى Gemini الآن." }, timedOut ? 504 : 502);
-  }
-  clearTimeout(timeout);
-
-  if (response.status === 429) return json({ ok: false, error: "تم الوصول إلى حد استخدام Gemini مؤقتًا. حاول بعد قليل." }, 429);
-  if (response.status === 401 || response.status === 403) {
-    console.error("financial-advisor-ai provider authentication failed", { status: response.status });
-    return json({ ok: false, error: "صلاحية اتصال Gemini غير متاحة حاليًا." }, 502);
-  }
-  if (!response.ok) return json({ ok: false, error: "خدمة Gemini غير متاحة حاليًا." }, 502);
-
-  let payload: JsonObject;
-  try {
-    payload = await response.json() as JsonObject;
-  } catch {
-    return json({ ok: false, error: "Gemini returned malformed response data." }, 422);
-  }
-
-  const candidates = Array.isArray(payload.candidates) ? payload.candidates as JsonObject[] : [];
-  const content = candidates.length > 0 && candidates[0] && typeof candidates[0].content === "object"
-    ? candidates[0].content as JsonObject
-    : null;
-  const parts = content && Array.isArray(content.parts) ? content.parts as JsonObject[] : [];
-  const textPart = parts.find((part) => part && typeof part.text === "string");
-  const rawText = textPart && typeof textPart.text === "string" ? textPart.text : null;
-  if (!rawText) return json({ ok: false, error: "Gemini returned no advisor response." }, 422);
-
-  let result: JsonObject;
-  try {
-    result = JSON.parse(rawText) as JsonObject;
-  } catch {
-    return json({ ok: false, error: "Gemini returned malformed advisor JSON." }, 422);
-  }
-
-  const summary = typeof result.summary === "string" ? result.summary.trim() : "";
-  const advice = asStringArray(result.advice);
-  const warnings = asStringArray(result.warnings);
-  if (!summary || !advice || !warnings) return json({ ok: false, error: "Gemini response does not match the advisor contract." }, 422);
-
-  return json({
-    ok: true,
-    id: crypto.randomUUID(),
-    provider: "gemini",
-    model: ai.model,
-    generatedAt: new Date().toISOString(),
-    summary,
-    facts: context.map((item) => String(item.summary)),
-    advice,
-    warnings,
-  });
+  const controller = new AbortController(); const timeout = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS); let response: Response;
+  try { const headers: Record<string, string> = { "Content-Type": "application/json" }; if (ai.authMode === "api_key") headers["x-goog-api-key"] = ai.token; else { headers.Authorization = `Bearer ${ai.token}`; headers["x-goog-user-project"] = googleCloudProject!; } response = await fetch(endpoint, { method: "POST", headers, signal: controller.signal, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json", responseSchema: schema } }) }); } catch (error) { clearTimeout(timeout); const timedOut = error instanceof DOMException && error.name === "AbortError"; console.error("financial-advisor-ai provider request failed", { reason: timedOut ? "timeout" : error instanceof Error ? error.name : "unknown" }); return json({ ok: false, error: timedOut ? "انتهت مهلة خدمة المستشار المالي." : "تعذر الوصول إلى Gemini الآن." }, timedOut ? 504 : 502); }
+  clearTimeout(timeout); if (response.status === 429) return json({ ok: false, error: "تم الوصول إلى حد استخدام Gemini مؤقتًا. حاول بعد قليل." }, 429); if (response.status === 401 || response.status === 403) { console.error("financial-advisor-ai provider authentication failed", { status: response.status }); return json({ ok: false, error: "صلاحية اتصال Gemini غير متاحة حاليًا." }, 502); } if (!response.ok) return json({ ok: false, error: "خدمة Gemini غير متاحة حاليًا." }, 502);
+  let payload: JsonObject; try { payload = await response.json() as JsonObject; } catch { return json({ ok: false, error: "Gemini returned malformed response data." }, 422); }
+  const candidates = Array.isArray(payload.candidates) ? payload.candidates as JsonObject[] : []; const content = candidates.length > 0 && candidates[0] && typeof candidates[0].content === "object" ? candidates[0].content as JsonObject : null; const parts = content && Array.isArray(content.parts) ? content.parts as JsonObject[] : []; const textPart = parts.find((part) => part && typeof part.text === "string"); const rawText = textPart && typeof textPart.text === "string" ? textPart.text : null; if (!rawText) return json({ ok: false, error: "Gemini returned no advisor response." }, 422);
+  let result: JsonObject; try { result = JSON.parse(rawText) as JsonObject; } catch { return json({ ok: false, error: "Gemini returned malformed advisor JSON." }, 422); }
+  const summary = typeof result.summary === "string" ? result.summary.trim() : ""; const advice = asStringArray(result.advice); const warnings = asStringArray(result.warnings); if (!summary || !advice || !warnings) return json({ ok: false, error: "Gemini response does not match the advisor contract." }, 422);
+  return json({ ok: true, id: crypto.randomUUID(), provider: "gemini", model: ai.model, generatedAt: new Date().toISOString(), summary, facts: context.map((item) => String(item.summary)), advice, warnings });
 });
