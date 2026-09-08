@@ -53,7 +53,16 @@ class SupabaseFinancialAdvisorTransport implements FinancialAdvisorTransport {
     required String accessToken,
     required Map<String, dynamic> body,
   }) async {
+    final hasSession = client.auth.currentSession != null;
+    final hasAccessToken = accessToken.trim().isNotEmpty;
+    print('[FA_DIAG] REQUEST_START');
+    print('[FA_DIAG] FUNCTION=financial-advisor-ai');
+    print('[FA_DIAG] HAS_SESSION=$hasSession');
+    print('[FA_DIAG] HAS_ACCESS_TOKEN=$hasAccessToken');
+    print('[FA_DIAG] TOKEN_LENGTH=${accessToken.length}');
+    print('[FA_DIAG] PATH=/functions/v1/financial-advisor-ai');
     try {
+      print('[FA_DIAG] REQUEST_SENT');
       final response = await client.functions
           .invoke(
             'financial-advisor-ai',
@@ -61,15 +70,29 @@ class SupabaseFinancialAdvisorTransport implements FinancialAdvisorTransport {
             headers: {'Authorization': 'Bearer $accessToken'},
           )
           .timeout(const Duration(seconds: 35));
+      print('[FA_DIAG] RESPONSE_SUCCESS');
+      print('[FA_DIAG] STATUS=${response.status}');
+      print('[FA_DIAG] RESPONSE_RECEIVED=true');
       return FinancialAdvisorTransportResponse(statusCode: response.status, data: response.data);
     } on TimeoutException {
+      print('[FA_DIAG] TIMEOUT');
       throw const FinancialAdvisorException(
         kind: FinancialAdvisorFailureKind.timeout,
         message: 'انتهت مهلة الاتصال بالمستشار المالي. حاول مرة أخرى.',
       );
     } on FunctionException catch (error) {
-      throw _fromFunctionException(error);
-    } catch (_) {
+      print('[FA_DIAG] FUNCTION_EXCEPTION');
+      print('[FA_DIAG] STATUS=${error.status}');
+      print('[FA_DIAG] MESSAGE=${_diagnosticMessage(error)}');
+      print('[FA_DIAG] DETAILS=${_diagnosticDetails(error.details)}');
+      final mapped = _fromFunctionException(error);
+      print('[FA_DIAG] FALLBACK_MAPPING');
+      print('[FA_DIAG] INPUT_STATUS=${error.status}');
+      print('[FA_DIAG] FALLBACK_MESSAGE_SELECTED=${_fallbackMessageIdentifier(error.status, error.details)}');
+      throw mapped;
+    } catch (error) {
+      print('[FA_DIAG] NON_FUNCTION_EXCEPTION');
+      print('[FA_DIAG] TYPE=${error.runtimeType}');
       throw const FinancialAdvisorException(
         kind: FinancialAdvisorFailureKind.backendUnavailable,
         message: 'تعذر الاتصال بخدمة المستشار المالي. حاول مرة أخرى.',
@@ -141,6 +164,38 @@ class SupabaseFinancialAdvisorTransport implements FinancialAdvisorTransport {
     if (details is String && details.trim().isNotEmpty) return details.trim();
     return null;
   }
+
+  String _diagnosticMessage(FunctionException error) {
+    final detailMessage = _errorMessage(error.details);
+    if (detailMessage != null) return _truncateDiagnostic(detailMessage);
+    final reasonPhrase = error.reasonPhrase;
+    if (reasonPhrase != null && reasonPhrase.trim().isNotEmpty) return _truncateDiagnostic(reasonPhrase.trim());
+    return 'FunctionException';
+  }
+
+  String _diagnosticDetails(dynamic details) {
+    if (details == null) return 'null';
+    if (details is Map) {
+      final keys = details.keys.map((key) => key.toString()).toList()..sort();
+      return 'MAP_KEYS=${keys.join(',')}';
+    }
+    if (details is String) return 'STRING_LENGTH=${details.length}';
+    return 'TYPE=${details.runtimeType}';
+  }
+
+  String _fallbackMessageIdentifier(int status, dynamic details) {
+    if (status == 409 && _errorMessage(details) == null) return 'legacy_gemini_connection_409';
+    if (status == 409) return 'server_or_client_409_error';
+    if (status == 401) return 'authentication_401';
+    if (status == 429) return 'rate_limit_429';
+    if (status == 422) return 'malformed_response_422';
+    if (status == 502) return 'gemini_unavailable_502';
+    if (status == 503) return 'backend_unavailable_503';
+    if (status == 504) return 'timeout_504';
+    return 'generic_${status}';
+  }
+
+  String _truncateDiagnostic(String value) => value.length <= 500 ? value : '${value.substring(0, 500)}…';
 }
 
 /// Real read-only production provider for the Financial Advisor.
@@ -156,6 +211,9 @@ class FinancialAdvisorProvider implements AiInsightProvider {
     final client = SupabaseService.client;
     final accessToken = accessTokenReader?.call() ?? client?.auth.currentSession?.accessToken;
     if (accessToken == null || accessToken.trim().isEmpty) {
+      print('[FA_DIAG] LOCAL_PRECONDITION_FAILURE');
+      print('[FA_DIAG] HAS_SESSION=${client?.auth.currentSession != null}');
+      print('[FA_DIAG] HAS_ACCESS_TOKEN=false');
       throw const FinancialAdvisorException(
         kind: FinancialAdvisorFailureKind.authentication,
         message: 'يجب تسجيل الدخول لاستخدام المستشار المالي.',
@@ -165,6 +223,8 @@ class FinancialAdvisorProvider implements AiInsightProvider {
     final effectiveTransport = transport ??
         (client == null ? null : SupabaseFinancialAdvisorTransport(client));
     if (effectiveTransport == null) {
+      print('[FA_DIAG] LOCAL_PRECONDITION_FAILURE');
+      print('[FA_DIAG] REASON=no_supabase_client');
       throw const FinancialAdvisorException(
         kind: FinancialAdvisorFailureKind.backendUnavailable,
         message: 'خدمة المستشار المالي غير مُهيأة على هذه النسخة.',
