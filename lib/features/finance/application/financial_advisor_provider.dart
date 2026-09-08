@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/ai/ai_insight.dart';
@@ -52,12 +54,19 @@ class SupabaseFinancialAdvisorTransport implements FinancialAdvisorTransport {
     required Map<String, dynamic> body,
   }) async {
     try {
-      final response = await client.functions.invoke(
-        'financial-advisor-ai',
-        body: body,
-        headers: {'Authorization': 'Bearer $accessToken'},
-      );
+      final response = await client.functions
+          .invoke(
+            'financial-advisor-ai',
+            body: body,
+            headers: {'Authorization': 'Bearer $accessToken'},
+          )
+          .timeout(const Duration(seconds: 35));
       return FinancialAdvisorTransportResponse(statusCode: response.status, data: response.data);
+    } on TimeoutException {
+      throw const FinancialAdvisorException(
+        kind: FinancialAdvisorFailureKind.timeout,
+        message: 'انتهت مهلة الاتصال بالمستشار المالي. حاول مرة أخرى.',
+      );
     } on FunctionException catch (error) {
       throw _fromFunctionException(error);
     } catch (_) {
