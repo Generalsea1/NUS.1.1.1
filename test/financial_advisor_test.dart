@@ -138,10 +138,16 @@ void main() {
     ));
     await tester.pumpAndSettle();
     final emptyState = find.byKey(const ValueKey<String>('advisor-empty-state'));
+    final questionInput =
+        find.byKey(const ValueKey<String>('advisor-question-input'));
+    final pageScrollable = find.ancestor(
+      of: questionInput,
+      matching: find.byType(Scrollable),
+    );
     await tester.scrollUntilVisible(
       emptyState,
       500,
-      scrollable: find.byType(ListView),
+      scrollable: pageScrollable,
     );
     expect(emptyState, findsOneWidget);
     expect(find.textContaining('اكتب سؤالك'), findsOneWidget);
