@@ -56,6 +56,14 @@ class _FailingProvider implements AiInsightProvider {
   }
 }
 
+Future<void> _scrollUntilVisible(WidgetTester tester, Finder finder) async {
+  await tester.scrollUntilVisible(
+    finder,
+    500,
+    scrollable: find.byType(Scrollable),
+  );
+}
+
 void main() {
   test('snapshot exposes income, obligations, actual and expected values separately', () {
     final snapshot = _snapshot();
@@ -84,10 +92,16 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: FinancialAdvisorPage(snapshot: _snapshot(), provider: provider),
     ));
-    await tester.enterText(find.byKey(const ValueKey<String>('advisor-question-input')), 'أين يذهب معظم إنفاقي؟');
-    await tester.tap(find.byKey(const ValueKey<String>('advisor-ask-button')));
+    final questionInput = find.byKey(const ValueKey<String>('advisor-question-input'));
+    final askButton = find.byKey(const ValueKey<String>('advisor-ask-button'));
+    await _scrollUntilVisible(tester, questionInput);
+    await tester.enterText(questionInput, 'أين يذهب معظم إنفاقي؟');
+    await _scrollUntilVisible(tester, askButton);
+    await tester.tap(askButton);
     await tester.pumpAndSettle();
-    expect(find.byKey(const ValueKey<String>('advisor-response-state')), findsOneWidget);
+    final responseState = find.byKey(const ValueKey<String>('advisor-response-state'));
+    await _scrollUntilVisible(tester, responseState);
+    expect(responseState, findsOneWidget);
     expect(find.textContaining('راجع بند الطعام'), findsOneWidget);
     expect(provider.request, isNotNull);
     expect(provider.request!.context.single.domain, 'financial_engine');
@@ -99,10 +113,16 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: FinancialAdvisorPage(snapshot: snapshot, provider: const _FailingProvider()),
     ));
-    await tester.enterText(find.byKey(const ValueKey<String>('advisor-question-input')), 'هل وضعي المالي أفضل؟');
-    await tester.tap(find.byKey(const ValueKey<String>('advisor-ask-button')));
+    final questionInput = find.byKey(const ValueKey<String>('advisor-question-input'));
+    final askButton = find.byKey(const ValueKey<String>('advisor-ask-button'));
+    await _scrollUntilVisible(tester, questionInput);
+    await tester.enterText(questionInput, 'هل وضعي المالي أفضل؟');
+    await _scrollUntilVisible(tester, askButton);
+    await tester.tap(askButton);
     await tester.pumpAndSettle();
-    expect(find.byKey(const ValueKey<String>('advisor-error-state')), findsOneWidget);
+    final errorState = find.byKey(const ValueKey<String>('advisor-error-state'));
+    await _scrollUntilVisible(tester, errorState);
+    expect(errorState, findsOneWidget);
     expect(find.byKey(const ValueKey<String>('advisor-question-input')), findsOneWidget);
     expect(snapshot.financial.monthlyIncome, 10000);
     expect(snapshot.financial.monthlyObligations, 2500);
@@ -124,7 +144,9 @@ void main() {
         provider: const _FailingProvider(),
       ),
     ));
-    expect(find.byKey(const ValueKey<String>('advisor-empty-state')), findsOneWidget);
+    final emptyState = find.byKey(const ValueKey<String>('advisor-empty-state'));
+    await _scrollUntilVisible(tester, emptyState);
+    expect(emptyState, findsOneWidget);
     expect(find.textContaining('اكتب سؤالك'), findsOneWidget);
   });
 }
