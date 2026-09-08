@@ -136,8 +136,13 @@ void main() {
         provider: const _FailingProvider(),
       ),
     ));
+    await tester.pumpAndSettle();
     final emptyState = find.byKey(const ValueKey<String>('advisor-empty-state'));
-    await tester.ensureVisible(emptyState);
+    await tester.scrollUntilVisible(
+      emptyState,
+      500,
+      scrollable: find.byType(ListView),
+    );
     expect(emptyState, findsOneWidget);
     expect(find.textContaining('اكتب سؤالك'), findsOneWidget);
   });
