@@ -276,8 +276,7 @@ Deno.serve(async (req) => {
 
 أعد JSON فقط وفق العقد: summary (نص يجيب السؤال)، advice (قائمة نصائح عملية)، warnings (قائمة تحذيرات عند الحاجة). لا تضع أرقامًا جديدة غير موجودة في السياق.
 
-السياق:
-${JSON.stringify({ objective: body.objective, context })}`;
+السياق:\n${JSON.stringify({ objective: body.objective, context })}`;
 
   const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(ai.model)}:generateContent`;
   const controller = new AbortController();
@@ -304,16 +303,18 @@ ${JSON.stringify({ objective: body.objective, context })}`;
     });
   } catch (error) {
     clearTimeout(timeout);
+    const timedOut = error instanceof DOMException && error.name === "AbortError";
     console.error("financial-advisor-ai provider request failed", {
-      reason: error instanceof Error ? error.name : "unknown",
+      reason: timedOut ? "timeout" : error instanceof Error ? error.name : "unknown",
     });
-    return json({ ok: false, error: "تعذر الوصول إلى Gemini الآن." }, 502);
+    return json(
+      { ok: false, error: timedOut ? "انتهت مهلة الاتصال بـGemini." : "تعذر الوصول إلى Gemini الآن." },
+      timedOut ? 504 : 502,
+    );
   }
   clearTimeout(timeout);
 
-  if (response.status === 429) {
-    return json({ ok: false, error: "تم الوصول إلى حد استخدام Gemini مؤقتًا. حاول بعد قليل." }, 429);
-  }
+  if (response.status === 429) return json({ ok: false, error: "تم الوصول إلى حد استخدام Gemini مؤقتًا. حاول بعد قليل." }, 429);
   if (response.status === 401 || response.status === 403) {
     console.error("financial-advisor-ai provider authentication failed", { status: response.status });
     return json({ ok: false, error: "صلاحية اتصال Gemini غير متاحة حاليًا." }, 502);
@@ -324,36 +325,24 @@ ${JSON.stringify({ objective: body.objective, context })}`;
   }
 
   let payload: JsonObject;
-  try {
-    payload = await response.json() as JsonObject;
-  } catch {
-    return json({ ok: false, error: "Gemini returned malformed response data." }, 422);
-  }
+  try { payload = await response.json() as JsonObject; }
+  catch { return json({ ok: false, error: "Gemini returned malformed response data." }, 422); }
 
-  const text = Array.isArray(payload.candidates)
-    ? (payload.candidates[0] as JsonObject | undefined)?.content instanceof Object
-      ? (((payload.candidates[0] as JsonObject).content as JsonObject).parts as unknown[] | undefined)?.find(
-          (part) => part && typeof part === "object" && typeof (part as JsonObject).text === "string",
-        ) as JsonObject | undefined
-      : undefined
-    : undefined;
-
-  const rawText = text && typeof text.text === "string" ? text.text : null;
+  const candidates = Array.isArray(payload.candidates) ? payload.candidates as JsonObject[] : [];
+  const content = candidates.length > 0 && candidates[0] && typeof candidates[0].content === "object" ? candidates[0].content as JsonObject : null;
+  const parts = content && Array.isArray(content.parts) ? content.parts as JsonObject[] : [];
+  const textPart = parts.find((part) => part && typeof part.text === "string");
+  const rawText = textPart && typeof textPart.text === "string" ? textPart.text : null;
   if (!rawText) return json({ ok: false, error: "Gemini returned no advisor response." }, 422);
 
   let result: JsonObject;
-  try {
-    result = JSON.parse(rawText) as JsonObject;
-  } catch {
-    return json({ ok: false, error: "Gemini returned malformed advisor JSON." }, 422);
-  }
+  try { result = JSON.parse(rawText) as JsonObject; }
+  catch { return json({ ok: false, error: "Gemini returned malformed advisor JSON." }, 422); }
 
   const summary = typeof result.summary === "string" ? result.summary.trim() : "";
   const advice = asStringArray(result.advice);
   const warnings = asStringArray(result.warnings);
-  if (!summary || !advice || !warnings) {
-    return json({ ok: false, error: "Gemini response does not match the advisor contract." }, 422);
-  }
+  if (!summary || !advice || !warnings) return json({ ok: false, error: "Gemini response does not match the advisor contract." }, 422);
 
   return json({
     ok: true,
