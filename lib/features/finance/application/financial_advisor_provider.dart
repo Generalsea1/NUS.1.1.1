@@ -51,35 +51,20 @@ class SupabaseFinancialAdvisorTransport implements FinancialAdvisorTransport {
     required String accessToken,
     required Map<String, dynamic> body,
   }) async {
-    bool timedOut = false;
-    final timeoutSignal = Future<void>.delayed(
-      const Duration(seconds: 35),
-      () => timedOut = true,
-    );
     try {
       final response = await client.functions.invoke(
         'financial-advisor-ai',
         body: body,
         headers: {'Authorization': 'Bearer $accessToken'},
-        abortSignal: timeoutSignal,
       );
       return FinancialAdvisorTransportResponse(statusCode: response.status, data: response.data);
     } on FunctionException catch (error) {
-      if (timedOut) {
-        throw const FinancialAdvisorException(
-          kind: FinancialAdvisorFailureKind.timeout,
-          message: 'انتهت مهلة الاتصال بالمستشار المالي. حاول مرة أخرى.',
-        );
-      }
       throw _fromFunctionException(error);
     } catch (_) {
-      if (timedOut) {
-        throw const FinancialAdvisorException(
-          kind: FinancialAdvisorFailureKind.timeout,
-          message: 'انتهت مهلة الاتصال بالمستشار المالي. حاول مرة أخرى.',
-        );
-      }
-      rethrow;
+      throw const FinancialAdvisorException(
+        kind: FinancialAdvisorFailureKind.backendUnavailable,
+        message: 'تعذر الاتصال بخدمة المستشار المالي. حاول مرة أخرى.',
+      );
     }
   }
 
