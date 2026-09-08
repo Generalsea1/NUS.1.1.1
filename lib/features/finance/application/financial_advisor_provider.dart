@@ -4,7 +4,12 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/ai/ai_insight.dart';
 import '../../../core/ai/ai_insight_provider.dart';
+import '../../../core/diagnostics/financial_advisor_diagnostics.dart';
 import '../../../core/supabase_service.dart';
+
+void _faDiag(String line) {
+  FinancialAdvisorDiagnostics.instance.record(line);
+}
 
 class FinancialAdvisorUnavailableException implements Exception {
   const FinancialAdvisorUnavailableException(this.message);
@@ -55,14 +60,14 @@ class SupabaseFinancialAdvisorTransport implements FinancialAdvisorTransport {
   }) async {
     final hasSession = client.auth.currentSession != null;
     final hasAccessToken = accessToken.trim().isNotEmpty;
-    print('[FA_DIAG] REQUEST_START');
-    print('[FA_DIAG] FUNCTION=financial-advisor-ai');
-    print('[FA_DIAG] HAS_SESSION=$hasSession');
-    print('[FA_DIAG] HAS_ACCESS_TOKEN=$hasAccessToken');
-    print('[FA_DIAG] TOKEN_LENGTH=${accessToken.length}');
-    print('[FA_DIAG] PATH=/functions/v1/financial-advisor-ai');
+    _faDiag('[FA_DIAG] REQUEST_START');
+    _faDiag('[FA_DIAG] FUNCTION=financial-advisor-ai');
+    _faDiag('[FA_DIAG] HAS_SESSION=$hasSession');
+    _faDiag('[FA_DIAG] HAS_ACCESS_TOKEN=$hasAccessToken');
+    _faDiag('[FA_DIAG] TOKEN_LENGTH=${accessToken.length}');
+    _faDiag('[FA_DIAG] PATH=/functions/v1/financial-advisor-ai');
     try {
-      print('[FA_DIAG] REQUEST_SENT');
+      _faDiag('[FA_DIAG] REQUEST_SENT');
       final response = await client.functions
           .invoke(
             'financial-advisor-ai',
@@ -70,29 +75,29 @@ class SupabaseFinancialAdvisorTransport implements FinancialAdvisorTransport {
             headers: {'Authorization': 'Bearer $accessToken'},
           )
           .timeout(const Duration(seconds: 35));
-      print('[FA_DIAG] RESPONSE_SUCCESS');
-      print('[FA_DIAG] STATUS=${response.status}');
-      print('[FA_DIAG] RESPONSE_RECEIVED=true');
+      _faDiag('[FA_DIAG] RESPONSE_SUCCESS');
+      _faDiag('[FA_DIAG] STATUS=${response.status}');
+      _faDiag('[FA_DIAG] RESPONSE_RECEIVED=true');
       return FinancialAdvisorTransportResponse(statusCode: response.status, data: response.data);
     } on TimeoutException {
-      print('[FA_DIAG] TIMEOUT');
+      _faDiag('[FA_DIAG] TIMEOUT');
       throw const FinancialAdvisorException(
         kind: FinancialAdvisorFailureKind.timeout,
         message: 'انتهت مهلة الاتصال بالمستشار المالي. حاول مرة أخرى.',
       );
     } on FunctionException catch (error) {
-      print('[FA_DIAG] FUNCTION_EXCEPTION');
-      print('[FA_DIAG] STATUS=${error.status}');
-      print('[FA_DIAG] MESSAGE=${_diagnosticMessage(error)}');
-      print('[FA_DIAG] DETAILS=${_diagnosticDetails(error.details)}');
+      _faDiag('[FA_DIAG] FUNCTION_EXCEPTION');
+      _faDiag('[FA_DIAG] STATUS=${error.status}');
+      _faDiag('[FA_DIAG] MESSAGE=${_diagnosticMessage(error)}');
+      _faDiag('[FA_DIAG] DETAILS=${_diagnosticDetails(error.details)}');
       final mapped = _fromFunctionException(error);
-      print('[FA_DIAG] FALLBACK_MAPPING');
-      print('[FA_DIAG] INPUT_STATUS=${error.status}');
-      print('[FA_DIAG] FALLBACK_MESSAGE_SELECTED=${_fallbackMessageIdentifier(error.status, error.details)}');
+      _faDiag('[FA_DIAG] FALLBACK_MAPPING');
+      _faDiag('[FA_DIAG] INPUT_STATUS=${error.status}');
+      _faDiag('[FA_DIAG] FALLBACK_MESSAGE_SELECTED=${_fallbackMessageIdentifier(error.status, error.details)}');
       throw mapped;
     } catch (error) {
-      print('[FA_DIAG] NON_FUNCTION_EXCEPTION');
-      print('[FA_DIAG] TYPE=${error.runtimeType}');
+      _faDiag('[FA_DIAG] NON_FUNCTION_EXCEPTION');
+      _faDiag('[FA_DIAG] TYPE=${error.runtimeType}');
       throw const FinancialAdvisorException(
         kind: FinancialAdvisorFailureKind.backendUnavailable,
         message: 'تعذر الاتصال بخدمة المستشار المالي. حاول مرة أخرى.',
@@ -211,9 +216,9 @@ class FinancialAdvisorProvider implements AiInsightProvider {
     final client = SupabaseService.client;
     final accessToken = accessTokenReader?.call() ?? client?.auth.currentSession?.accessToken;
     if (accessToken == null || accessToken.trim().isEmpty) {
-      print('[FA_DIAG] LOCAL_PRECONDITION_FAILURE');
-      print('[FA_DIAG] HAS_SESSION=${client?.auth.currentSession != null}');
-      print('[FA_DIAG] HAS_ACCESS_TOKEN=false');
+      _faDiag('[FA_DIAG] LOCAL_PRECONDITION_FAILURE');
+      _faDiag('[FA_DIAG] HAS_SESSION=${client?.auth.currentSession != null}');
+      _faDiag('[FA_DIAG] HAS_ACCESS_TOKEN=false');
       throw const FinancialAdvisorException(
         kind: FinancialAdvisorFailureKind.authentication,
         message: 'يجب تسجيل الدخول لاستخدام المستشار المالي.',
@@ -223,8 +228,8 @@ class FinancialAdvisorProvider implements AiInsightProvider {
     final effectiveTransport = transport ??
         (client == null ? null : SupabaseFinancialAdvisorTransport(client));
     if (effectiveTransport == null) {
-      print('[FA_DIAG] LOCAL_PRECONDITION_FAILURE');
-      print('[FA_DIAG] REASON=no_supabase_client');
+      _faDiag('[FA_DIAG] LOCAL_PRECONDITION_FAILURE');
+      _faDiag('[FA_DIAG] REASON=no_supabase_client');
       throw const FinancialAdvisorException(
         kind: FinancialAdvisorFailureKind.backendUnavailable,
         message: 'خدمة المستشار المالي غير مُهيأة على هذه النسخة.',

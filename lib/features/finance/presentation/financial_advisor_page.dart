@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/ai/ai_insight.dart';
 import '../../../core/ai/ai_insight_provider.dart';
+import '../../../core/diagnostics/financial_advisor_diagnostics.dart';
 import '../../finance/application/financial_advisor.dart';
 import '../../finance/application/financial_advisor_provider.dart';
 
@@ -97,6 +98,19 @@ class _FinancialAdvisorPageState extends State<FinancialAdvisorPage> {
                   ],
                 ),
               ),
+            ),
+            const SizedBox(height: 14),
+            OutlinedButton.icon(
+              key: const ValueKey<String>('developer-diagnostics-button'),
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const FinancialAdvisorDiagnosticsPage(),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.developer_mode_rounded),
+              label: const Text('DEVELOPER DIAGNOSTICS'),
             ),
             const SizedBox(height: 14),
             TextField(
