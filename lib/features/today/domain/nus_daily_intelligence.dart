@@ -51,26 +51,20 @@ class NusDailyIntelligence {
         .toList()
       ..sort((a, b) => a.startsAt.compareTo(b.startsAt));
 
-    final reminder = nextReminderAt;
-    final reminderIsToday = reminder != null &&
-        DateUtils.isSameDay(reminder, today) &&
-        reminder.isAfter(current);
+    final reminderAt = nextReminderAt;
+    final reminderIsToday = reminderAt != null &&
+        DateUtils.isSameDay(reminderAt, today) &&
+        reminderAt.isAfter(current);
 
     if (todayUpcoming.isNotEmpty || reminderIsToday) {
       final appointment = todayUpcoming.isEmpty ? null : todayUpcoming.first;
+      final useReminder = reminderIsToday &&
+          (appointment == null || reminderAt.isBefore(appointment.startsAt));
+      final title = useReminder ? nextReminderTitle : appointment?.title;
       final DateTime when;
-      final String? title;
-      final bool useReminder;
-
-      if (reminder != null &&
-          reminderIsToday &&
-          (appointment == null || reminder.isBefore(appointment.startsAt))) {
-        useReminder = true;
-        title = nextReminderTitle;
-        when = reminder;
+      if (useReminder && reminderAt != null) {
+        when = reminderAt;
       } else {
-        useReminder = false;
-        title = appointment?.title;
         when = appointment!.startsAt;
       }
 
