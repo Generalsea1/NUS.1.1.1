@@ -30,16 +30,21 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const ValueKey<String>('installment-summary')), findsOneWidget);
+    final listView = find.ancestor(
+      of: find.byKey(const ValueKey<String>('installment-row-1')),
+      matching: find.byType(ListView),
+    );
+    expect(listView, findsOneWidget);
     await tester.scrollUntilVisible(
       find.byKey(const ValueKey<String>('installment-row-1')),
       400,
-      scrollable: find.byType(Scrollable).first,
+      scrollable: listView,
     );
     expect(find.byKey(const ValueKey<String>('installment-row-1')), findsOneWidget);
     expect(find.byKey(const ValueKey<String>('installment-row-2')), findsOneWidget);
     expect(find.byKey(const ValueKey<String>('installment-row-3')), findsOneWidget);
-    expect(find.textContaining('334.00 EGP'), findsOneWidget);
-    expect(find.textContaining('333.00 EGP'), findsNWidgets(2));
+    expect(find.textContaining('333.34 EGP'), findsOneWidget);
+    expect(find.textContaining('333.33 EGP'), findsNWidgets(2));
   });
 
   testWidgets('preserves two decimal places without rounding', (tester) async {
@@ -68,10 +73,15 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const ValueKey<String>('installment-summary')), findsOneWidget);
+    final listView = find.ancestor(
+      of: find.byKey(const ValueKey<String>('installment-row-1')),
+      matching: find.byType(ListView),
+    );
+    expect(listView, findsOneWidget);
     await tester.scrollUntilVisible(
       find.byKey(const ValueKey<String>('installment-row-1')),
       400,
-      scrollable: find.byType(Scrollable).first,
+      scrollable: listView,
     );
     expect(find.textContaining('500.00 EGP'), findsNWidgets(2));
   });
