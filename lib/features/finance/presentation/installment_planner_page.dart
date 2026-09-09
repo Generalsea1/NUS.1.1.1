@@ -33,27 +33,47 @@ class _InstallmentPlannerPageState extends State<InstallmentPlannerPage> {
     super.dispose();
   }
 
+  int? _parseMoneyMinor(String raw, String currencyCode) {
+    final input = raw.trim().replaceAll(',', '.');
+    if (input.isEmpty) return null;
+
+    final metadata = CurrencyRegistry.get(currencyCode.trim().toUpperCase());
+    final pattern = metadata.exponent == 0
+        ? RegExp(r'^\d+$')
+        : RegExp('^\\d+(?:\\.\\d{1,${metadata.exponent}})?\$');
+    if (!pattern.hasMatch(input)) return null;
+
+    final parts = input.split('.');
+    final whole = int.tryParse(parts.first);
+    if (whole == null) return null;
+    final fraction = parts.length == 1 ? '' : parts[1];
+    final padded = fraction.padRight(metadata.exponent, '0');
+    final fractionMinor = padded.isEmpty ? 0 : int.tryParse(padded);
+    if (fractionMinor == null) return null;
+
+    return whole * metadata.scale + fractionMinor;
+  }
+
   void _calculate() {
-    final totalMajor = int.tryParse(_totalController.text.trim());
-    final downMajor = int.tryParse(_downPaymentController.text.trim()) ?? 0;
+    final currency = widget.currencyCode.trim().toUpperCase();
+    final totalMinor = _parseMoneyMinor(_totalController.text, currency);
+    final downMinor = _parseMoneyMinor(_downPaymentController.text, currency) ?? 0;
     final count = int.tryParse(_countController.text.trim());
-    if (totalMajor == null || count == null || totalMajor <= 0 || downMajor < 0 || count <= 0) {
+    if (totalMinor == null || count == null || totalMinor <= 0 || downMinor < 0 || count <= 0) {
       setState(() {
         _plan = null;
-        _error = 'راجع المبلغ والإمكانيات: كل القيم لازم تكون أرقام صحيحة وموجبة حسب الحقل.';
+        _error = 'راجع المبلغ والإمكانيات: استخدم أرقامًا صحيحة أو عشرية حسب العملة، وعدد أقساط موجب.';
       });
       return;
     }
 
     try {
-      final currency = CurrencyRegistry.get(widget.currencyCode.trim().toUpperCase());
-      final totalMinor = CurrencyRegistry.majorToMinor(totalMajor, currency.code);
-      final downMinor = CurrencyRegistry.majorToMinor(downMajor, currency.code);
+      final metadata = CurrencyRegistry.get(currency);
       final plan = InstallmentPlan(
         id: 'preview-${DateTime.now().microsecondsSinceEpoch}',
         userId: widget.userId,
         title: 'خطة قسط',
-        currencyCode: currency.code,
+        currencyCode: metadata.code,
         totalMinorUnits: totalMinor,
         downPaymentMinorUnits: downMinor,
         numberOfInstallments: count,
@@ -83,6 +103,20 @@ class _InstallmentPlannerPageState extends State<InstallmentPlannerPage> {
     setState(() => _firstDueDate = DateUtils.dateOnly(picked));
   }
 
+  String _money(int minorUnits) {
+    final metadata = CurrencyRegistry.get(widget.currencyCode.trim().toUpperCase());
+    final absolute = minorUnits.abs();
+    final whole = absolute ~/ metadata.scale;
+    final fraction = metadata.exponent == 0
+        ? ''
+        : '.${(absolute % metadata.scale).toString().padLeft(metadata.exponent, '0')}';
+    final groupedWhole = whole.toString().replaceAllMapped(
+          RegExp(r'\B(?=(\d{3})+(?!\d))'),
+          (match) => ',',
+        );
+    return '${minorUnits < 0 ? '-' : ''}$groupedWhole$fraction ${metadata.code}';
+  }
+
   @override
   Widget build(BuildContext context) {
     final plan = _plan;
@@ -99,7 +133,7 @@ class _InstallmentPlannerPageState extends State<InstallmentPlannerPage> {
           TextField(
             key: const ValueKey<String>('installment-total'),
             controller: _totalController,
-            keyboardType: TextInputType.number,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
             decoration: InputDecoration(
               labelText: 'إجمالي المبلغ (${widget.currencyCode})',
               prefixIcon: const Icon(Icons.payments_outlined),
@@ -109,7 +143,7 @@ class _InstallmentPlannerPageState extends State<InstallmentPlannerPage> {
           TextField(
             key: const ValueKey<String>('installment-down-payment'),
             controller: _downPaymentController,
-            keyboardType: TextInputType.number,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
             decoration: InputDecoration(
               labelText: 'المقدم (${widget.currencyCode})',
               prefixIcon: const Icon(Icons.account_balance_wallet_outlined),
@@ -161,7 +195,7 @@ class _InstallmentPlannerPageState extends State<InstallmentPlannerPage> {
                     const SizedBox(height: 6),
                     Text('عدد الأقساط: ${plan.numberOfInstallments}'),
                     const SizedBox(height: 6),
-                    Text('الخطة للعرض والحساب فقط — لا يتم حفظ التزام تلقائيًا.'),
+                    const Text('الخطة للعرض والحساب فقط — لا يتم حفظ التزام تلقائيًا.'),
                   ],
                 ),
               ),
@@ -172,7 +206,7 @@ class _InstallmentPlannerPageState extends State<InstallmentPlannerPage> {
                 key: ValueKey<String>('installment-row-$index'),
                 child: ListTile(
                   leading: CircleAvatar(child: Text('$index')),
-                  title: Text('${_money(plan.installmentAmountMinorUnits(index))}'),
+                  title: Text(_money(plan.installmentAmountMinorUnits(index))),
                   subtitle: Text(MaterialLocalizations.of(context).formatFullDate(plan.dueDateFor(index))),
                   trailing: index <= plan.paidInstallments
                       ? const Icon(Icons.check_circle_rounded)
@@ -183,12 +217,5 @@ class _InstallmentPlannerPageState extends State<InstallmentPlannerPage> {
         ],
       ),
     );
-  }
-
-  String _money(int minorUnits) {
-    final metadata = CurrencyRegistry.get(widget.currencyCode.trim().toUpperCase());
-    final absolute = minorUnits.abs();
-    final whole = absolute ~/ metadata.scale;
-    return '${minorUnits < 0 ? '-' : ''}${whole.toString().replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (match) => ',')} ${metadata.code}';
   }
 }
