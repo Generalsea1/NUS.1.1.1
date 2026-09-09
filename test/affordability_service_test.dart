@@ -125,7 +125,7 @@ void main() {
     );
 
     expect(result.status, AffordabilityStatus.affordable);
-    expect(result.resultingFreeCashMinorUnits, 450000);
+    expect(result.resultingFreeCashMinorUnits, 300000);
   });
 
   test('marks a proposal as pressure when it leaves less than ten percent of income', () async {
@@ -134,7 +134,7 @@ void main() {
       year: 2026,
       month: 9,
       currencyCode: 'EGP',
-      proposedMinorUnits: 690000,
+      proposedMinorUnits: 550000,
       recurring: true,
     );
 
