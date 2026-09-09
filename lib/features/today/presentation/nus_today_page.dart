@@ -325,7 +325,11 @@ class _NusTodayPageState extends State<NusTodayPage> {
                       padding: EdgeInsets.all(18),
                       child: Text('مفيش تذكيرات للنهارده. أضف أول حاجة محتاج تفتكرها.'),
                     )
-                  : Column(children: [for (final item in todayReminders) _reminderTile(item)],
+                  : Column(
+                      children: [
+                        for (final item in todayReminders) _reminderTile(item),
+                      ],
+                    ),
             ),
             const SizedBox(height: 14),
             _section(
@@ -341,7 +345,11 @@ class _NusTodayPageState extends State<NusTodayPage> {
                           padding: EdgeInsets.all(18),
                           child: Text('مفيش مواعيد مسجلة النهارده.'),
                         )
-                      : Column(children: [for (final item in todayAppointments) _appointmentTile(item)],
+                      : Column(
+                          children: [
+                            for (final item in todayAppointments) _appointmentTile(item),
+                          ],
+                        ),
             ),
             const SizedBox(height: 14),
             _section(
@@ -352,7 +360,6 @@ class _NusTodayPageState extends State<NusTodayPage> {
                 reminders: upcomingReminders,
               ),
             ),
-            if (nextReminder != null) const SizedBox(height: 1),
             const SizedBox(height: 14),
             Card(
               child: ListTile(
@@ -419,13 +426,20 @@ class _NusTodayPageState extends State<NusTodayPage> {
     );
   }
 
-  Widget _nextAction({required List<Appointment> appointments, required List<legacy.ScheduleItem> reminders}) {
+  Widget _nextAction({
+    required List<Appointment> appointments,
+    required List<legacy.ScheduleItem> reminders,
+  }) {
     final appointment = appointments.isEmpty ? null : appointments.first;
     final reminder = reminders.isEmpty ? null : reminders.first;
     if (appointment == null && reminder == null) {
-      return const Padding(padding: EdgeInsets.all(18), child: Text('مفيش حاجة جاية مسجلة. NUS فاضي وجاهز للي بعده.'));
+      return const Padding(
+        padding: EdgeInsets.all(18),
+        child: Text('مفيش حاجة جاية مسجلة. NUS فاضي وجاهز للي بعده.'),
+      );
     }
-    if (appointment != null && (reminder == null || appointment.startsAt.isBefore(reminder.dateTime))) {
+    if (appointment != null &&
+        (reminder == null || appointment.startsAt.isBefore(reminder.dateTime))) {
       return _appointmentTile(appointment);
     }
     return _reminderTile(reminder!);
@@ -496,7 +510,11 @@ class _NusTodayPageState extends State<NusTodayPage> {
         ),
       );
 
-  Widget _section({required String title, required IconData icon, required Widget child}) => Card(
+  Widget _section({
+    required String title,
+    required IconData icon,
+    required Widget child,
+  }) => Card(
         child: Column(
           children: [
             ListTile(
@@ -528,12 +546,17 @@ class _NusTodayPageState extends State<NusTodayPage> {
     final time = TimeOfDay.fromDateTime(item.dateTime).format(context);
     return ListTile(
       key: ValueKey<String>('today-reminder-${item.id}'),
-      leading: Checkbox(value: item.completed, onChanged: (_) => _toggleReminder(item)),
+      leading: Checkbox(
+        value: item.completed,
+        onChanged: (_) => _toggleReminder(item),
+      ),
       title: Text(
         item.title,
         style: TextStyle(
           fontWeight: FontWeight.w800,
-          decoration: item.completed ? TextDecoration.lineThrough : TextDecoration.none,
+          decoration: item.completed
+              ? TextDecoration.lineThrough
+              : TextDecoration.none,
         ),
       ),
       subtitle: Text(time),
