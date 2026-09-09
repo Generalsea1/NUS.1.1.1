@@ -1,0 +1,1 @@
+Engineering gate: inspect existing dependency and Android configuration before changing runtime packages. The voice branch intentionally remains unmerged until CI validates the complete slice.
