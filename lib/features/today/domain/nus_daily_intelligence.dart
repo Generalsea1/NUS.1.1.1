@@ -51,22 +51,29 @@ class NusDailyIntelligence {
         .toList()
       ..sort((a, b) => a.startsAt.compareTo(b.startsAt));
 
+    final appointment = todayUpcoming.isEmpty ? null : todayUpcoming.first;
+    DateTime? selectedWhen;
+    String? selectedTitle;
+    var useReminder = false;
+
     final reminderAt = nextReminderAt;
-    final reminderIsToday = reminderAt != null &&
+    if (reminderAt != null &&
         DateUtils.isSameDay(reminderAt, today) &&
-        reminderAt.isAfter(current);
+        reminderAt.isAfter(current) &&
+        (appointment == null || reminderAt.isBefore(appointment.startsAt))) {
+      selectedWhen = reminderAt;
+      selectedTitle = nextReminderTitle;
+      useReminder = true;
+    } else if (appointment != null) {
+      selectedWhen = appointment.startsAt;
+      selectedTitle = appointment.title;
+    }
 
-    if (todayUpcoming.isNotEmpty || reminderIsToday) {
-      final appointment = todayUpcoming.isEmpty ? null : todayUpcoming.first;
-      final useReminder = reminderIsToday &&
-          (appointment == null || reminderAt!.isBefore(appointment.startsAt));
-      final title = useReminder ? nextReminderTitle : appointment?.title;
-      final when = useReminder ? reminderAt! : appointment!.startsAt;
-
-      final time = TimeOfDay.fromDateTime(when);
+    if (selectedWhen != null) {
+      final time = TimeOfDay.fromDateTime(selectedWhen);
       insights.add(NusDailyInsight(
         title: useReminder ? 'عندك مهمة جاية النهارده' : 'عندك حاجة جاية النهارده',
-        message: '${title ?? 'مهمة بدون اسم'} الساعة ${time.hour}:${time.minute.toString().padLeft(2, '0')}.',
+        message: '${selectedTitle ?? 'مهمة بدون اسم'} الساعة ${time.hour}:${time.minute.toString().padLeft(2, '0')}.',
         icon: useReminder ? Icons.check_circle_outline_rounded : Icons.event_available_rounded,
       ));
     } else {
