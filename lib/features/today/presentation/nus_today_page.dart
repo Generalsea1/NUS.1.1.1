@@ -4,6 +4,7 @@ import '../../ai/presentation/ai_hub_page.dart';
 import '../../appointments/data/local_appointment_repository.dart';
 import '../../appointments/domain/appointment.dart';
 import '../../onboarding/domain/household_profile.dart';
+import '../data/speech_to_text_nus_voice_input.dart';
 import '../domain/nus_daily_intelligence.dart';
 import 'nus_quick_add_page.dart';
 
@@ -43,7 +44,14 @@ class _NusTodayPageState extends State<NusTodayPage> {
   Future<void> _openQuickAdd() async {
     final createReminder = widget.onCreateReminder;
     if (createReminder == null) return;
-    await Navigator.of(context).push<bool>(MaterialPageRoute(builder: (_) => NusQuickAddPage(onCreateReminder: createReminder)));
+    await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => NusQuickAddPage(
+          onCreateReminder: createReminder,
+          voiceInput: SpeechToTextNusVoiceInput(),
+        ),
+      ),
+    );
     await _load();
   }
 
