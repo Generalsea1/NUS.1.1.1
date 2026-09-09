@@ -11,6 +11,7 @@ const MAX_OBJECTIVE_LENGTH = 4000;
 const MAX_CONTEXT_ITEMS = 8;
 const MAX_CONTEXT_SUMMARY_LENGTH = 20000;
 const GEMINI_TIMEOUT_MS = 30000;
+const MAX_PROVIDER_DIAGNOSTIC_BODY_LENGTH = 800;
 const DAILY_LIMIT = 10;
 
 type JsonObject = Record<string, unknown>;
@@ -84,6 +85,50 @@ function asStringArray(value: unknown) {
   return result;
 }
 
+function sanitizeProviderText(value: string) {
+  return value
+    .replace(/-----BEGIN [^-]+-----[\s\S]*?-----END [^-]+-----/gi, "[REDACTED_BLOCK]")
+    .replace(/(?:x-goog-api-key|api[-_ ]?key|authorization|bearer|access[-_ ]?token|refresh[-_ ]?token|cookie|set-cookie)\s*[:=]\s*[^,\s;]+/gi, "$1=[REDACTED]")
+    .replace(/\bAIza[0-9A-Za-z_-]{20,}\b/g, "[REDACTED_KEY]")
+    .replace(/\beyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/g, "[REDACTED_TOKEN]")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, MAX_PROVIDER_DIAGNOSTIC_BODY_LENGTH);
+}
+
+async function getProviderDiagnostic(response: Response) {
+  const contentType = response.headers.get("content-type") ?? "";
+  let rawBody = "";
+  try {
+    rawBody = await response.text();
+  } catch {
+    rawBody = "";
+  }
+
+  const sanitizedBody = sanitizeProviderText(rawBody);
+  let sanitizedErrorType = "http_error";
+  let sanitizedErrorMessage = sanitizedBody || "Provider returned an HTTP error without a readable body.";
+
+  if (contentType.toLowerCase().includes("application/json")) {
+    try {
+      const parsed = JSON.parse(rawBody) as JsonObject;
+      const errorValue = parsed.error;
+      if (errorValue && typeof errorValue === "object") {
+        const providerError = errorValue as JsonObject;
+        const providerCode = typeof providerError.code === "number" ? providerError.code : null;
+        const providerStatus = typeof providerError.status === "string" ? providerError.status : null;
+        const providerMessage = typeof providerError.message === "string" ? providerError.message : null;
+        sanitizedErrorType = providerStatus ?? (providerCode !== null ? `http_${providerCode}` : "provider_api_error");
+        sanitizedErrorMessage = sanitizeProviderText(providerMessage ?? "Provider returned a structured error without a message.");
+      }
+    } catch {
+      // Keep the sanitized text fallback for non-JSON or malformed JSON bodies.
+    }
+  }
+
+  return { contentType, sanitizedErrorType, sanitizedErrorMessage };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS_HEADERS });
   if (req.method !== "POST") return json({ ok: false, error: "POST is required." }, 405);
@@ -149,8 +194,14 @@ Deno.serve(async (req) => {
       return json({ ok: false, error: "صلاحية خدمة Gemini غير متاحة حاليًا." }, 502);
     }
     if (!response.ok) {
+      const diagnostic = await getProviderDiagnostic(response);
       await releaseQuota(user.id, reservationId);
-      console.error("financial-advisor-ai provider returned non-success", { status: response.status });
+      console.error("financial-advisor-ai GEMINI_PROVIDER_DIAGNOSTIC", {
+        status: response.status,
+        contentType: diagnostic.contentType,
+        sanitizedErrorType: diagnostic.sanitizedErrorType,
+        sanitizedErrorMessage: diagnostic.sanitizedErrorMessage,
+      });
       return json({ ok: false, error: "خدمة Gemini غير متاحة حاليًا." }, 502);
     }
 
