@@ -11,6 +11,7 @@ import '../../income/application/income_source_repository.dart';
 import '../../income/data/supabase_income_source_repository.dart';
 import '../../../legacy_main.dart' as legacy;
 import '../../shopping/application/shopping_lifecycle_service.dart';
+import '../../household/presentation/household_page.dart';
 import '../application/household_profile_repository.dart';
 import '../application/household_profile_validator.dart';
 import '../data/supabase_household_profile_repository.dart';
@@ -172,6 +173,14 @@ class _AuthGateState extends State<AuthGate> {
     );
   }
 
+  void _openHousehold(BuildContext context, String userId) {
+    Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => HouseholdPage(userId: userId),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_initializing || _loadingProfile) {
@@ -205,14 +214,28 @@ class _AuthGateState extends State<AuthGate> {
 
     return Directionality(
       textDirection: TextDirection.rtl,
-      child: NusTodayPage(
-        profile: profile,
-        scheduleStore: widget.scheduleStore,
-        expenseManagementService: widget.expenseManagementService,
-        shoppingService: widget.shoppingService,
-        onOpenFinance: () => _openFinance(context, profile),
-        onOpenAppointments: widget.onOpenGeneralHome == null ? null : () => widget.onOpenGeneralHome!(context),
-        onCreateReminder: widget.onCreateReminder,
+      child: Stack(
+        children: [
+          NusTodayPage(
+            profile: profile,
+            scheduleStore: widget.scheduleStore,
+            expenseManagementService: widget.expenseManagementService,
+            shoppingService: widget.shoppingService,
+            onOpenFinance: () => _openFinance(context, profile),
+            onOpenAppointments: widget.onOpenGeneralHome == null ? null : () => widget.onOpenGeneralHome!(context),
+            onCreateReminder: widget.onCreateReminder,
+          ),
+          PositionedDirectional(
+            end: 20,
+            bottom: 20,
+            child: FloatingActionButton.extended(
+              key: const ValueKey<String>('open-household-space'),
+              onPressed: () => _openHousehold(context, userId),
+              icon: const Icon(Icons.home_work_outlined),
+              label: const Text('البيت'),
+            ),
+          ),
+        ],
       ),
     );
   }
