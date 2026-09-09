@@ -9,10 +9,12 @@ class _FakeAppointmentRepository implements AppointmentRepository {
   final List<Appointment> items = [];
 
   @override
-  Future<Appointment?> getById(String id) async => items.cast<Appointment?>().firstWhere(
-        (item) => item?.id == id,
-        orElse: () => null,
-      );
+  Future<Appointment?> getById(String id) async {
+    for (final item in items) {
+      if (item.id == id) return item;
+    }
+    return null;
+  }
 
   @override
   Future<List<Appointment>> list() async => List<Appointment>.from(items);
@@ -55,12 +57,17 @@ void main() {
       findsOneWidget,
     );
 
-    await tester.tap(find.byKey(const ValueKey<String>('quick-add-save')));
+    final saveFinder = find.byKey(const ValueKey<String>('quick-add-save'));
+    await tester.ensureVisible(saveFinder);
+    await tester.tap(saveFinder);
     await tester.pumpAndSettle();
 
     expect(repository.items, hasLength(1));
     expect(repository.items.single.title, 'موعد دكتور');
     expect(repository.items.single.type, AppointmentType.doctor);
-    expect(repository.items.single.startsAt, DateTime(2026, 9, 10, 10));
+    expect(repository.items.single.startsAt.year, DateTime.now().year);
+    expect(repository.items.single.startsAt.month, DateTime.now().month);
+    expect(repository.items.single.startsAt.day, DateTime.now().add(const Duration(days: 1)).day);
+    expect(repository.items.single.startsAt.hour, 10);
   });
 }
