@@ -22,6 +22,7 @@ class NusDailyIntelligence {
     required HouseholdProfile profile,
     required List<Appointment> appointments,
     int pendingReminderCount = 0,
+    int pendingShoppingItemCount = 0,
     String? nextReminderTitle,
     DateTime? nextReminderAt,
     DateTime? now,
@@ -81,6 +82,14 @@ class NusDailyIntelligence {
         title: 'اليوم هادي',
         message: 'مفيش موعد أو مهمة قادمة مسجلة النهارده. استغل المساحة في إنهاء أهم حاجة مؤجلة.',
         icon: Icons.wb_sunny_outlined,
+      ));
+    }
+
+    if (pendingShoppingItemCount > 0 && insights.length < 3) {
+      insights.add(NusDailyInsight(
+        title: 'قائمة المشتريات مستنياك',
+        message: 'عندك $pendingShoppingItemCount ${pendingShoppingItemCount == 1 ? 'عنصر' : 'عناصر'} لسه ما اتعملتش. خلّي مشوار الشراء واضح قبل ما تخرج.',
+        icon: Icons.shopping_cart_outlined,
       ));
     }
 
