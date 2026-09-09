@@ -229,9 +229,7 @@ class _NusQuickAddPageState extends State<NusQuickAddPage> {
 
   AppointmentType _appointmentType(String text) {
     if (_hasAny(text, const ['دكتور', 'طبيب', 'عياده', 'كشف'])) return AppointmentType.doctor;
-    if (_hasAny(text, const ['مكالمة', 'اتصال', 'فون'])) return AppointmentType.phoneCall;
-    if (_hasAny(text, const ['اجتماع', 'ميتنج'])) return AppointmentType.work;
-    if (_hasAny(text, const ['مقابله'])) return AppointmentType.work;
+    if (_hasAny(text, const ['اجتماع', 'ميتنج', 'مقابله'])) return AppointmentType.work;
     if (_hasAny(text, const ['سفر', 'رحله'])) return AppointmentType.travel;
     if (_hasAny(text, const ['مدرسه', 'درس', 'جامعه'])) return AppointmentType.study;
     return AppointmentType.personal;
