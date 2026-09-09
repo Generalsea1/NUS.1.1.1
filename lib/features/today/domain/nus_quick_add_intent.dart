@@ -117,25 +117,15 @@ class NusQuickAddIntentClassifier {
 
   static int? _extractAmountMinorUnits(String text, String currencyCode) {
     final match = RegExp(
-      r'(?:^|\s)(\d+(?:[\.,]\d+)?)(?:\s*(?:جنيه|جنيها|egp|دولار|usd|\$|يورو|eur|€|استرليني|gbp|£))?(?=\s|$)',
+      r'(?:^|\s)(\d+)(?:\s*(?:جنيه|جنيها|egp|دولار|usd|\$|يورو|eur|€|استرليني|gbp|£))?(?=\s|$)',
       caseSensitive: false,
     ).firstMatch(text);
     if (match == null) return null;
 
-    final number = match.group(1)!.replaceAll(',', '.');
-    final parts = number.split('.');
-    final whole = int.tryParse(parts.first);
+    final whole = int.tryParse(match.group(1)!);
     if (whole == null || whole <= 0) return null;
-
     final metadata = CurrencyRegistry.get(currencyCode);
-    final fraction = parts.length == 1 ? '' : parts[1];
-    if (fraction.length > metadata.exponent) return null;
-
-    final padded = fraction.padRight(metadata.exponent, '0');
-    final fractionMinor = padded.isEmpty ? 0 : int.tryParse(padded) ?? -1;
-    if (fractionMinor < 0) return null;
-
-    return whole * metadata.scale + fractionMinor;
+    return whole * metadata.scale;
   }
 
   static String _detectCurrency(String text, String defaultCurrency) {
