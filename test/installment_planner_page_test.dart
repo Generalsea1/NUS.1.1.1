@@ -42,6 +42,35 @@ void main() {
     expect(find.textContaining('333 EGP'), findsNWidgets(2));
   });
 
+  testWidgets('preserves two decimal places without rounding', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: InstallmentPlannerPage(
+          userId: 'u1',
+          currencyCode: 'EGP',
+        ),
+      ),
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey<String>('installment-total')),
+      '1000.75',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey<String>('installment-down-payment')),
+      '0.75',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey<String>('installment-count')),
+      '2',
+    );
+    await tester.tap(find.byKey(const ValueKey<String>('installment-calculate')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey<String>('installment-summary')), findsOneWidget);
+    expect(find.textContaining('500.00 EGP'), findsOneWidget);
+  });
+
   testWidgets('shows validation feedback for invalid values', (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
