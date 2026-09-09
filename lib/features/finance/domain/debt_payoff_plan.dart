@@ -28,7 +28,19 @@ class DebtPayoffPlan {
     if (extraMonthlyPaymentMinorUnits < 0) {
       throw ArgumentError.value(extraMonthlyPaymentMinorUnits, 'extraMonthlyPaymentMinorUnits', 'Extra payment cannot be negative.');
     }
+
+    final effectivePayment = monthlyPaymentMinorUnits + extraMonthlyPaymentMinorUnits;
+    final months = (totalBalanceMinorUnits + effectivePayment - 1) ~/ effectivePayment;
+    if (months > 360) {
+      throw ArgumentError.value(
+        months,
+        'payoffMonths',
+        'Debt payoff horizon cannot exceed 360 months (30 years).',
+      );
+    }
   }
+
+  static const maxPayoffMonths = 360;
 
   final String id;
   final String userId;
@@ -54,7 +66,7 @@ class DebtPayoffPlan {
     var dueDate = DateTime(firstDueDate.year, firstDueDate.month, firstDueDate.day);
     var installmentNumber = 1;
 
-    while (remaining > 0 && installmentNumber <= 360) {
+    while (remaining > 0) {
       final payment = remaining < effectiveMonthlyPaymentMinorUnits
           ? remaining
           : effectiveMonthlyPaymentMinorUnits;
@@ -69,10 +81,6 @@ class DebtPayoffPlan {
       );
       dueDate = DateTime(dueDate.year, dueDate.month + 1, dueDate.day);
       installmentNumber++;
-    }
-
-    if (remaining > 0) {
-      throw StateError('Debt payoff schedule exceeds the supported 360-month horizon.');
     }
     return List.unmodifiable(result);
   }
