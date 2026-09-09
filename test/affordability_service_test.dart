@@ -126,6 +126,8 @@ void main() {
 
     expect(result.status, AffordabilityStatus.affordable);
     expect(result.resultingFreeCashMinorUnits, 300000);
+    expect(result.horizonMonths, 1);
+    expect(result.minimumProjectedFreeCashMinorUnits, 300000);
   });
 
   test('marks a proposal as pressure when it leaves positive cash below ten percent of income', () async {
@@ -141,6 +143,22 @@ void main() {
     expect(result.status, AffordabilityStatus.pressure);
     expect(result.isPressure, isTrue);
     expect(result.resultingFreeCashMinorUnits, 1);
+  });
+
+  test('runs a deterministic recurring stress horizon without persisting anything', () async {
+    final result = await _service().assess(
+      userId: 'user-1',
+      year: 2026,
+      month: 9,
+      currencyCode: 'EGP',
+      proposedMinorUnits: 100000,
+      recurring: true,
+      scenarioMonths: 6,
+    );
+
+    expect(result.horizonMonths, 6);
+    expect(result.minimumProjectedFreeCashMinorUnits, 400000);
+    expect(result.resultingFreeCashMinorUnits, 400000);
   });
 
   test('rejects zero or negative proposals', () async {
@@ -163,6 +181,18 @@ void main() {
         currencyCode: 'EGP',
         proposedMinorUnits: -1,
         recurring: false,
+      ),
+      throwsArgumentError,
+    );
+    expect(
+      () => _service().assess(
+        userId: 'user-1',
+        year: 2026,
+        month: 9,
+        currencyCode: 'EGP',
+        proposedMinorUnits: 100,
+        recurring: true,
+        scenarioMonths: 13,
       ),
       throwsArgumentError,
     );
