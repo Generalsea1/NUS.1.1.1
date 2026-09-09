@@ -80,7 +80,7 @@ class _NusCopilotPageState extends State<NusCopilotPage> {
       final provider = FinancialCopilotProvider();
       final answer = await provider.generateInsight(
         AiInsightRequest(
-          objective: '$question. $\{request.objective\}',
+          objective: '$question. ${request.objective}',
           context: request.context,
         ),
       );
