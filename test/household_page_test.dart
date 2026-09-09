@@ -26,6 +26,16 @@ class _FakeRepository implements HouseholdRepository {
       ];
 
   @override
+  Future<List<HouseholdMember>> listHouseholdMembers(String householdId) async => [
+        const HouseholdMember(
+          householdId: 'h1',
+          userId: 'u1',
+          role: 'owner',
+          status: 'active',
+        ),
+      ];
+
+  @override
   Future<HouseholdMember> addMembership(HouseholdMember member) async => member;
 }
 
@@ -45,6 +55,7 @@ void main() {
     expect(find.text('بيت العيلة'), findsOneWidget);
     expect(find.text('مالك البيت'), findsOneWidget);
     expect(find.text('عضو نشط'), findsOneWidget);
-    expect(find.text('الإدارة المتقدمة قيد البناء'), findsOneWidget);
+    expect(find.text('مشتريات البيت المشتركة'), findsOneWidget);
+    expect(find.text('أعضاء البيت'), findsOneWidget);
   });
 }
