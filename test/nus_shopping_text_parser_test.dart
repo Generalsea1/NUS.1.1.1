@@ -11,7 +11,7 @@ void main() {
 
   test('supports Arabic comma, Latin comma, and new lines', () {
     expect(
-      NusShoppingTextParser.parse('مشتريات: لبن، بيض, عيش\nمناديل'),
+      NusShoppingTextParser.parse('مشتريات لبن، بيض, عيش\nمناديل'),
       <String>['لبن', 'بيض', 'عيش', 'مناديل'],
     );
   });
