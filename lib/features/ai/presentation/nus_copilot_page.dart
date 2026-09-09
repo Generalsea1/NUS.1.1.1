@@ -71,7 +71,7 @@ class _NusCopilotPageState extends State<NusCopilotPage> {
           context: [
             AiContextItem(
               domain: 'household_profile',
-              entityId: widget.profile.userId,
+              entityId: 'current_household',
               summary:
                   'country=${widget.profile.countryCode}; currency=${widget.profile.currencyCode}; householdSize=${widget.profile.householdSize}; adults=${widget.profile.adults}; children=${widget.profile.children}; monthlyIncome=${widget.profile.monthlyIncome}; recurringObligations=${widget.profile.recurringObligations}; remainingAfterObligations=${widget.profile.remainingAfterObligations}',
             ),
@@ -135,9 +135,9 @@ class _NusCopilotPageState extends State<NusCopilotPage> {
               child: const Padding(
                 padding: EdgeInsets.all(18),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text('قول لـNUS أنت محتاج إيه', style: TextStyle(fontSize: 23, fontWeight: FontWeight.w900)),
+                  Text('مساعد NUS المالي', style: TextStyle(fontSize: 23, fontWeight: FontWeight.w900)),
                   SizedBox(height: 6),
-                  Text('اسأل، اختار إجراء، وبعدها NUS ينفّذ عبر الخدمات الموجودة بالفعل. التحليل المالي يظل مبنيًا على بيانات حسابك الحقيقية.'),
+                  Text('اسأل NUS عن الدخل والالتزامات والقرارات المالية. اختار الإجراء المناسب من تحت، والتنفيذ الحساس يفضل باختيار صريح منك.'),
                 ]),
               ),
             ),
@@ -154,7 +154,7 @@ class _NusCopilotPageState extends State<NusCopilotPage> {
                     textInputAction: TextInputAction.done,
                     onSubmitted: (_) => _ask(),
                     decoration: InputDecoration(
-                      labelText: 'اكتب سؤالك أو طلبك',
+                      labelText: 'اسأل سؤال مالي',
                       hintText: 'مثال: ينفع أشتري غسالة دلوقتي؟',
                       prefixIcon: const Icon(Icons.chat_bubble_outline_rounded),
                       suffixIcon: IconButton(
@@ -198,7 +198,7 @@ class _NusCopilotPageState extends State<NusCopilotPage> {
                 child: Padding(
                   padding: const EdgeInsets.all(18),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    const Row(children: [Icon(Icons.insights_rounded), SizedBox(width: 8), Text('رد NUS', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900))]),
+                    const Row(children: [Icon(Icons.insights_rounded), SizedBox(width: 8), Text('رأي NUS المالي', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900))]),
                     const SizedBox(height: 12),
                     SelectableText(_answer!.summary, style: const TextStyle(height: 1.55)),
                   ]),
@@ -207,7 +207,7 @@ class _NusCopilotPageState extends State<NusCopilotPage> {
             ],
             const SizedBox(height: 14),
             Text(
-              'NUS لا ينفّذ تغييرًا ماليًا أو حذفًا من خلال السؤال وحده. الإجراءات الحساسة تظل اختيارًا صريحًا من المستخدم.',
+              'NUS لا يغيّر ميزانيتك ولا يحذف بياناتك بمجرد السؤال. تنفيذ الإجراء يتم من خلال أدوات التطبيق واختيارك الصريح.',
               style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, height: 1.45, fontWeight: FontWeight.w600),
             ),
           ],
