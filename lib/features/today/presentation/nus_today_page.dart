@@ -6,6 +6,7 @@ import '../../appointments/data/local_appointment_repository.dart';
 import '../../appointments/domain/appointment.dart';
 import '../../expenses/application/expense_management_service.dart';
 import '../../onboarding/domain/household_profile.dart';
+import '../../settings/presentation/about_nus_page.dart';
 import '../../settings/presentation/notification_settings_page.dart';
 import '../data/speech_to_text_nus_voice_input.dart';
 import '../domain/nus_daily_intelligence.dart';
@@ -120,6 +121,12 @@ class _NusTodayPageState extends State<NusTodayPage> {
     );
   }
 
+  Future<void> _openAbout() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(builder: (_) => const AboutNusPage(isArabic: true)),
+    );
+  }
+
   Future<void> _openNotificationSettings() async {
     await Navigator.of(context).push<void>(
       MaterialPageRoute(
@@ -181,9 +188,17 @@ class _NusTodayPageState extends State<NusTodayPage> {
       ..sort((a, b) => a.startsAt.compareTo(b.startsAt));
     final todayReminders = _todayReminders(now);
     final upcomingReminders = _upcomingReminders(now);
+    final upcomingTodayReminders = todayReminders
+        .where((item) => !item.completed && item.dateTime.isAfter(now))
+        .toList()
+      ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
+    final nextReminder = upcomingReminders.isEmpty ? null : upcomingReminders.first;
     final insights = NusDailyIntelligence.build(
       profile: widget.profile,
       appointments: _appointmentItems,
+      pendingReminderCount: upcomingReminders.length,
+      nextReminderTitle: upcomingTodayReminders.isEmpty ? null : upcomingTodayReminders.first.title,
+      nextReminderAt: upcomingTodayReminders.isEmpty ? null : upcomingTodayReminders.first.dateTime,
       now: now,
     );
     final focusCount = todayAppointments.length +
@@ -195,6 +210,11 @@ class _NusTodayPageState extends State<NusTodayPage> {
         appBar: AppBar(
           title: const Text('NUS Today', style: TextStyle(fontWeight: FontWeight.w900)),
           actions: [
+            IconButton(
+              tooltip: 'عن NUS',
+              onPressed: _openAbout,
+              icon: const Icon(Icons.info_outline_rounded),
+            ),
             IconButton(
               tooltip: 'إعدادات التنبيهات',
               onPressed: _openNotificationSettings,
@@ -305,7 +325,7 @@ class _NusTodayPageState extends State<NusTodayPage> {
                       padding: EdgeInsets.all(18),
                       child: Text('مفيش تذكيرات للنهارده. أضف أول حاجة محتاج تفتكرها.'),
                     )
-                  : Column(children: [for (final item in todayReminders) _reminderTile(item)]),
+                  : Column(children: [for (final item in todayReminders) _reminderTile(item)],
             ),
             const SizedBox(height: 14),
             _section(
@@ -321,14 +341,18 @@ class _NusTodayPageState extends State<NusTodayPage> {
                           padding: EdgeInsets.all(18),
                           child: Text('مفيش مواعيد مسجلة النهارده.'),
                         )
-                      : Column(children: [for (final item in todayAppointments) _appointmentTile(item)]),
+                      : Column(children: [for (final item in todayAppointments) _appointmentTile(item)],
             ),
             const SizedBox(height: 14),
             _section(
               title: 'الخطوة الجاية',
               icon: Icons.arrow_circle_left_rounded,
-              child: _nextAction(appointments: nextAppointments, reminders: upcomingReminders),
+              child: _nextAction(
+                appointments: nextAppointments,
+                reminders: upcomingReminders,
+              ),
             ),
+            if (nextReminder != null) const SizedBox(height: 1),
             const SizedBox(height: 14),
             Card(
               child: ListTile(
