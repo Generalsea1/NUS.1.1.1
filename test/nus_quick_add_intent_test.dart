@@ -33,4 +33,36 @@ void main() {
     expect(result.amountMajorUnits, 350);
     expect(result.expenseCategoryCode, 'utilities');
   });
+
+  test('normalizes Arabic diacritics and Egyptian dialect spelling', () {
+    final result = NusQuickAddIntentClassifier.classify('دَفَعْتُ ٤٢٠ جُنَيْه أُوبَر');
+
+    expect(result.kind, NusQuickAddKind.expense);
+    expect(result.amountMajorUnits, 420);
+    expect(result.currencyCode, 'EGP');
+    expect(result.expenseCategoryCode, 'transportation');
+  });
+
+  test('detects explicit foreign currencies', () {
+    final result = NusQuickAddIntentClassifier.classify('دفعت 50 دولار مطعم');
+
+    expect(result.kind, NusQuickAddKind.expense);
+    expect(result.amountMajorUnits, 50);
+    expect(result.currencyCode, 'USD');
+    expect(result.expenseCategoryCode, 'food');
+  });
+
+  test('understands Egyptian shopping phrasing', () {
+    final result = NusQuickAddIntentClassifier.classify('عايز اجيب منظف للبيت');
+
+    expect(result.kind, NusQuickAddKind.shopping);
+    expect(result.confidence, greaterThanOrEqualTo(90));
+  });
+
+  test('does not treat a payment phrase without an amount as an expense', () {
+    final result = NusQuickAddIntentClassifier.classify('دفعت الكهرباء');
+
+    expect(result.kind, NusQuickAddKind.reminder);
+    expect(result.amountMajorUnits, isNull);
+  });
 }
