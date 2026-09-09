@@ -69,11 +69,17 @@ class _NusCopilotPageState extends State<NusCopilotPage> {
     try {
       final loader = widget.loadFinancialSnapshot;
       if (loader == null) {
-        throw const FinancialAdvisorUnavailableException('البيانات المالية غير جاهزة للمساعد حاليًا.');
+        throw const FinancialAdvisorException(
+          kind: FinancialAdvisorFailureKind.backendUnavailable,
+          message: 'البيانات المالية غير جاهزة للمساعد حاليًا.',
+        );
       }
       final snapshot = await loader();
       if (snapshot == null) {
-        throw const FinancialAdvisorUnavailableException('تعذر قراءة بيانات Financial Engine الحالية. لن نخترع أرقامًا.');
+        throw const FinancialAdvisorException(
+          kind: FinancialAdvisorFailureKind.backendUnavailable,
+          message: 'تعذر قراءة بيانات Financial Engine الحالية. لن نخترع أرقامًا.',
+        );
       }
 
       final request = snapshot.toAiRequest();
