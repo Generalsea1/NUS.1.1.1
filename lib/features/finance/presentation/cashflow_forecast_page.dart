@@ -13,6 +13,7 @@ import '../../income/data/supabase_income_source_repository.dart';
 import '../../obligations/application/obligation_service.dart';
 import '../../obligations/data/supabase_obligation_repository.dart';
 import 'affordability_page.dart';
+import 'installment_planner_page.dart';
 
 class CashflowForecastPage extends StatefulWidget {
   const CashflowForecastPage({
@@ -99,6 +100,17 @@ class _CashflowForecastPageState extends State<CashflowForecastPage> {
     );
   }
 
+  void _openInstallmentPlanner() {
+    Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => InstallmentPlannerPage(
+          userId: widget.userId,
+          currencyCode: widget.currencyCode,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final forecast = _forecast;
@@ -174,11 +186,26 @@ class _CashflowForecastPageState extends State<CashflowForecastPage> {
                           style: Theme.of(context).textTheme.bodySmall,
                         ),
                         const SizedBox(height: 12),
-                        OutlinedButton.icon(
-                          key: const ValueKey<String>('open-affordability'),
-                          onPressed: _openAffordability,
-                          icon: const Icon(Icons.rule_rounded),
-                          label: const Text('هل أقدر أعمل ده؟'),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                key: const ValueKey<String>('open-affordability'),
+                                onPressed: _openAffordability,
+                                icon: const Icon(Icons.rule_rounded),
+                                label: const Text('هل أقدر أعمل ده؟'),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                key: const ValueKey<String>('open-installment-planner'),
+                                onPressed: _openInstallmentPlanner,
+                                icon: const Icon(Icons.format_list_numbered_rounded),
+                                label: const Text('مخطط الأقساط'),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
