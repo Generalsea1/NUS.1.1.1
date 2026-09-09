@@ -106,6 +106,20 @@ void main() {
       ),
       throwsA(isA<ArgumentError>()),
     );
+    expect(
+      () => InstallmentPlan(
+        id: 'p',
+        userId: 'u1',
+        title: 'Too many',
+        currencyCode: 'EGP',
+        totalMinorUnits: 100,
+        downPaymentMinorUnits: 0,
+        numberOfInstallments: InstallmentPlan.maxInstallments + 1,
+        paidInstallments: 0,
+        firstDueDate: DateTime(2026, 9, 1),
+      ),
+      throwsA(isA<ArgumentError>()),
+    );
   });
 
   test('rejects impossible installment access', () {
@@ -123,5 +137,39 @@ void main() {
 
     expect(() => plan.installmentAmountMinorUnits(0), throwsA(isA<RangeError>()));
     expect(() => plan.dueDateFor(5), throwsA(isA<RangeError>()));
+  });
+
+  test('month-end due dates clamp to the valid day in the next month', () {
+    final plan = InstallmentPlan(
+      id: 'month-end',
+      userId: 'u1',
+      title: 'Month end',
+      currencyCode: 'EGP',
+      totalMinorUnits: 300,
+      downPaymentMinorUnits: 0,
+      numberOfInstallments: 3,
+      paidInstallments: 0,
+      firstDueDate: DateTime(2026, 1, 31),
+    );
+
+    expect(plan.dueDateFor(1), DateTime(2026, 1, 31));
+    expect(plan.dueDateFor(2), DateTime(2026, 2, 28));
+    expect(plan.dueDateFor(3), DateTime(2026, 3, 28));
+  });
+
+  test('leap-year day 29 remains stable through February', () {
+    final plan = InstallmentPlan(
+      id: 'leap',
+      userId: 'u1',
+      title: 'Leap',
+      currencyCode: 'EGP',
+      totalMinorUnits: 200,
+      downPaymentMinorUnits: 0,
+      numberOfInstallments: 2,
+      paidInstallments: 0,
+      firstDueDate: DateTime(2028, 1, 29),
+    );
+
+    expect(plan.dueDateFor(2), DateTime(2028, 2, 29));
   });
 }
