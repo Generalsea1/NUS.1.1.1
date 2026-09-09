@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../domain/nus_quick_add_intent.dart';
 import '../domain/nus_quick_add_parser.dart';
 import '../domain/nus_voice_input.dart';
 
@@ -20,6 +21,7 @@ class _NusQuickAddPageState extends State<NusQuickAddPage> {
   bool _listening = false;
   String? _voiceError;
   bool _scheduleDetected = false;
+  NusQuickAddIntent? _intent;
 
   @override
   void dispose() {
@@ -29,16 +31,23 @@ class _NusQuickAddPageState extends State<NusQuickAddPage> {
 
   void _setTime(DateTime value) => setState(() => _dateTime = value);
 
-  void _inOneHour() => _setTime(DateTime.now().add(const Duration(hours: 1)));
-
-  void _tomorrowMorning() {
-    final now = DateTime.now();
-    _setTime(DateTime(now.year, now.month, now.day + 1, 9));
+  void _refreshIntent() {
+    final raw = _title.text.trim();
+    setState(() {
+      _intent = raw.isEmpty ? null : NusQuickAddIntentClassifier.classify(raw);
+      _scheduleDetected = false;
+    });
   }
 
-  void _tomorrowEvening() {
+  void _inOneHour() => _setTime(DateTime.now().add(const Duration(hours: 1)));
+
+  void _tomorrowMorning() => _setTime(_tomorrowAt(9));
+
+  void _tomorrowEvening() => _setTime(_tomorrowAt(18));
+
+  DateTime _tomorrowAt(int hour) {
     final now = DateTime.now();
-    _setTime(DateTime(now.year, now.month, now.day + 1, 18));
+    return DateTime(now.year, now.month, now.day + 1, hour);
   }
 
   Future<void> _pickDateTime() async {
@@ -79,6 +88,7 @@ class _NusQuickAddPageState extends State<NusQuickAddPage> {
         _title.text = transcript.trim();
         _title.selection = TextSelection.collapsed(offset: _title.text.length);
       });
+      _refreshIntent();
       _applyNaturalSchedule(showFeedback: false);
     } catch (_) {
       if (mounted) setState(() => _voiceError = 'حصلت مشكلة في الإدخال الصوتي. جرّب تاني.');
@@ -94,6 +104,7 @@ class _NusQuickAddPageState extends State<NusQuickAddPage> {
     setState(() {
       _dateTime = parsed.dateTime;
       _scheduleDetected = parsed.scheduleDetected;
+      _intent = NusQuickAddIntentClassifier.classify(parsed.title);
     });
     if (parsed.scheduleDetected && parsed.title != raw) {
       _title.text = parsed.title;
@@ -109,6 +120,15 @@ class _NusQuickAddPageState extends State<NusQuickAddPage> {
   Future<void> _save() async {
     final raw = _title.text.trim();
     if (raw.isEmpty) return;
+    final intent = NusQuickAddIntentClassifier.classify(raw);
+    if (intent.kind != NusQuickAddKind.reminder) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('NUS فهم أن الأمر مشتريات أو مصروف. لن نحفظه كتذكير بالخطأ.')),
+        );
+      }
+      return;
+    }
     final parsed = NusQuickAddParser.parse(raw, now: DateTime.now());
     final title = parsed.title;
     final dateTime = _scheduleDetected ? _dateTime : parsed.dateTime;
@@ -126,8 +146,33 @@ class _NusQuickAddPageState extends State<NusQuickAddPage> {
   String _dateTimeLabel(BuildContext context) =>
       '${MaterialLocalizations.of(context).formatFullDate(_dateTime)} • ${TimeOfDay.fromDateTime(_dateTime).format(context)}';
 
+  String _intentLabel(NusQuickAddIntent intent) {
+    switch (intent.kind) {
+      case NusQuickAddKind.reminder:
+        return 'تذكير / مهمة';
+      case NusQuickAddKind.shopping:
+        return 'مشتريات';
+      case NusQuickAddKind.expense:
+        return 'مصروف';
+    }
+  }
+
+  IconData _intentIcon(NusQuickAddKind kind) {
+    switch (kind) {
+      case NusQuickAddKind.reminder:
+        return Icons.check_circle_outline_rounded;
+      case NusQuickAddKind.shopping:
+        return Icons.shopping_cart_outlined;
+      case NusQuickAddKind.expense:
+        return Icons.account_balance_wallet_outlined;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final intent = _intent;
+    final canSaveReminder = intent == null || intent.kind == NusQuickAddKind.reminder;
+
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
@@ -136,7 +181,7 @@ class _NusQuickAddPageState extends State<NusQuickAddPage> {
           padding: const EdgeInsets.all(20),
           children: [
             const Text(
-              'اكتب الحاجة بطريقتك، وNUS يحاول يفهم اليوم والساعة تلقائيًا ويجهّز الإشعار.',
+              'اكتب الحاجة بطريقتك، وNUS يحاول يفهم نوع الطلب واليوم والساعة قبل أي حفظ.',
               style: TextStyle(fontSize: 17, height: 1.5),
             ),
             const SizedBox(height: 16),
@@ -145,10 +190,10 @@ class _NusQuickAddPageState extends State<NusQuickAddPage> {
               autofocus: true,
               maxLines: 3,
               textInputAction: TextInputAction.done,
-              onChanged: (_) => _scheduleDetected = false,
+              onChanged: (_) => _refreshIntent(),
               onSubmitted: (_) => _saving ? null : _save(),
               decoration: InputDecoration(
-                labelText: 'إيه اللي عايز تفتكره؟',
+                labelText: 'إيه اللي عايز NUS يعمله؟',
                 hintText: 'مثال: أدفع الكهرباء يوم 15 الساعة 10 صباحًا',
                 prefixIcon: const Icon(Icons.edit_note_rounded),
                 suffixIcon: Row(
@@ -156,7 +201,7 @@ class _NusQuickAddPageState extends State<NusQuickAddPage> {
                   children: [
                     IconButton(
                       key: const Key('quick-add-parse'),
-                      tooltip: 'فهم الموعد تلقائيًا',
+                      tooltip: 'فهم الطلب والموعد',
                       onPressed: _saving ? null : () => _applyNaturalSchedule(showFeedback: true),
                       icon: const Icon(Icons.auto_fix_high_rounded),
                     ),
@@ -171,6 +216,27 @@ class _NusQuickAddPageState extends State<NusQuickAddPage> {
                 ),
               ),
             ),
+            if (intent != null) ...[
+              const SizedBox(height: 12),
+              Card(
+                child: ListTile(
+                  leading: CircleAvatar(child: Icon(_intentIcon(intent.kind))),
+                  title: Text('NUS فهمها كـ ${_intentLabel(intent)}', style: const TextStyle(fontWeight: FontWeight.w900)),
+                  subtitle: Text(
+                    intent.kind == NusQuickAddKind.expense && intent.amountMajorUnits != null
+                        ? '${intent.amountMajorUnits} ${intent.currencyCode ?? ''} • ثقة ${intent.confidence}%'
+                        : 'ثقة ${intent.confidence}%',
+                  ),
+                ),
+              ),
+              if (intent.kind != NusQuickAddKind.reminder) ...[
+                const SizedBox(height: 8),
+                Text(
+                  'لن يحفظ NUS هذا الطلب كتذكير الآن حتى لا يتم تسجيل عملية في النوع الخطأ. الربط المباشر مع المشتريات والمصروفات هو الخطوة التالية.',
+                  style: TextStyle(color: Theme.of(context).colorScheme.secondary),
+                ),
+              ],
+            ],
             if (_scheduleDetected) ...[
               const SizedBox(height: 8),
               Text(
@@ -207,7 +273,7 @@ class _NusQuickAddPageState extends State<NusQuickAddPage> {
             const SizedBox(height: 18),
             FilledButton.icon(
               key: const ValueKey<String>('quick-add-save'),
-              onPressed: _saving ? null : _save,
+              onPressed: _saving || !canSaveReminder ? null : _save,
               icon: _saving
                   ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
                   : const Icon(Icons.add_task_rounded),
