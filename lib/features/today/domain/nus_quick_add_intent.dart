@@ -1,3 +1,5 @@
+import '../../expenses/domain/currency_registry.dart';
+
 enum NusQuickAddKind { reminder, appointment, shopping, expense }
 
 class NusQuickAddIntent {
@@ -5,6 +7,7 @@ class NusQuickAddIntent {
     required this.kind,
     required this.normalizedText,
     this.amountMajorUnits,
+    this.amountMinorUnits,
     this.currencyCode,
     this.expenseCategoryCode,
     this.confidence = 0,
@@ -13,6 +16,7 @@ class NusQuickAddIntent {
   final NusQuickAddKind kind;
   final String normalizedText;
   final int? amountMajorUnits;
+  final int? amountMinorUnits;
   final String? currencyCode;
   final String? expenseCategoryCode;
   final int confidence;
@@ -24,7 +28,7 @@ class NusQuickAddIntentClassifier {
   static NusQuickAddIntent classify(String raw, {String defaultCurrency = 'EGP'}) {
     final text = _normalize(raw);
     final currency = _detectCurrency(text, defaultCurrency);
-    final amount = _extractAmount(text);
+    final amountMinor = _extractAmountMinorUnits(text, currency);
 
     final expenseSignal = _hasAny(text, const [
       'دفعت',
@@ -54,7 +58,6 @@ class NusQuickAddIntentClassifier {
       'سفر',
       'رحله',
       'مكالمة',
-      'مكالمة',
       'اتصال',
     ]);
     final shoppingSignal = _hasAny(text, const [
@@ -73,11 +76,16 @@ class NusQuickAddIntentClassifier {
       'سوبر ماركت',
     ]);
 
-    if (expenseSignal && amount != null) {
+    final amountMajor = amountMinor == null
+        ? null
+        : amountMinor ~/ CurrencyRegistry.get(currency).scale;
+
+    if (expenseSignal && amountMinor != null) {
       return NusQuickAddIntent(
         kind: NusQuickAddKind.expense,
         normalizedText: text,
-        amountMajorUnits: amount,
+        amountMajorUnits: amountMajor,
+        amountMinorUnits: amountMinor,
         currencyCode: currency,
         expenseCategoryCode: _category(text),
         confidence: 95,
@@ -107,16 +115,27 @@ class NusQuickAddIntentClassifier {
     );
   }
 
-  static int? _extractAmount(String text) {
+  static int? _extractAmountMinorUnits(String text, String currencyCode) {
     final match = RegExp(
-      r'(?:^|\s)(\d+(?:[\.,]\d{1,2})?)(?:\s*(?:جنيه|جنيها|جنيه|egp|دولار|usd|\$|يورو|eur|€|استرليني|gbp|£))?(?=\s|$)',
+      r'(?:^|\s)(\d+(?:[\.,]\d+)?)(?:\s*(?:جنيه|جنيها|egp|دولار|usd|\$|يورو|eur|€|استرليني|gbp|£))?(?=\s|$)',
       caseSensitive: false,
     ).firstMatch(text);
     if (match == null) return null;
-    final normalized = match.group(1)!.replaceAll(',', '.');
-    final parsed = double.tryParse(normalized);
-    if (parsed == null || parsed <= 0) return null;
-    return parsed.round();
+
+    final number = match.group(1)!.replaceAll(',', '.');
+    final parts = number.split('.');
+    final whole = int.tryParse(parts.first);
+    if (whole == null || whole <= 0) return null;
+
+    final metadata = CurrencyRegistry.get(currencyCode);
+    final fraction = parts.length == 1 ? '' : parts[1];
+    if (fraction.length > metadata.exponent) return null;
+
+    final padded = fraction.padRight(metadata.exponent, '0');
+    final fractionMinor = padded.isEmpty ? 0 : int.tryParse(padded) ?? -1;
+    if (fractionMinor < 0) return null;
+
+    return whole * metadata.scale + fractionMinor;
   }
 
   static String _detectCurrency(String text, String defaultCurrency) {
