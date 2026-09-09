@@ -11,7 +11,7 @@ concurrency:
 
 env:
   SUPABASE_URL: https://girxiyfineqruhwbnfbe.supabase.co
-  SUPABASE_PUBLISHABLE_KEY: sb_publishable_X2W_WOBGQYlu7LTy-W91g_KaZd6dCI
+  SUPABASE_PUBLISHABLE_KEY: sb_publishable_X2_W_WOBGQYlu7LTy-W91g_KaZd6dCI
 
 jobs:
   build-apk:
