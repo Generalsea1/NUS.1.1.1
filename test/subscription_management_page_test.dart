@@ -3,7 +3,6 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:nus/features/expenses/application/expense_management_service.dart';
 import 'package:nus/features/expenses/domain/currency_registry.dart';
-import 'package:nus/features/expenses/domain/expense_category.dart';
 import 'package:nus/features/expenses/domain/expense_date.dart';
 import 'package:nus/features/expenses/domain/money.dart';
 import 'package:nus/features/expenses/domain/recurring_expense_definition.dart';
@@ -38,7 +37,11 @@ class _FakeRecurringRepo implements RecurringExpenseRepository {
 
   @override
   Future<void> save(RecurringExpenseDefinition entity) async {
-    items = [for (final item in items) if (item.id != entity.id) entity, if (!items.any((item) => item.id == entity.id)) entity];
+    items = [
+      for (final item in items)
+        if (item.id != entity.id) item,
+      if (!items.any((item) => item.id == entity.id)) entity,
+    ];
   }
 
   @override
