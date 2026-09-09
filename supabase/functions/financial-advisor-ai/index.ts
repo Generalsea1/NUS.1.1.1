@@ -157,12 +157,7 @@ Deno.serve(async (req) => {
   }
 
   if (!reservationId) {
-    return json({
-      ok: false,
-      error: "لقد وصلت إلى الحد المجاني اليومي للمستشار الذكي. يمكنك المحاولة مرة أخرى غدًا.",
-      code: "DAILY_QUOTA_EXCEEDED",
-      limit: DAILY_LIMIT,
-    }, 429);
+    return json({ ok: false, error: "لقد وصلت إلى الحد المجاني اليومي للمستشار الذكي. يمكنك المحاولة مرة أخرى غدًا.", code: "DAILY_QUOTA_EXCEEDED", limit: DAILY_LIMIT }, 429);
   }
 
   const context = body.context as JsonObject[];
@@ -179,7 +174,7 @@ Deno.serve(async (req) => {
       signal: controller.signal,
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { responseMimeType: "application/json", responseSchema: schema },
+        generationConfig: { responseFormat: { text: { mimeType: "APPLICATION_JSON", schema } } },
       }),
     });
     clearTimeout(timeout);
@@ -196,12 +191,7 @@ Deno.serve(async (req) => {
     if (!response.ok) {
       const diagnostic = await getProviderDiagnostic(response);
       await releaseQuota(user.id, reservationId);
-      console.error("financial-advisor-ai GEMINI_PROVIDER_DIAGNOSTIC", {
-        status: response.status,
-        contentType: diagnostic.contentType,
-        sanitizedErrorType: diagnostic.sanitizedErrorType,
-        sanitizedErrorMessage: diagnostic.sanitizedErrorMessage,
-      });
+      console.error("financial-advisor-ai GEMINI_PROVIDER_DIAGNOSTIC", { status: response.status, contentType: diagnostic.contentType, sanitizedErrorType: diagnostic.sanitizedErrorType, sanitizedErrorMessage: diagnostic.sanitizedErrorMessage });
       return json({ ok: false, error: "خدمة Gemini غير متاحة حاليًا." }, 502);
     }
 
@@ -223,28 +213,12 @@ Deno.serve(async (req) => {
     const summary = typeof result.summary === "string" ? result.summary.trim() : "";
     const advice = asStringArray(result.advice);
     const warnings = asStringArray(result.warnings);
-    if (!summary || !advice || !warnings) {
-      await releaseQuota(user.id, reservationId);
-      return json({ ok: false, error: "Gemini response does not match the advisor contract." }, 422);
-    }
+    if (!summary || !advice || !warnings) { await releaseQuota(user.id, reservationId); return json({ ok: false, error: "Gemini response does not match the advisor contract." }, 422); }
 
     const finalized = await finalizeQuota(user.id, reservationId);
-    if (!finalized) {
-      console.error("financial-advisor-ai quota finalization failed", { userId: user.id });
-      return json({ ok: false, error: "تعذر تثبيت استخدام المستشار. حاول مرة أخرى." }, 503);
-    }
+    if (!finalized) { console.error("financial-advisor-ai quota finalization failed", { userId: user.id }); return json({ ok: false, error: "تعذر تثبيت استخدام المستشار. حاول مرة أخرى." }, 503); }
 
-    return json({
-      ok: true,
-      id: crypto.randomUUID(),
-      provider: "gemini",
-      model: GEMINI_MODEL,
-      generatedAt: new Date().toISOString(),
-      summary,
-      facts: context.map((item) => String(item.summary)),
-      advice,
-      warnings,
-    });
+    return json({ ok: true, id: crypto.randomUUID(), provider: "gemini", model: GEMINI_MODEL, generatedAt: new Date().toISOString(), summary, facts: context.map((item) => String(item.summary)), advice, warnings });
   } catch (error) {
     clearTimeout(timeout);
     await releaseQuota(user.id, reservationId);
