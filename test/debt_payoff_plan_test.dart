@@ -64,18 +64,32 @@ void main() {
     );
   });
 
-  test('schedule never exceeds supported thirty-year horizon', () {
-    final plan = DebtPayoffPlan(
-      id: 'd1',
+  test('accepts exactly the thirty-year boundary and rejects anything longer', () {
+    final boundary = DebtPayoffPlan(
+      id: 'd-boundary',
       userId: 'u1',
-      title: 'دين',
+      title: 'دين طويل',
       currencyCode: 'EGP',
-      totalBalanceMinorUnits: 3600,
+      totalBalanceMinorUnits: 360,
       monthlyPaymentMinorUnits: 1,
       firstDueDate: DateTime(2026, 10, 5),
     );
 
-    expect(plan.schedule.length, 360);
-    expect(plan.schedule.last.remainingMinorUnits, 0);
+    expect(boundary.estimatedMonths, DebtPayoffPlan.maxPayoffMonths);
+    expect(boundary.schedule.length, DebtPayoffPlan.maxPayoffMonths);
+    expect(boundary.schedule.last.remainingMinorUnits, 0);
+
+    expect(
+      () => DebtPayoffPlan(
+        id: 'd-too-long',
+        userId: 'u1',
+        title: 'دين أطول من اللازم',
+        currencyCode: 'EGP',
+        totalBalanceMinorUnits: 361,
+        monthlyPaymentMinorUnits: 1,
+        firstDueDate: DateTime(2026, 10, 5),
+      ),
+      throwsArgumentError,
+    );
   });
 }
