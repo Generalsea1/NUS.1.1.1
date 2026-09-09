@@ -11,6 +11,7 @@ import '../../settings/presentation/notification_settings_page.dart';
 import '../../shopping/application/shopping_lifecycle_service.dart';
 import '../data/speech_to_text_nus_voice_input.dart';
 import '../domain/nus_daily_intelligence.dart';
+import '../domain/nus_proactive_recommendation.dart';
 import 'nus_quick_add_page.dart';
 
 class NusTodayPage extends StatefulWidget {
@@ -286,6 +287,22 @@ class _NusTodayPageState extends State<NusTodayPage> {
       nextReminderAt: upcomingTodayReminders.isEmpty ? null : upcomingTodayReminders.first.dateTime,
       now: now,
     );
+    final financialPressure = widget.profile.remainingAfterObligations < 0 ||
+        (_monthlyActual != null &&
+            widget.profile.monthlyIncome -
+                    widget.profile.recurringObligations -
+                    _monthlyActual! <
+                0);
+    final nextAppointment = nextAppointments.isEmpty ? null : nextAppointments.first;
+    final recommendations = NusProactiveRecommendationEngine.build(
+      now: now,
+      pendingReminderCount: upcomingReminders.length,
+      todayAppointmentCount: todayAppointments.length,
+      pendingShoppingItemCount: _pendingShoppingItemCount,
+      financialPressure: financialPressure,
+      nextAppointmentAt: nextAppointment?.startsAt,
+      nextAppointmentTitle: nextAppointment?.title,
+    );
     final focusCount = todayAppointments.length +
         todayReminders.where((item) => !item.completed).length;
 
@@ -337,6 +354,10 @@ class _NusTodayPageState extends State<NusTodayPage> {
               _spendingSnapshot(),
               const SizedBox(height: 12),
               _dailyBriefing(insights),
+              if (recommendations.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                _recommendationsCard(recommendations),
+              ],
               const SizedBox(height: 12),
               Row(
                 children: [
@@ -573,6 +594,60 @@ class _NusTodayPageState extends State<NusTodayPage> {
         ],
       ),
     );
+  }
+
+  Widget _recommendationsCard(List<NusProactiveRecommendation> recommendations) {
+    return _section(
+      title: 'اقتراحات NUS دلوقتي',
+      icon: Icons.lightbulb_outline_rounded,
+      child: Column(
+        children: [
+          for (final recommendation in recommendations)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  CircleAvatar(
+                    radius: 17,
+                    child: Icon(_recommendationIcon(recommendation.action), size: 18),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          recommendation.title,
+                          style: const TextStyle(fontWeight: FontWeight.w900),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          recommendation.message,
+                          style: const TextStyle(height: 1.35),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  IconData _recommendationIcon(NusRecommendationAction action) {
+    switch (action) {
+      case NusRecommendationAction.reviewSpending:
+        return Icons.account_balance_wallet_outlined;
+      case NusRecommendationAction.prepareAppointment:
+        return Icons.event_available_outlined;
+      case NusRecommendationAction.organizeDay:
+        return Icons.view_timeline_outlined;
+      case NusRecommendationAction.reviewShopping:
+        return Icons.shopping_cart_outlined;
+    }
   }
 
   Widget _actionCard({
