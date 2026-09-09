@@ -19,27 +19,27 @@ class NusQuickAddParser {
     var dateTime = current.add(const Duration(hours: 1));
     var detected = false;
 
-    final relativeHour = RegExp(r'بعد\s+ساعة(?:\s+واحدة)?', caseSensitive: false);
+    final relativeHour = RegExp(r'(?:^|\s)بعد\s+ساعة(?:\s+واحدة)?(?=\s|$)', caseSensitive: false);
     if (relativeHour.hasMatch(title)) {
       dateTime = current.add(const Duration(hours: 1));
-      title = title.replaceFirst(relativeHour, '');
+      title = title.replaceFirst(relativeHour, ' ');
       detected = true;
     }
 
-    final hasTomorrow = RegExp(r'\b(?:بكرة|غدا|غدًا)\b', caseSensitive: false).hasMatch(title);
-    final hasToday = RegExp(r'\bالنهارده\b|\bاليوم\b', caseSensitive: false).hasMatch(title);
-    final slashDatePattern = RegExp(r'\b(\d{1,2})\s*/\s*(\d{1,2})\b');
+    final tomorrowPattern = RegExp(r'(?:^|\s)(?:بكرة|غدا|غدًا)(?=\s|$)', caseSensitive: false);
+    final todayPattern = RegExp(r'(?:^|\s)(?:النهارده|اليوم)(?=\s|$)', caseSensitive: false);
+    final slashDatePattern = RegExp(r'(?:^|\s)(\d{1,2})\s*/\s*(\d{1,2})(?=\s|$)');
     final slashDateMatch = slashDatePattern.firstMatch(title);
 
     int hour = 9;
     int minute = 0;
     RegExp? timePattern;
     final explicitTimePattern = RegExp(
-      r'الساعة\s*(\d{1,2})(?::(\d{2}))?\s*(صباحًا|صباحا|صباح|مساءً|مساء|م|ص)?',
+      r'(?:^|\s)الساعة\s*(\d{1,2})(?::(\d{2}))?\s*(صباحًا|صباحا|صباح|مساءً|مساء|م|ص)?(?=\s|$)',
       caseSensitive: false,
     );
     final meridiemOnlyTimePattern = RegExp(
-      r'\b(\d{1,2})(?::(\d{2}))\s*(صباحًا|صباحا|صباح|مساءً|مساء|م|ص)\b',
+      r'(?:^|\s)(\d{1,2})(?::(\d{2}))\s*(صباحًا|صباحا|صباح|مساءً|مساء|م|ص)(?=\s|$)',
       caseSensitive: false,
     );
     final explicitTimeMatch = explicitTimePattern.firstMatch(title);
@@ -58,7 +58,7 @@ class NusQuickAddParser {
         if ((meridiem.contains('صباح') || meridiem == 'ص') && hour == 12) hour = 0;
         if (meridiem.isEmpty && hour <= 7) hour += 12;
         detected = true;
-        title = title.replaceFirst(timePattern, '');
+        title = title.replaceFirst(timePattern, ' ');
       }
     }
 
@@ -72,18 +72,18 @@ class NusQuickAddParser {
         explicitDate = candidate;
         detected = true;
       }
-      title = title.replaceFirst(slashDatePattern, '');
-    } else if (hasTomorrow) {
+      title = title.replaceFirst(slashDatePattern, ' ');
+    } else if (tomorrowPattern.hasMatch(title)) {
       explicitDate = DateTime(current.year, current.month, current.day + 1, hour, minute);
-      title = title.replaceFirst(RegExp(r'\b(?:بكرة|غدا|غدًا)\b', caseSensitive: false), '');
+      title = title.replaceFirst(tomorrowPattern, ' ');
       detected = true;
-    } else if (hasToday) {
+    } else if (todayPattern.hasMatch(title)) {
       explicitDate = DateTime(current.year, current.month, current.day, hour, minute);
-      title = title.replaceFirst(RegExp(r'\b(?:النهارده|اليوم)\b', caseSensitive: false), '');
+      title = title.replaceFirst(todayPattern, ' ');
       if (explicitDate.isBefore(current) && timeMatch != null) explicitDate = explicitDate.add(const Duration(days: 1));
       detected = true;
     } else {
-      final dayPhrase = RegExp(r'\b(?:يوم\s*)\d{1,2}\b');
+      final dayPhrase = RegExp(r'(?:^|\s)يوم\s*\d{1,2}(?=\s|$)');
       final dayMatch = dayPhrase.firstMatch(title);
       if (dayMatch != null) {
         final numberMatch = RegExp(r'\d{1,2}').firstMatch(dayMatch.group(0) ?? '');
@@ -98,7 +98,7 @@ class NusQuickAddParser {
           explicitDate = candidate;
           detected = true;
         }
-        title = title.replaceFirst(dayPhrase, '');
+        title = title.replaceFirst(dayPhrase, ' ');
       }
     }
 
