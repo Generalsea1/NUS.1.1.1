@@ -285,7 +285,7 @@ class _HouseholdMembersPageState extends State<HouseholdMembersPage> {
                             child: ListTile(
                               leading: CircleAvatar(child: Icon(member.role == 'owner' ? Icons.star_outline_rounded : Icons.person_outline_rounded)),
                               title: Text(member.userId == widget.currentMembership.userId ? 'أنت' : 'عضو البيت'),
-                              subtitle: Text(member.userId),
+                              subtitle: const Text('عضو نشط'),
                               trailing: Text(_roleLabel(member.role), style: const TextStyle(fontWeight: FontWeight.w900)),
                             ),
                           ),
@@ -298,7 +298,7 @@ class _HouseholdMembersPageState extends State<HouseholdMembersPage> {
                             label: const Text('دعوة عضو'),
                           ),
                           const SizedBox(height: 12),
-                          if (_invitations.isNotEmpty)
+                          if (_invitations.where((item) => item.isPending).isNotEmpty)
                             Card(
                               child: Padding(
                                 padding: const EdgeInsets.all(16),
