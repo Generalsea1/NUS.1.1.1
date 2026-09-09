@@ -13,6 +13,7 @@ import '../../income/data/supabase_income_source_repository.dart';
 import '../../obligations/application/obligation_service.dart';
 import '../../obligations/data/supabase_obligation_repository.dart';
 import 'affordability_page.dart';
+import 'debt_payoff_planner_page.dart';
 import 'installment_planner_page.dart';
 
 class CashflowForecastPage extends StatefulWidget {
@@ -104,6 +105,17 @@ class _CashflowForecastPageState extends State<CashflowForecastPage> {
     Navigator.of(context).push<void>(
       MaterialPageRoute(
         builder: (_) => InstallmentPlannerPage(
+          userId: widget.userId,
+          currencyCode: widget.currencyCode,
+        ),
+      ),
+    );
+  }
+
+  void _openDebtPlanner() {
+    Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => DebtPayoffPlannerPage(
           userId: widget.userId,
           currencyCode: widget.currencyCode,
         ),
@@ -206,6 +218,16 @@ class _CashflowForecastPageState extends State<CashflowForecastPage> {
                               ),
                             ),
                           ],
+                        ),
+                        const SizedBox(height: 10),
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            key: const ValueKey<String>('open-debt-payoff-planner'),
+                            onPressed: _openDebtPlanner,
+                            icon: const Icon(Icons.payments_outlined),
+                            label: const Text('مخطط سداد الديون'),
+                          ),
                         ),
                       ],
                     ),
