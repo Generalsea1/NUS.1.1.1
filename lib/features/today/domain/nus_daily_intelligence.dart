@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../../appointments/domain/appointment.dart';
 import '../../onboarding/domain/household_profile.dart';
 
+import 'nus_household_daily_brief.dart';
+
 class NusDailyInsight {
   const NusDailyInsight({
     required this.title,
@@ -31,19 +33,23 @@ class NusDailyIntelligence {
     final today = DateUtils.dateOnly(current);
     final insights = <NusDailyInsight>[];
 
-    if (profile.remainingAfterObligations < 0) {
-      insights.add(const NusDailyInsight(
-        title: 'الميزانية محتاجة تركيز',
-        message: 'الالتزامات الشهرية أعلى من الدخل المسجل. راجع الأرقام قبل أي التزام جديد.',
-        icon: Icons.warning_amber_rounded,
-      ));
-    } else {
-      insights.add(NusDailyInsight(
-        title: 'مساحتك المالية الحالية',
-        message: 'بعد الالتزامات المسجلة، المتاح هو ${profile.remainingAfterObligations} ${profile.currencyCode}.',
-        icon: Icons.payments_outlined,
-      ));
-    }
+    final brief = NusHouseholdDailyBrief.build(
+      profile: profile,
+      appointments: appointments,
+      pendingReminderCount: pendingReminderCount,
+      pendingShoppingItemCount: pendingShoppingItemCount,
+      monthlyActualExpenseMinorUnits: 0,
+      monthlyIncomeMinorUnits: profile.monthlyIncome * _currencyScale(profile),
+      monthlyObligationsMinorUnits: profile.recurringObligations * _currencyScale(profile),
+      now: current,
+    );
+    insights.add(
+      NusDailyInsight(
+        title: brief.headline,
+        message: '${brief.summary} ${brief.action}',
+        icon: brief.icon,
+      ),
+    );
 
     final todayUpcoming = appointments
         .where((item) => item.status == AppointmentStatus.upcoming)
@@ -98,7 +104,7 @@ class NusDailyIntelligence {
         .where((item) => item.startsAt.isAfter(current))
         .length;
     final upcomingWorkCount = upcomingAppointmentsCount + pendingReminderCount;
-    if (upcomingWorkCount >= 3) {
+    if (upcomingWorkCount >= 3 && insights.length < 3) {
       insights.add(NusDailyInsight(
         title: 'الأسبوع محتاج تنظيم',
         message: 'عندك $upcomingWorkCount موعد أو مهمة جاية. راجعهم وحدد أولوياتك بدل ما تسيبهم يتراكموا.',
@@ -106,6 +112,12 @@ class NusDailyIntelligence {
       ));
     }
 
-    return insights.take(3).toList();
+    return insights.take(3).toList(growable: false);
+  }
+
+  static int _currencyScale(HouseholdProfile profile) {
+    final code = profile.currencyCode.trim().toUpperCase();
+    if (code == 'JPY' || code == 'KRW') return 1;
+    return 100;
   }
 }
