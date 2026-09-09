@@ -9,6 +9,7 @@ import '../../expenses/application/expense_lifecycle_service.dart';
 import '../../expenses/application/expense_management_service.dart';
 import '../../income/application/income_source_repository.dart';
 import '../../income/data/supabase_income_source_repository.dart';
+import '../../../legacy_main.dart' as legacy;
 import '../application/household_profile_repository.dart';
 import '../application/household_profile_validator.dart';
 import '../data/supabase_household_profile_repository.dart';
@@ -28,6 +29,7 @@ class AuthGate extends StatefulWidget {
     this.expenseManagementService,
     this.onOpenGeneralHome,
     this.onCreateReminder,
+    this.scheduleStore,
   });
 
   final AuthRepository? authRepository;
@@ -37,18 +39,16 @@ class AuthGate extends StatefulWidget {
   final ExpenseManagementService? expenseManagementService;
   final void Function(BuildContext context)? onOpenGeneralHome;
   final Future<void> Function(String title, DateTime dateTime)? onCreateReminder;
+  final legacy.ScheduleStore? scheduleStore;
 
   @override
   State<AuthGate> createState() => _AuthGateState();
 }
 
 class _AuthGateState extends State<AuthGate> {
-  late final AuthRepository _authRepository =
-      widget.authRepository ?? SupabaseAuthRepository();
-  late final HouseholdProfileRepository _profileRepository =
-      widget.profileRepository ?? const SupabaseHouseholdProfileRepository();
-  late final IncomeSourceRepository _incomeRepository =
-      widget.incomeRepository ?? const SupabaseIncomeSourceRepository();
+  late final AuthRepository _authRepository = widget.authRepository ?? SupabaseAuthRepository();
+  late final HouseholdProfileRepository _profileRepository = widget.profileRepository ?? const SupabaseHouseholdProfileRepository();
+  late final IncomeSourceRepository _incomeRepository = widget.incomeRepository ?? const SupabaseIncomeSourceRepository();
   late final bool _ownsAuthRepository = widget.authRepository == null;
   late final StreamSubscription<AuthState> _authSubscription;
 
@@ -143,8 +143,7 @@ class _AuthGateState extends State<AuthGate> {
     }
   }
 
-  String _readableError(Object error) =>
-      'تعذر بدء جلسة NUS الآن. راجع إعدادات الاتصال ثم حاول مرة أخرى.';
+  String _readableError(Object error) => 'تعذر بدء جلسة NUS الآن. راجع إعدادات الاتصال ثم حاول مرة أخرى.';
 
   Future<void> _retryProfile() async {
     if (_loadingProfile) return;
@@ -177,10 +176,7 @@ class _AuthGateState extends State<AuthGate> {
     }
 
     if (!_authState.isAuthenticated) {
-      return const Directionality(
-        textDirection: TextDirection.rtl,
-        child: AuthPage(),
-      );
+      return const Directionality(textDirection: TextDirection.rtl, child: AuthPage());
     }
 
     final userId = _authState.session!.user.id;
@@ -208,10 +204,9 @@ class _AuthGateState extends State<AuthGate> {
       textDirection: TextDirection.rtl,
       child: NusTodayPage(
         profile: profile,
+        scheduleStore: widget.scheduleStore,
         onOpenFinance: () => _openFinance(context, profile),
-        onOpenAppointments: widget.onOpenGeneralHome == null
-            ? null
-            : () => widget.onOpenGeneralHome!(context),
+        onOpenAppointments: widget.onOpenGeneralHome == null ? null : () => widget.onOpenGeneralHome!(context),
         onCreateReminder: widget.onCreateReminder,
       ),
     );
