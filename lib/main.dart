@@ -96,15 +96,10 @@ class _Nus2AppState extends State<Nus2App> {
   }
 
   Future<void> _toggleTheme() async {
-    final next = _themeMode == ThemeMode.dark
-        ? ThemeMode.light
-        : ThemeMode.dark;
+    final next = _themeMode == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark;
     setState(() => _themeMode = next);
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
-      _themeKey,
-      next == ThemeMode.dark ? 'dark' : 'light',
-    );
+    await prefs.setString(_themeKey, next == ThemeMode.dark ? 'dark' : 'light');
   }
 
   ThemeData _theme(Brightness brightness) => ThemeData(
@@ -119,15 +114,11 @@ class _Nus2AppState extends State<Nus2App> {
         cardTheme: CardThemeData(
           elevation: 0,
           margin: EdgeInsets.zero,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         ),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
-          fillColor: brightness == Brightness.dark
-              ? const Color(0xFF151925)
-              : Colors.white,
+          fillColor: brightness == Brightness.dark ? const Color(0xFF151925) : Colors.white,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(18),
             borderSide: BorderSide.none,
@@ -151,6 +142,7 @@ class _Nus2AppState extends State<Nus2App> {
       home: AuthGate(
         expenseService: widget.expenseService,
         expenseManagementService: widget.expenseManagementService,
+        onCreateReminder: (title, dateTime) => widget.store.add(title, dateTime),
         onOpenGeneralHome: (context) {
           Navigator.of(context).push(
             MaterialPageRoute(
