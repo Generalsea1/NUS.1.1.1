@@ -14,6 +14,7 @@ import '../../../legacy_main.dart' as legacy;
 import '../../shopping/application/shopping_lifecycle_service.dart';
 import '../../shopping/data/supabase_household_shopping_repository.dart';
 import '../../household/application/household_service.dart';
+import '../../household/data/supabase_household_repository.dart';
 import '../../household/presentation/household_page.dart';
 import '../../household/domain/household.dart';
 import '../application/household_profile_repository.dart';
