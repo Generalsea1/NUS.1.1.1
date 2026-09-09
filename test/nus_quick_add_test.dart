@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:nus/features/today/presentation/nus_quick_add_page.dart';
 
 void main() {
-  testWidgets('quick add exposes fast time shortcuts', (tester) async {
+  testWidgets('quick add exposes fast time shortcuts and preserves selection', (tester) async {
     DateTime? savedAt;
     String? savedTitle;
 
@@ -25,6 +25,7 @@ void main() {
 
     await tester.enterText(find.byType(TextField), 'دفع الكهرباء');
     await tester.tap(find.text('بكرة 9 صباحًا'));
+    await tester.ensureVisible(find.byKey(const ValueKey<String>('quick-add-save')));
     await tester.tap(find.byKey(const ValueKey<String>('quick-add-save')));
     await tester.pumpAndSettle();
 
@@ -52,12 +53,13 @@ void main() {
     expect(find.text('NUS فهمها كـ مصروف'), findsOneWidget);
     expect(find.textContaining('350 EGP'), findsOneWidget);
 
-    final saveButton = tester.widget<FilledButton>(
-      find.byKey(const ValueKey<String>('quick-add-save')),
-    );
+    final saveButtonFinder = find.byKey(const ValueKey<String>('quick-add-save'));
+    await tester.ensureVisible(saveButtonFinder);
+    await tester.pump();
+    final saveButton = tester.widget<FilledButton>(saveButtonFinder);
     expect(saveButton.onPressed, isNull);
 
-    await tester.tap(find.byKey(const ValueKey<String>('quick-add-save')));
+    await tester.tap(saveButtonFinder);
     await tester.pump();
     expect(saveCalls, 0);
   });
