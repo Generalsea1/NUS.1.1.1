@@ -1,0 +1,1 @@
+Voice UI acceptance is covered by domain tests first. Provider/native integration remains isolated until pubspec and generated Android configuration are verified against the repository baseline.
