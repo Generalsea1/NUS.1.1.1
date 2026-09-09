@@ -31,7 +31,7 @@ NUS is evolving from a collection of personal organizer tools into a personal + 
 - [x] Notification controls reachable from Today
 - [x] Unified action routing across reminder / appointment / expense / shopping intents
 - [x] Household-wide daily brief
-- [ ] Proactive cross-domain recommendations
+- [x] Proactive cross-domain recommendations
 
 ## Phase 2 — Money Operating Layer
 - [x] Income sources
@@ -42,10 +42,10 @@ NUS is evolving from a collection of personal organizer tools into a personal + 
 - [x] Financial engine / household intelligence foundations
 - [x] Cash-flow forecast
 - [x] Installment planner UX
-- [ ] Debt planner UX
+- [x] Debt planner UX
 - [x] Subscription management
 - [x] Affordability scenarios (“Can I afford this?”)
-- [ ] Anomaly and budget-pressure alerts
+- [x] Anomaly and budget-pressure alerts
 
 ## Phase 3 — Smart Shopping
 - [x] Shopping lists
@@ -89,7 +89,7 @@ NUS is evolving from a collection of personal organizer tools into a personal + 
 - [x] AI quota / reservation foundations
 - [x] Context-aware Copilot across Today + Money + Shopping + Household
 - [x] Action proposals with explicit user confirmation for authoritative writes
-- [ ] Proactive but user-controlled recommendations
+- [ ] Proactive but user-controlled notifications
 - [ ] Explainable AI decisions with source data references
 
 ## Phase 8 — Globalization & Trust
