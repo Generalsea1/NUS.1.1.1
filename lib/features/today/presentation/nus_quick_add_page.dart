@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 
+import '../domain/nus_voice_input.dart';
+
 class NusQuickAddPage extends StatefulWidget {
-  const NusQuickAddPage({super.key, required this.onCreateReminder});
+  const NusQuickAddPage({super.key, required this.onCreateReminder, this.voiceInput});
 
   final Future<void> Function(String title, DateTime dateTime) onCreateReminder;
+  final NusVoiceInput? voiceInput;
 
   @override
   State<NusQuickAddPage> createState() => _NusQuickAddPageState();
@@ -13,6 +16,8 @@ class _NusQuickAddPageState extends State<NusQuickAddPage> {
   final _title = TextEditingController();
   DateTime _dateTime = DateTime.now().add(const Duration(hours: 1));
   bool _saving = false;
+  bool _listening = false;
+  String? _voiceError;
 
   @override
   void dispose() {
@@ -48,6 +53,37 @@ class _NusQuickAddPageState extends State<NusQuickAddPage> {
     );
     if (time == null || !mounted) return;
     _setTime(DateTime(date.year, date.month, date.day, time.hour, time.minute));
+  }
+
+  Future<void> _listen() async {
+    final voice = widget.voiceInput;
+    if (voice == null || _listening) return;
+    setState(() {
+      _listening = true;
+      _voiceError = null;
+    });
+    try {
+      final available = await voice.isAvailable();
+      if (!mounted) return;
+      if (!available) {
+        setState(() => _voiceError = 'الإدخال الصوتي غير متاح على الجهاز حاليًا.');
+        return;
+      }
+      final transcript = await voice.listen(localeId: 'ar-EG');
+      if (!mounted) return;
+      if (transcript == null || transcript.trim().isEmpty) {
+        setState(() => _voiceError = 'ماقدرتش ألتقط الكلام. جرّب تاني بصوت أوضح.');
+        return;
+      }
+      setState(() {
+        _title.text = transcript.trim();
+        _title.selection = TextSelection.collapsed(offset: _title.text.length);
+      });
+    } catch (_) {
+      if (mounted) setState(() => _voiceError = 'حصلت مشكلة في الإدخال الصوتي. جرّب تاني.');
+    } finally {
+      if (mounted) setState(() => _listening = false);
+    }
   }
 
   Future<void> _save() async {
@@ -89,12 +125,24 @@ class _NusQuickAddPageState extends State<NusQuickAddPage> {
               maxLines: 3,
               textInputAction: TextInputAction.done,
               onSubmitted: (_) => _saving ? null : _save(),
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'إيه اللي عايز تفتكره؟',
                 hintText: 'مثال: أدفع الكهرباء يوم 15',
-                prefixIcon: Icon(Icons.edit_note_rounded),
+                prefixIcon: const Icon(Icons.edit_note_rounded),
+                suffixIcon: widget.voiceInput == null
+                    ? null
+                    : IconButton(
+                        key: const Key('quick-add-voice'),
+                        tooltip: 'إضافة بالصوت',
+                        onPressed: _saving || _listening ? null : _listen,
+                        icon: Icon(_listening ? Icons.mic : Icons.mic_none_rounded),
+                      ),
               ),
             ),
+            if (_voiceError != null) ...[
+              const SizedBox(height: 8),
+              Text(_voiceError!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+            ],
             const SizedBox(height: 12),
             const Text('وقت سريع', style: TextStyle(fontWeight: FontWeight.w900)),
             const SizedBox(height: 8),
