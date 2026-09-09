@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:nus/core/proactive_notification_delivery.dart';
+import 'package:nus/core/proactive_notifications.dart';
 import 'package:nus/notification_service.dart';
 
 class _FakeScheduler implements ReminderScheduler {
