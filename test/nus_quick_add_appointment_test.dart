@@ -52,22 +52,22 @@ void main() {
     );
     await tester.pump();
 
-    expect(
-      find.text('NUS فهمها كـ موعد'),
-      findsOneWidget,
-    );
+    expect(find.text('NUS فهمها كـ موعد'), findsOneWidget);
 
     final saveFinder = find.byKey(const ValueKey<String>('quick-add-save'));
-    await tester.ensureVisible(saveFinder);
+    final scrollable = find.byType(Scrollable).last;
+    await tester.scrollUntilVisible(saveFinder, 300, scrollable: scrollable);
     await tester.tap(saveFinder);
     await tester.pumpAndSettle();
 
     expect(repository.items, hasLength(1));
     expect(repository.items.single.title, 'موعد دكتور');
     expect(repository.items.single.type, AppointmentType.doctor);
-    expect(repository.items.single.startsAt.year, DateTime.now().year);
-    expect(repository.items.single.startsAt.month, DateTime.now().month);
-    expect(repository.items.single.startsAt.day, DateTime.now().add(const Duration(days: 1)).day);
+    final now = DateTime.now();
+    final expectedDate = now.add(const Duration(days: 1));
+    expect(repository.items.single.startsAt.year, expectedDate.year);
+    expect(repository.items.single.startsAt.month, expectedDate.month);
+    expect(repository.items.single.startsAt.day, expectedDate.day);
     expect(repository.items.single.startsAt.hour, 10);
   });
 }
