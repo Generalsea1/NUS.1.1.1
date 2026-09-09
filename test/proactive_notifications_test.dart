@@ -23,7 +23,7 @@ void main() {
 
   test('planner is pure and never rewrites supplied facts', () {
     final now = DateTime(2026, 9, 9, 8);
-    const signal = NusProactiveSignal(
+    final signal = NusProactiveSignal(
       id: 'appointment',
       title: 'موعد الطبيب',
       body: 'عندك موعد الطبيب',
