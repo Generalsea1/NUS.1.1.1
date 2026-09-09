@@ -1,60 +1,105 @@
-# NOS — Product & Engineering Roadmap
+# NUS 2.0 — Product & Engineering Roadmap
 
 ## Quality rule
 No phase is considered complete until the repository is internally reviewed and an automated build/analyze gate passes for that phase. No secrets are committed to Git.
 
+## Current product direction
+NUS is evolving from a collection of personal organizer tools into a personal + household life operating system. The primary daily loop is:
+
+`NUS Today → understand today → act quickly → connect life data → receive useful proactive guidance → return tomorrow`
+
 ## Phase 0 — Foundation
 - [x] Repository verified: `Generalsea1/NUS.1.1.1`
-- [x] Flutter project metadata created (`nos`, version `1.0.0+1`)
 - [x] Arabic/English direction and copy established
-- [x] CI workflow present for Flutter analyze + Android debug APK
-- [ ] First green CI build
+- [x] Supabase authentication and server-side AI boundaries established
+- [x] CI workflow present for Flutter analyze + Flutter tests
+- [x] Android APK build workflow present
+- [ ] Final NUS 2.0 release artifact validated on target device
 
-## Phase 1 — Schedule MVP (current)
-- [ ] Reliable local persistence
-- [ ] Add appointment/reminder with date + time
-- [ ] Today and upcoming views
-- [ ] Complete / undo
-- [ ] Delete
-- [ ] Arabic RTL + English LTR
-- [ ] Notification permission + scheduled local notifications
-- [ ] Automated tests for storage/model/business rules
-- [ ] Green CI build + APK artifact verified
+## Phase 1 — NUS Today / Daily Operating Surface
+- [x] NUS Today promoted to authenticated home
+- [x] Quick Add connected to the existing ScheduleStore and notification pipeline
+- [x] NUS Copilot entry point connected to the existing AI Hub
+- [x] Today reads real local reminders from the shared ScheduleStore
+- [x] Complete / undo reminders directly from Today
+- [x] Delete reminders directly from Today
+- [x] Today combines appointments and reminders into a next-action view
+- [x] Today reads live monthly spending from the existing expense service
+- [x] Reminder-aware Daily Intelligence model added
+- [x] Arabic voice capture in Quick Add
+- [x] Deterministic Arabic natural date/time parsing for Quick Add
+- [x] Notification controls reachable from Today
+- [ ] Unified action routing across reminder / appointment / expense / shopping intents
+- [ ] Household-wide daily brief
+- [ ] Proactive cross-domain recommendations
 
-## Phase 2 — Expenses
-- [ ] Income/expense entries
-- [ ] Categories
-- [ ] Monthly totals
-- [ ] Search/filter
-- [ ] Local-first storage
-- [ ] Tests + CI gate
+## Phase 2 — Money Operating Layer
+- [x] Income sources
+- [x] Expense records
+- [x] Categories and currency model
+- [x] Monthly actual totals and category analytics
+- [x] Recurring expense definitions
+- [x] Financial engine / household intelligence foundations
+- [ ] Cash-flow forecast
+- [ ] Installment and debt planner UX
+- [ ] Subscription detection and management
+- [ ] Affordability scenarios (“Can I afford this?”)
+- [ ] Anomaly and budget-pressure alerts
 
-## Phase 3 — Shopping
-- [ ] Shopping lists
-- [ ] Check-off workflow
-- [ ] Optional link from recipe to shopping list
-- [ ] Tests + CI gate
+## Phase 3 — Smart Shopping
+- [x] Shopping lists
+- [x] Check-off workflow
+- [x] Local lifecycle service
+- [ ] Quick Add integration
+- [ ] Budget-aware shopping mode
+- [ ] Household sharing
+- [ ] Recipe-to-shopping-list automation
+- [ ] Tests + CI gate for cross-domain flows
 
-## Phase 4 — Recipes
+## Phase 4 — Recipes & Home Operations
 - [ ] Recipe search/input
 - [ ] Ingredients, grams, servings, timers
 - [ ] Recipe-to-shopping-list flow
-- [ ] Arabic/English content model
-- [ ] Tests + CI gate
+- [ ] Budget-aware meal planning
+- [ ] Home maintenance schedules
+- [ ] Warranty reminders
 
-## Phase 5 — Invoices & Debts
-- [ ] Invoice records
-- [ ] Customer/debtor records
-- [ ] Amounts, due dates, status
-- [ ] Reminders
-- [ ] Tests + CI gate
+## Phase 5 — Household
+- [ ] Household members
+- [ ] Roles and permissions
+- [ ] Shared tasks
+- [ ] Shared shopping lists
+- [ ] Shared calendar / appointments
+- [ ] Household notification preferences
+- [ ] Secure invitation/join flow
 
-## Phase 6 — Accounts, Sync & AI
-- [ ] Optional Supabase authentication
-- [ ] Secure sync/backup
-- [ ] AI assistant layer behind a provider abstraction
-- [ ] Cost controls and quotas
-- [ ] Privacy/security review
+## Phase 6 — Health & Personal Records
+- [x] Medication lifecycle foundation
+- [x] Medication reminders
+- [ ] Refill planning
+- [ ] Health routine layer
+- [ ] Document expiry reminders
+- [ ] Vehicle / insurance / warranty reminders
+
+## Phase 7 — NUS Copilot / Proactive Intelligence
+- [x] Existing provider abstraction
+- [x] Secure server-side provider boundary
+- [x] AI history / connection settings foundation
+- [x] AI quota / reservation foundations
+- [ ] Context-aware Copilot across Today + Money + Shopping + Household
+- [ ] Action proposals with explicit user confirmation
+- [ ] Proactive but user-controlled recommendations
+- [ ] Explainable AI decisions with source data references
+
+## Phase 8 — Globalization & Trust
+- [x] Arabic RTL foundation
+- [x] English LTR foundation
+- [ ] Egypt localization pack
+- [ ] Europe localization pack
+- [ ] Multi-currency UX hardening
+- [ ] Privacy center
+- [ ] Data export / deletion controls
+- [ ] Production security review
 
 ## Release discipline
-Versioning follows semantic intent: feature releases increase the minor version; fixes increase the patch version; Android build numbers increase for every distributable build.
+Semantic intent remains the release rule: feature releases increase the minor version, fixes increase the patch version, and Android build numbers increase for every distributable build. NUS 2.0 work must preserve the existing local-first and secure server-side AI boundaries.
