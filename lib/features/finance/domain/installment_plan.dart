@@ -86,6 +86,49 @@ class InstallmentPlan {
     return DateTime(firstDueDate.year, firstDueDate.month + installmentNumber - 1, firstDueDate.day);
   }
 
+  Map<String, dynamic> toMap({bool includeId = true}) => <String, dynamic>{
+        if (includeId) 'id': id,
+        'user_id': userId,
+        'title': title,
+        'currency_code': currencyCode,
+        'total_minor_units': totalMinorUnits,
+        'down_payment_minor_units': downPaymentMinorUnits,
+        'number_of_installments': numberOfInstallments,
+        'paid_installments': paidInstallments,
+        'first_due_date': firstDueDate.toIso8601String().substring(0, 10),
+      };
+
+  factory InstallmentPlan.fromMap(Map<String, dynamic> row) => InstallmentPlan(
+        id: _requiredString(row['id'], 'id'),
+        userId: _requiredString(row['user_id'], 'user_id'),
+        title: _requiredString(row['title'], 'title'),
+        currencyCode: _requiredString(row['currency_code'], 'currency_code'),
+        totalMinorUnits: _requiredInt(row['total_minor_units'], 'total_minor_units'),
+        downPaymentMinorUnits: _requiredInt(row['down_payment_minor_units'], 'down_payment_minor_units'),
+        numberOfInstallments: _requiredInt(row['number_of_installments'], 'number_of_installments'),
+        paidInstallments: _requiredInt(row['paid_installments'], 'paid_installments'),
+        firstDueDate: _requiredDate(row['first_due_date'], 'first_due_date'),
+      );
+
+  static String _requiredString(Object? value, String field) {
+    if (value is! String || value.trim().isEmpty) {
+      throw FormatException('Installment plan $field must be a non-empty string.');
+    }
+    return value;
+  }
+
+  static int _requiredInt(Object? value, String field) {
+    if (value is! int) throw FormatException('Installment plan $field must be an integer.');
+    return value;
+  }
+
+  static DateTime _requiredDate(Object? value, String field) {
+    if (value is! String) throw FormatException('Installment plan $field must be a date string.');
+    final parsed = DateTime.tryParse(value);
+    if (parsed == null) throw FormatException('Installment plan $field is invalid.');
+    return parsed;
+  }
+
   void _validateInstallmentNumber(int installmentNumber) {
     if (installmentNumber < 1 || installmentNumber > numberOfInstallments) {
       throw RangeError.range(installmentNumber, 1, numberOfInstallments, 'installmentNumber');
