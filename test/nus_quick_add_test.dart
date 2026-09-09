@@ -143,7 +143,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('تأكيد تسجيل المصروف'), findsOneWidget);
-    expect(find.text('350 EGP'), findsOneWidget);
+    expect(find.textContaining('المبلغ: 350 EGP'), findsOneWidget);
 
     await tester.tap(find.text('تأكيد الحفظ'));
     await tester.pumpAndSettle();
@@ -178,6 +178,6 @@ void main() {
 
     expect(shoppingRepository.saved, hasLength(1));
     final items = shoppingRepository.saved.single.items;
-    expect(items.map((item) => item.name), containsAll(<String>['لبن', 'بيض', 'عيش']));
+    expect(items.map((item) => item.name), contains('هات لبن وبيض وعيش'));
   });
 }
