@@ -59,8 +59,12 @@ class _ExpenseRepo implements ExpenseRepository {
   final List<Expense> items;
 
   @override
-  Future<Expense?> getById(String id) async =>
-      items.where((item) => item.id == id).firstOrNull;
+  Future<Expense?> getById(String id) async {
+    for (final item in items) {
+      if (item.id == id) return item;
+    }
+    return null;
+  }
 
   @override
   Future<List<Expense>> list() async => List<Expense>.of(items);
@@ -177,13 +181,21 @@ void main() {
 
     await expectLater(
       service.forecast(
-        userId: 'user-1', year: 2026, month: 9, currencyCode: 'EGP', historyMonths: 0,
+        userId: 'user-1',
+        year: 2026,
+        month: 9,
+        currencyCode: 'EGP',
+        historyMonths: 0,
       ),
       throwsA(isA<ArgumentError>()),
     );
     await expectLater(
       service.forecast(
-        userId: 'user-1', year: 2026, month: 9, currencyCode: 'EGP', forecastMonths: 13,
+        userId: 'user-1',
+        year: 2026,
+        month: 9,
+        currencyCode: 'EGP',
+        forecastMonths: 13,
       ),
       throwsA(isA<ArgumentError>()),
     );
