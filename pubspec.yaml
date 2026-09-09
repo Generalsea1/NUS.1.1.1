@@ -1,6 +1,6 @@
 name: nus
-version: 1.0.0+1
-description: NUS — a bilingual personal life organizer, designed to grow into a global platform.
+version: 2.0.0+2
+description: NUS — a bilingual personal life organizer evolving into a personal and household life operating system.
 publish_to: 'none'
 
 environment:
