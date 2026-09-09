@@ -27,6 +27,7 @@ class AffordabilityPage extends StatefulWidget {
 class _AffordabilityPageState extends State<AffordabilityPage> {
   final _amountController = TextEditingController();
   bool _recurring = false;
+  int _scenarioMonths = 6;
   bool _loading = false;
   Object? _error;
   AffordabilityAssessment? _assessment;
@@ -64,6 +65,7 @@ class _AffordabilityPageState extends State<AffordabilityPage> {
         currencyCode: widget.currencyCode,
         proposedMinorUnits: minor,
         recurring: _recurring,
+        scenarioMonths: _scenarioMonths,
       );
       if (!mounted) return;
       setState(() {
@@ -102,7 +104,7 @@ class _AffordabilityPageState extends State<AffordabilityPage> {
             TextField(
               key: const ValueKey<String>('affordability-amount-input'),
               controller: _amountController,
-              keyboardType: TextInputType.number,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
               decoration: InputDecoration(
                 labelText: 'المبلغ',
                 suffixText: widget.currencyCode,
@@ -113,10 +115,39 @@ class _AffordabilityPageState extends State<AffordabilityPage> {
             SwitchListTile.adaptive(
               key: const ValueKey<String>('affordability-recurring-toggle'),
               value: _recurring,
-              onChanged: _loading ? null : (value) => setState(() => _recurring = value),
+              onChanged: _loading
+                  ? null
+                  : (value) => setState(() {
+                        _recurring = value;
+                        if (!value) _scenarioMonths = 1;
+                      }),
               title: const Text('التزام متكرر كل شهر'),
               subtitle: const Text('الحسبة تظل قراءة فقط ولا تحفظ أي عملية.'),
             ),
+            if (_recurring) ...[
+              const SizedBox(height: 4),
+              DropdownButtonFormField<int>(
+                key: const ValueKey<String>('affordability-scenario-months'),
+                value: _scenarioMonths,
+                decoration: const InputDecoration(
+                  labelText: 'مدة السيناريو',
+                  prefixIcon: Icon(Icons.timeline_rounded),
+                ),
+                items: [
+                  for (var months = 1; months <= 12; months++)
+                    DropdownMenuItem<int>(
+                      value: months,
+                      child: Text('$months ${months == 1 ? 'شهر' : 'شهور'}'),
+                    ),
+                ],
+                onChanged: _loading || !_recurring
+                    ? null
+                    : (value) {
+                        if (value == null) return;
+                        setState(() => _scenarioMonths = value);
+                      },
+              ),
+            ],
             const SizedBox(height: 8),
             FilledButton.icon(
               key: const ValueKey<String>('affordability-assess-button'),
@@ -193,11 +224,17 @@ class _AffordabilityPageState extends State<AffordabilityPage> {
             _line('المبلغ المقترح', assessment.proposedMinorUnits),
             _line('المصروف الفعلي المسجل', assessment.existingActualExpensesMinorUnits),
             _line('بعد الالتزامات', assessment.monthlyObligationsMinorUnits),
+            if (assessment.horizonMonths > 1) ...[
+              _line('مدة السيناريو', assessment.horizonMonths, suffix: assessment.horizonMonths == 1 ? 'شهر' : 'شهور', rawValue: true),
+              _line('أقل سيولة في السيناريو', assessment.minimumProjectedFreeCashMinorUnits),
+            ],
             const Divider(height: 20),
             _line('السيولة بعد المبلغ', assessment.resultingFreeCashMinorUnits),
             const SizedBox(height: 10),
             Text(
-              'الحسبة مبنية على بيانات الشهر المختار فقط، ومن هنا لا يتم حفظ أي عملية.',
+              assessment.horizonMonths > 1
+                  ? 'سيناريو ضغط فقط: نفترض ثبات بيانات الشهر الحالي وتكرار المبلغ شهريًا. ده مش توقع للمستقبل.'
+                  : 'الحسبة مبنية على بيانات الشهر المختار فقط، ومن هنا لا يتم حفظ أي عملية.',
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
@@ -206,12 +243,15 @@ class _AffordabilityPageState extends State<AffordabilityPage> {
     );
   }
 
-  Widget _line(String label, int minorUnits) => Padding(
+  Widget _line(String label, int minorUnits, {bool rawValue = false, String? suffix}) => Padding(
         padding: const EdgeInsets.only(bottom: 7),
         child: Row(
           children: [
             Expanded(child: Text(label, style: const TextStyle(fontWeight: FontWeight.w700))),
-            Text(_money(minorUnits), style: const TextStyle(fontWeight: FontWeight.w900)),
+            Text(
+              rawValue ? '$minorUnits ${suffix ?? ''}'.trim() : _money(minorUnits),
+              style: const TextStyle(fontWeight: FontWeight.w900),
+            ),
           ],
         ),
       );
