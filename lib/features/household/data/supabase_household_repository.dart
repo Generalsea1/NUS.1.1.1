@@ -88,6 +88,7 @@ class SupabaseHouseholdRepository implements HouseholdRepository {
         .from('household_members')
         .select('household_id,user_id,role,status')
         .eq('household_id', cleanHouseholdId)
+        .eq('status', 'active')
         .order('created_at', ascending: true);
 
     return rows
