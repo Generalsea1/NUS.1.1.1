@@ -40,17 +40,16 @@ class _AffordabilityPageState extends State<AffordabilityPage> {
 
   Future<void> _assess() async {
     if (_loading) return;
-    final major = int.tryParse(_amountController.text.trim());
-    if (major == null || major <= 0) {
+    final metadata = CurrencyRegistry.get(widget.currencyCode.trim().toUpperCase());
+    final minor = _parseMoneyMinor(_amountController.text, metadata);
+    if (minor == null || minor <= 0) {
       setState(() {
-        _error = 'اكتب مبلغ صحيح أكبر من صفر.';
+        _error = 'اكتب مبلغ صحيح أكبر من صفر وبدون كسور أكتر من دقة العملة.';
         _assessment = null;
       });
       return;
     }
 
-    final metadata = CurrencyRegistry.get(widget.currencyCode.trim().toUpperCase());
-    final minor = major * metadata.scale;
     setState(() {
       _loading = true;
       _error = null;
@@ -79,6 +78,33 @@ class _AffordabilityPageState extends State<AffordabilityPage> {
         _loading = false;
       });
     }
+  }
+
+  int? _parseMoneyMinor(String raw, CurrencyMetadata metadata) {
+    var text = raw.trim();
+    if (text.isEmpty) return null;
+    const arabicDigits = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+    for (var i = 0; i < arabicDigits.length; i++) {
+      text = text.replaceAll(arabicDigits[i], '$i');
+    }
+    text = text.replaceAll(',', '.').replaceAll('٫', '.');
+
+    final pattern = metadata.exponent == 0
+        ? RegExp(r'^\d+$')
+        : RegExp(r'^\d+(?:\.\d{1,' + metadata.exponent.toString() + r'})?$');
+    final match = pattern.firstMatch(text);
+    if (match == null) return null;
+
+    final separator = text.indexOf('.');
+    final wholeText = separator == -1 ? text : text.substring(0, separator);
+    final fractionText = separator == -1 ? '' : text.substring(separator + 1);
+    final whole = int.tryParse(wholeText);
+    if (whole == null) return null;
+
+    final paddedFraction = fractionText.padRight(metadata.exponent, '0');
+    final fraction = paddedFraction.isEmpty ? 0 : int.tryParse(paddedFraction);
+    if (fraction == null) return null;
+    return whole * metadata.scale + fraction;
   }
 
   @override
@@ -128,7 +154,7 @@ class _AffordabilityPageState extends State<AffordabilityPage> {
               const SizedBox(height: 4),
               DropdownButtonFormField<int>(
                 key: const ValueKey<String>('affordability-scenario-months'),
-                value: _scenarioMonths,
+                initialValue: _scenarioMonths,
                 decoration: const InputDecoration(
                   labelText: 'مدة السيناريو',
                   prefixIcon: Icon(Icons.timeline_rounded),
@@ -243,13 +269,13 @@ class _AffordabilityPageState extends State<AffordabilityPage> {
     );
   }
 
-  Widget _line(String label, int minorUnits, {bool rawValue = false, String? suffix}) => Padding(
+  Widget _line(String label, int value, {bool rawValue = false, String? suffix}) => Padding(
         padding: const EdgeInsets.only(bottom: 7),
         child: Row(
           children: [
             Expanded(child: Text(label, style: const TextStyle(fontWeight: FontWeight.w700))),
             Text(
-              rawValue ? '$minorUnits ${suffix ?? ''}'.trim() : _money(minorUnits),
+              rawValue ? '$value ${suffix ?? ''}'.trim() : _money(value),
               style: const TextStyle(fontWeight: FontWeight.w900),
             ),
           ],
