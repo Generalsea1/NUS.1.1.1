@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../application/expense_management_service.dart';
 import '../data/supabase_expense_repository.dart';
 import '../data/supabase_recurring_expense_repository.dart';
+import '../domain/currency_registry.dart';
 import '../domain/expense_category.dart';
 import '../domain/recurring_expense_definition.dart';
 
@@ -136,23 +137,41 @@ class _SubscriptionManagementPageState extends State<SubscriptionManagementPage>
   }
 
   String _money(int minorUnits) {
-    final value = minorUnits / 100;
-    return '${value.toStringAsFixed(2)} ${widget.currencyCode.toUpperCase()}';
+    final metadata = CurrencyRegistry.get(widget.currencyCode);
+    final value = minorUnits / metadata.scale;
+    return '${value.toStringAsFixed(metadata.exponent)} ${metadata.code}';
   }
 
   String _frequencyLabel(String frequency) {
-    return ObligationFrequencyLabel.label(frequency);
+    switch (frequency) {
+      case 'monthly':
+        return 'شهري';
+      case 'weekly':
+        return 'أسبوعي';
+      case 'biweekly':
+        return 'كل أسبوعين';
+      case 'quarterly':
+        return 'ربع سنوي';
+      case 'yearly':
+        return 'سنوي';
+      default:
+        return frequency;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final active = _subscriptions.where((item) => item.enabled).fold<int>(0, (sum, item) => sum + item.normalizedMonthlyAmount);
+    final active = _subscriptions
+        .where((item) => item.enabled)
+        .fold<int>(0, (sum, item) => sum + item.normalizedMonthlyAmount);
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('الاشتراكات', style: TextStyle(fontWeight: FontWeight.w900)),
-          actions: [IconButton(onPressed: _loading ? null : _load, icon: const Icon(Icons.refresh_rounded))],
+          actions: [
+            IconButton(onPressed: _loading ? null : _load, icon: const Icon(Icons.refresh_rounded)),
+          ],
         ),
         body: _loading
             ? const Center(child: CircularProgressIndicator())
@@ -197,26 +216,5 @@ class _SubscriptionManagementPageState extends State<SubscriptionManagementPage>
               ),
       ),
     );
-  }
-}
-
-class ObligationFrequencyLabel {
-  const ObligationFrequencyLabel._();
-
-  static String label(String frequency) {
-    switch (frequency) {
-      case 'monthly':
-        return 'شهري';
-      case 'weekly':
-        return 'أسبوعي';
-      case 'biweekly':
-        return 'كل أسبوعين';
-      case 'quarterly':
-        return 'ربع سنوي';
-      case 'yearly':
-        return 'سنوي';
-      default:
-        return frequency;
-    }
   }
 }
