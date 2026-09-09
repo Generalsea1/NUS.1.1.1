@@ -17,12 +17,20 @@ class AffordabilityService {
     required String currencyCode,
     required int proposedMinorUnits,
     required bool recurring,
+    int scenarioMonths = 1,
   }) async {
     if (proposedMinorUnits <= 0) {
       throw ArgumentError.value(
         proposedMinorUnits,
         'proposedMinorUnits',
         'The proposed amount must be greater than zero.',
+      );
+    }
+    if (scenarioMonths < 1 || scenarioMonths > 12) {
+      throw ArgumentError.value(
+        scenarioMonths,
+        'scenarioMonths',
+        'Scenario horizon must be between 1 and 12 months.',
       );
     }
 
@@ -40,15 +48,22 @@ class AffordabilityService {
     final availableBeforeProposal =
         incomeMinor - obligationMinor - snapshot.actualExpensesMinorUnits;
 
-    // Both one-time and recurring proposals are treated as a first-pass
-    // monthly affordability question. Recurrence is retained on the input so
-    // the UX can distinguish the user's intent, while the engine stays honest
-    // and does not pretend to model future months differently yet.
     final resulting = availableBeforeProposal - proposedMinorUnits;
+    final horizon = recurring ? scenarioMonths : 1;
 
-    final status = resulting < 0
+    // Deterministic stress scenario only: it repeats the current month's
+    // supplied facts and the recurring proposal for the chosen horizon. It is
+    // deliberately not a prediction of future income or spending behavior.
+    final minimumProjected = horizon == 1
+        ? resulting
+        : List<int>.generate(
+            horizon,
+            (_) => availableBeforeProposal - proposedMinorUnits,
+          ).reduce((a, b) => a < b ? a : b);
+
+    final status = minimumProjected < 0
         ? AffordabilityStatus.notAffordable
-        : resulting < incomeMinor ~/ 10
+        : minimumProjected < incomeMinor ~/ 10
             ? AffordabilityStatus.pressure
             : AffordabilityStatus.affordable;
 
@@ -60,6 +75,8 @@ class AffordabilityService {
       monthlyObligationsMinorUnits: obligationMinor,
       existingActualExpensesMinorUnits: snapshot.actualExpensesMinorUnits,
       resultingFreeCashMinorUnits: resulting,
+      horizonMonths: horizon,
+      minimumProjectedFreeCashMinorUnits: minimumProjected,
     );
   }
 }
