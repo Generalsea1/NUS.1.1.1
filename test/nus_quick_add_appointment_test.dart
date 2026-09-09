@@ -55,8 +55,12 @@ void main() {
     expect(find.text('NUS فهمها كـ موعد'), findsOneWidget);
 
     final saveFinder = find.byKey(const ValueKey<String>('quick-add-save'));
-    final scrollable = find.byType(Scrollable).last;
-    await tester.scrollUntilVisible(saveFinder, 300, scrollable: scrollable);
+    final listView = find.ancestor(
+      of: saveFinder,
+      matching: find.byType(ListView),
+    );
+    expect(listView, findsOneWidget);
+    await tester.scrollUntilVisible(saveFinder, 300, scrollable: listView);
     await tester.tap(saveFinder);
     await tester.pumpAndSettle();
 
