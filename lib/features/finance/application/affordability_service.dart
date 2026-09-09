@@ -39,9 +39,12 @@ class AffordabilityService {
     final obligationMinor = snapshot.monthlyObligationsMinorUnits;
     final availableBeforeProposal =
         incomeMinor - obligationMinor - snapshot.actualExpensesMinorUnits;
-    final resulting = recurring
-        ? availableBeforeProposal - proposedMinorUnits
-        : availableBeforeProposal - proposedMinorUnits;
+
+    // Both one-time and recurring proposals are treated as a first-pass
+    // monthly affordability question. Recurrence is retained on the input so
+    // the UX can distinguish the user's intent, while the engine stays honest
+    // and does not pretend to model future months differently yet.
+    final resulting = availableBeforeProposal - proposedMinorUnits;
 
     final status = resulting < 0
         ? AffordabilityStatus.notAffordable
