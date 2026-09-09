@@ -4,6 +4,7 @@ import '../../ai/presentation/ai_hub_page.dart';
 import '../../appointments/data/local_appointment_repository.dart';
 import '../../appointments/domain/appointment.dart';
 import '../../onboarding/domain/household_profile.dart';
+import '../../settings/presentation/notification_settings_page.dart';
 import '../data/speech_to_text_nus_voice_input.dart';
 import '../domain/nus_daily_intelligence.dart';
 import 'nus_quick_add_page.dart';
@@ -59,6 +60,12 @@ class _NusTodayPageState extends State<NusTodayPage> {
     await Navigator.of(context).push<void>(MaterialPageRoute(builder: (_) => const AiHubPage(isArabic: true)));
   }
 
+  Future<void> _openNotificationSettings() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(builder: (_) => const NotificationSettingsPage(isArabic: true)),
+    );
+  }
+
   String _money(int value) => '${_format(value)} ${widget.profile.currencyCode}';
 
   String _format(int value) {
@@ -84,7 +91,14 @@ class _NusTodayPageState extends State<NusTodayPage> {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('NUS Today', style: TextStyle(fontWeight: FontWeight.w900)),
-          actions: [IconButton(tooltip: 'تحديث', onPressed: _loading ? null : _load, icon: const Icon(Icons.refresh_rounded))],
+          actions: [
+            IconButton(
+              tooltip: 'إعدادات التنبيهات',
+              onPressed: _openNotificationSettings,
+              icon: const Icon(Icons.notifications_active_outlined),
+            ),
+            IconButton(tooltip: 'تحديث', onPressed: _loading ? null : _load, icon: const Icon(Icons.refresh_rounded)),
+          ],
         ),
         body: ListView(
           padding: const EdgeInsets.fromLTRB(18, 10, 18, 32),
