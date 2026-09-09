@@ -7,8 +7,6 @@ import '../../../core/auth/auth_state.dart';
 import '../../../core/auth/supabase_auth_repository.dart';
 import '../../expenses/application/expense_lifecycle_service.dart';
 import '../../expenses/application/expense_management_service.dart';
-import '../../expenses/data/supabase_expense_repository.dart';
-import '../../expenses/data/supabase_recurring_expense_repository.dart';
 import '../../finance/application/financial_advisor.dart';
 import '../../finance/application/financial_engine.dart';
 import '../../income/application/income_source_repository.dart';
@@ -248,8 +246,7 @@ class _AuthGateState extends State<AuthGate> {
       textDirection: TextDirection.rtl,
       child: NusTodayPage(
         profile: profile,
-        loadFinancialAdvisorSnapshot: () =>
-            _loadFinancialAdvisorSnapshot(profile),
+        loadFinancialSnapshot: () => _loadFinancialAdvisorSnapshot(profile),
         onOpenFinance: () => _openFinance(context, profile),
         onOpenAppointments: widget.onOpenGeneralHome == null
             ? null
