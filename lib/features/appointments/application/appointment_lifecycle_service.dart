@@ -35,6 +35,7 @@ class AppointmentLifecycleService {
         appointment.startsAt.isAtSameMomentAs(startsAt));
     if (duplicate.isNotEmpty) return duplicate.first;
 
+    final normalizedDoctorName = doctorName?.trim();
     Appointment appointment;
     do {
       appointment = Appointment(
@@ -42,7 +43,9 @@ class AppointmentLifecycleService {
         title: cleanTitle,
         type: type,
         startsAt: startsAt,
-        doctorName: doctorName?.trim().isEmpty == true ? null : doctorName?.trim(),
+        doctorName: type == AppointmentType.doctor
+            ? ((normalizedDoctorName == null || normalizedDoctorName.isEmpty) ? cleanTitle : normalizedDoctorName)
+            : (normalizedDoctorName == null || normalizedDoctorName.isEmpty ? null : normalizedDoctorName),
         specialty: specialty?.trim().isEmpty == true ? null : specialty?.trim(),
       );
     } while (existing.any((current) => current.id == appointment.id));
