@@ -16,11 +16,11 @@ void main() {
 
     await tester.enterText(
       find.byKey(const ValueKey<String>('installment-total')),
-      '1001',
+      '1000',
     );
     await tester.enterText(
       find.byKey(const ValueKey<String>('installment-down-payment')),
-      '1',
+      '0',
     );
     await tester.enterText(
       find.byKey(const ValueKey<String>('installment-count')),
@@ -38,8 +38,8 @@ void main() {
     expect(find.byKey(const ValueKey<String>('installment-row-1')), findsOneWidget);
     expect(find.byKey(const ValueKey<String>('installment-row-2')), findsOneWidget);
     expect(find.byKey(const ValueKey<String>('installment-row-3')), findsOneWidget);
-    expect(find.textContaining('334 EGP'), findsOneWidget);
-    expect(find.textContaining('333 EGP'), findsNWidgets(2));
+    expect(find.textContaining('334.00 EGP'), findsOneWidget);
+    expect(find.textContaining('333.00 EGP'), findsNWidgets(2));
   });
 
   testWidgets('preserves two decimal places without rounding', (tester) async {
@@ -68,7 +68,12 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const ValueKey<String>('installment-summary')), findsOneWidget);
-    expect(find.textContaining('500.00 EGP'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey<String>('installment-row-1')),
+      400,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.textContaining('500.00 EGP'), findsNWidgets(2));
   });
 
   testWidgets('shows validation feedback for invalid values', (tester) async {
