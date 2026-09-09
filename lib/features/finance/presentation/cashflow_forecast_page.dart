@@ -1,8 +1,18 @@
 import 'package:flutter/material.dart';
 
+import '../application/affordability_service.dart';
 import '../application/cashflow_forecast_service.dart';
+import '../application/financial_engine.dart';
 import '../domain/cashflow_forecast.dart';
+import '../../expenses/application/expense_management_service.dart';
+import '../../expenses/data/supabase_expense_repository.dart';
+import '../../expenses/data/supabase_recurring_expense_repository.dart';
 import '../../expenses/domain/currency_registry.dart';
+import '../../income/application/income_source_service.dart';
+import '../../income/data/supabase_income_source_repository.dart';
+import '../../obligations/application/obligation_service.dart';
+import '../../obligations/data/supabase_obligation_repository.dart';
+import 'affordability_page.dart';
 
 class CashflowForecastPage extends StatefulWidget {
   const CashflowForecastPage({
@@ -60,6 +70,33 @@ class _CashflowForecastPageState extends State<CashflowForecastPage> {
         _loading = false;
       });
     }
+  }
+
+  void _openAffordability() {
+    final expenseService = ExpenseManagementService(
+      expenseRepository: const SupabaseExpenseRepository(),
+      recurringRepository: const SupabaseRecurringExpenseRepository(),
+    );
+    final engine = FinancialEngine(
+      incomeService: IncomeSourceService(
+        repository: const SupabaseIncomeSourceRepository(),
+      ),
+      obligationService: const ObligationService(
+        repository: SupabaseObligationRepository(),
+      ),
+      expenseService: expenseService,
+    );
+    Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => AffordabilityPage(
+          userId: widget.userId,
+          year: widget.year,
+          month: widget.month,
+          currencyCode: widget.currencyCode,
+          service: AffordabilityService(financialEngine: engine),
+        ),
+      ),
+    );
   }
 
   @override
@@ -135,6 +172,13 @@ class _CashflowForecastPageState extends State<CashflowForecastPage> {
                         Text(
                           'عدد الشهور التي دخلت في المتوسط: ${forecast.historyMonthsUsed}.',
                           style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                        const SizedBox(height: 12),
+                        OutlinedButton.icon(
+                          key: const ValueKey<String>('open-affordability'),
+                          onPressed: _openAffordability,
+                          icon: const Icon(Icons.rule_rounded),
+                          label: const Text('هل أقدر أعمل ده؟'),
                         ),
                       ],
                     ),
@@ -230,11 +274,7 @@ class _CashflowForecastPageState extends State<CashflowForecastPage> {
             _metric('الالتزامات', point.obligationsMinorUnits),
             _metric('الإنفاق التقديري', point.discretionaryExpenseEstimateMinorUnits),
             const Divider(height: 20),
-            _metric(
-              'السيولة المتوقعة المتاحة',
-              point.projectedFreeCashMinorUnits,
-              emphasis: true,
-            ),
+            _metric('السيولة المتوقعة المتاحة', point.projectedFreeCashMinorUnits, emphasis: true),
           ],
         ),
       ),
