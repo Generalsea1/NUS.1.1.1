@@ -20,10 +20,12 @@ class SpeechToTextNusVoiceInput implements NusVoiceInput {
     if (!await isAvailable()) return null;
     String? recognized;
     await _engine.listen(
-      localeId: localeId,
-      listenFor: const Duration(seconds: 20),
-      pauseFor: const Duration(seconds: 3),
       onResult: (result) => recognized = result.recognizedWords,
+      listenOptions: stt.SpeechListenOptions(
+        localeId: localeId,
+        listenFor: const Duration(seconds: 20),
+        pauseFor: const Duration(seconds: 3),
+      ),
     );
     await _engine.stop();
     return recognized;
