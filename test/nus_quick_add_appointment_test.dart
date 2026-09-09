@@ -46,21 +46,14 @@ void main() {
       ),
     );
 
-    await tester.enterText(
-      find.byType(TextField),
-      'موعد دكتور بكرة الساعة 10',
-    );
+    await tester.enterText(find.byType(TextField), 'موعد دكتور بكرة الساعة 10');
     await tester.pump();
 
     expect(find.text('NUS فهمها كـ موعد'), findsOneWidget);
 
     final saveFinder = find.byKey(const ValueKey<String>('quick-add-save'));
-    final listView = find.ancestor(
-      of: saveFinder,
-      matching: find.byType(ListView),
-    );
-    expect(listView, findsOneWidget);
-    await tester.scrollUntilVisible(saveFinder, 300, scrollable: listView);
+    await tester.ensureVisible(saveFinder);
+    await tester.pump();
     await tester.tap(saveFinder);
     await tester.pumpAndSettle();
 
