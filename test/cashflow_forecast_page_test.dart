@@ -123,7 +123,19 @@ void main() {
     expect(find.byKey(const ValueKey<String>('cashflow-forecast-status')), findsOneWidget);
     expect(find.byKey(const ValueKey<String>('cashflow-forecast-summary')), findsOneWidget);
     expect(find.byKey(const ValueKey<String>('cashflow-point-10/2026')), findsOneWidget);
+
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey<String>('cashflow-point-11/2026')),
+      400,
+      scrollable: find.byType(Scrollable),
+    );
     expect(find.byKey(const ValueKey<String>('cashflow-point-11/2026')), findsOneWidget);
+
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey<String>('cashflow-point-12/2026')),
+      400,
+      scrollable: find.byType(Scrollable),
+    );
     expect(find.byKey(const ValueKey<String>('cashflow-point-12/2026')), findsOneWidget);
     expect(find.textContaining('السيولة المتوقعة موجبة'), findsOneWidget);
   });
