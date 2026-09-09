@@ -21,6 +21,9 @@ class NusDailyIntelligence {
   static List<NusDailyInsight> build({
     required HouseholdProfile profile,
     required List<Appointment> appointments,
+    int pendingReminderCount = 0,
+    String? nextReminderTitle,
+    DateTime? nextReminderAt,
     DateTime? now,
   }) {
     final current = now ?? DateTime.now();
@@ -48,30 +51,39 @@ class NusDailyIntelligence {
         .toList()
       ..sort((a, b) => a.startsAt.compareTo(b.startsAt));
 
-    if (todayUpcoming.isNotEmpty) {
-      final next = todayUpcoming.first;
-      final time = TimeOfDay.fromDateTime(next.startsAt);
+    final reminderIsToday = nextReminderAt != null &&
+        DateUtils.isSameDay(nextReminderAt, today) &&
+        nextReminderAt.isAfter(current);
+
+    if (todayUpcoming.isNotEmpty || reminderIsToday) {
+      final appointment = todayUpcoming.isEmpty ? null : todayUpcoming.first;
+      final useReminder = reminderIsToday &&
+          (appointment == null || nextReminderAt!.isBefore(appointment.startsAt));
+      final title = useReminder ? nextReminderTitle : appointment!.title;
+      final when = useReminder ? nextReminderAt! : appointment!.startsAt;
+      final time = TimeOfDay.fromDateTime(when);
       insights.add(NusDailyInsight(
-        title: 'عندك حاجة جاية النهارده',
-        message: '${next.title} الساعة ${time.hour}:${time.minute.toString().padLeft(2, '0')}.',
-        icon: Icons.event_available_rounded,
+        title: useReminder ? 'عندك مهمة جاية النهارده' : 'عندك حاجة جاية النهارده',
+        message: '${title ?? 'مهمة بدون اسم'} الساعة ${time.hour}:${time.minute.toString().padLeft(2, '0')}.',
+        icon: useReminder ? Icons.check_circle_outline_rounded : Icons.event_available_rounded,
       ));
     } else {
       insights.add(const NusDailyInsight(
         title: 'اليوم هادي',
-        message: 'مفيش موعد قادم مسجل النهارده. استغل المساحة في إنهاء أهم حاجة مؤجلة.',
+        message: 'مفيش موعد أو مهمة قادمة مسجلة النهارده. استغل المساحة في إنهاء أهم حاجة مؤجلة.',
         icon: Icons.wb_sunny_outlined,
       ));
     }
 
-    final upcoming = appointments
+    final upcomingAppointmentsCount = appointments
         .where((item) => item.status == AppointmentStatus.upcoming)
         .where((item) => item.startsAt.isAfter(current))
         .length;
-    if (upcoming >= 3) {
+    final upcomingWorkCount = upcomingAppointmentsCount + pendingReminderCount;
+    if (upcomingWorkCount >= 3) {
       insights.add(NusDailyInsight(
         title: 'الأسبوع محتاج تنظيم',
-        message: 'عندك $upcoming مواعيد جاية. راجعها مرة واحدة وحدد أولوياتك.',
+        message: 'عندك $upcomingWorkCount موعد أو مهمة جاية. راجعهم وحدد أولوياتك بدل ما تسيبهم يتراكموا.',
         icon: Icons.calendar_month_rounded,
       ));
     }
