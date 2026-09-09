@@ -90,10 +90,7 @@ class _HouseholdMembersPageState extends State<HouseholdMembersPage> {
             ),
           ),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('إلغاء'),
-            ),
+            TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: const Text('إلغاء')),
             FilledButton(
               onPressed: () => Navigator.of(dialogContext).pop(emailController.text.trim()),
               child: const Text('إنشاء دعوة'),
@@ -145,10 +142,7 @@ class _HouseholdMembersPageState extends State<HouseholdMembersPage> {
             },
             child: const Text('نسخ الكود'),
           ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('تم'),
-          ),
+          FilledButton(onPressed: () => Navigator.of(dialogContext).pop(), child: const Text('تم')),
         ],
       ),
     );
@@ -228,6 +222,52 @@ class _HouseholdMembersPageState extends State<HouseholdMembersPage> {
     }
   }
 
+  Future<void> _changeRole(HouseholdMember member) async {
+    if (!_canManage || _saving || member.role == 'owner' || member.userId == widget.household.ownerUserId) {
+      return;
+    }
+    final newRole = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('صلاحية العضو'),
+        content: Text('اختر صلاحية عضو البيت. لا يمكن تغيير صلاحية مالك البيت.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop('member'),
+            child: const Text('عضو'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop('admin'),
+            child: const Text('مدير'),
+          ),
+        ],
+      ),
+    );
+    if (!mounted || newRole == null || newRole == member.role) return;
+
+    setState(() => _saving = true);
+    try {
+      await _householdService.updateMemberRole(
+        householdId: widget.household.id,
+        userId: member.userId,
+        role: newRole,
+      );
+      await _load();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('تم تغيير الصلاحية إلى ${_roleLabel(newRole)}.')),
+      );
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('تعذر تغيير الصلاحية. قد لا تملك الصلاحية الكافية.')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
   String _roleLabel(String role) {
     switch (role) {
       case 'owner':
@@ -286,7 +326,13 @@ class _HouseholdMembersPageState extends State<HouseholdMembersPage> {
                               leading: CircleAvatar(child: Icon(member.role == 'owner' ? Icons.star_outline_rounded : Icons.person_outline_rounded)),
                               title: Text(member.userId == widget.currentMembership.userId ? 'أنت' : 'عضو البيت'),
                               subtitle: const Text('عضو نشط'),
-                              trailing: Text(_roleLabel(member.role), style: const TextStyle(fontWeight: FontWeight.w900)),
+                              trailing: member.role == 'owner' || !_canManage
+                                  ? Text(_roleLabel(member.role), style: const TextStyle(fontWeight: FontWeight.w900))
+                                  : OutlinedButton(
+                                      key: ValueKey<String>('household-role-${member.userId}'),
+                                      onPressed: _saving ? null : () => _changeRole(member),
+                                      child: Text(_roleLabel(member.role)),
+                                    ),
                             ),
                           ),
                         if (_canManage) ...[

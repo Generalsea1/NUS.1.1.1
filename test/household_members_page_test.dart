@@ -20,12 +20,7 @@ class _FakeHouseholdRepository implements HouseholdRepository {
 
   @override
   Future<List<HouseholdMember>> listMemberships(String userId) async => [
-        HouseholdMember(
-          householdId: 'h1',
-          userId: userId,
-          role: 'member',
-          status: 'active',
-        ),
+        HouseholdMember(householdId: 'h1', userId: userId, role: 'member', status: 'active'),
       ];
 
   @override
@@ -36,6 +31,18 @@ class _FakeHouseholdRepository implements HouseholdRepository {
 
   @override
   Future<HouseholdMember> addMembership(HouseholdMember member) async => member;
+
+  @override
+  Future<HouseholdMember> updateMembershipRole({
+    required String householdId,
+    required String userId,
+    required String role,
+  }) async => HouseholdMember(
+        householdId: householdId,
+        userId: userId,
+        role: role,
+        status: 'active',
+      );
 }
 
 class _FakeInvitationRepository implements HouseholdInvitationRepository {

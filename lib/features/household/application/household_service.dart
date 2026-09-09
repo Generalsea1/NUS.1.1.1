@@ -24,6 +24,30 @@ class HouseholdService {
     return List<HouseholdMember>.unmodifiable(members);
   }
 
+  Future<HouseholdMember> updateMemberRole({
+    required String householdId,
+    required String userId,
+    required String role,
+  }) async {
+    final cleanHouseholdId = householdId.trim();
+    final cleanUserId = userId.trim();
+    final cleanRole = role.trim().toLowerCase();
+    if (cleanHouseholdId.isEmpty) {
+      throw ArgumentError.value(householdId, 'householdId', 'Household is required.');
+    }
+    if (cleanUserId.isEmpty) {
+      throw ArgumentError.value(userId, 'userId', 'Member is required.');
+    }
+    if (cleanRole != 'admin' && cleanRole != 'member') {
+      throw ArgumentError.value(role, 'role', 'Member role must be admin or member.');
+    }
+    return _repository.updateMembershipRole(
+      householdId: cleanHouseholdId,
+      userId: cleanUserId,
+      role: cleanRole,
+    );
+  }
+
   Future<Household> getOrCreateForUser({
     required String userId,
     String defaultName = 'My Household',

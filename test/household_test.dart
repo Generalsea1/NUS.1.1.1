@@ -35,16 +35,31 @@ class _FakeHouseholdRepository implements HouseholdRepository {
     memberships = [...memberships, member];
     return member;
   }
+
+  @override
+  Future<HouseholdMember> updateMembershipRole({
+    required String householdId,
+    required String userId,
+    required String role,
+  }) async {
+    final index = memberships.indexWhere(
+      (member) => member.householdId == householdId && member.userId == userId,
+    );
+    if (index < 0) throw StateError('Member not found.');
+    final updated = HouseholdMember(
+      householdId: householdId,
+      userId: userId,
+      role: role,
+      status: memberships[index].status,
+    );
+    memberships = [...memberships]..[index] = updated;
+    return updated;
+  }
 }
 
 void main() {
   test('Household round trip preserves identity and ownership', () {
-    const household = Household(
-      id: 'h1',
-      ownerUserId: 'u1',
-      name: 'My Home',
-    );
-
+    const household = Household(id: 'h1', ownerUserId: 'u1', name: 'My Home');
     expect(Household.fromJson(household.toJson()).id, 'h1');
     expect(Household.fromJson(household.toJson()).ownerUserId, 'u1');
     expect(Household.fromJson(household.toJson()).name, 'My Home');
@@ -52,40 +67,19 @@ void main() {
 
   test('active membership is usable for current household resolution', () async {
     final repository = _FakeHouseholdRepository(
-      memberships: [
-        const HouseholdMember(
-          householdId: 'h1',
-          userId: 'u1',
-          role: 'owner',
-          status: 'active',
-        ),
-      ],
+      memberships: [const HouseholdMember(householdId: 'h1', userId: 'u1', role: 'owner', status: 'active')],
       household: const Household(id: 'h1', ownerUserId: 'u1', name: 'My Home'),
     );
-
     final result = await HouseholdService(repository: repository).getOrCreateForUser(userId: 'u1');
-
     expect(result.id, 'h1');
     expect(repository.createCount, 0);
   });
 
   test('creates a household only when the user has no active resolvable membership', () async {
     final repository = _FakeHouseholdRepository(
-      memberships: [
-        const HouseholdMember(
-          householdId: 'missing',
-          userId: 'u1',
-          role: 'member',
-          status: 'active',
-        ),
-      ],
+      memberships: [const HouseholdMember(householdId: 'missing', userId: 'u1', role: 'member', status: 'active')],
     );
-
-    final result = await HouseholdService(repository: repository).getOrCreateForUser(
-      userId: 'u1',
-      defaultName: 'بيت العيلة',
-    );
-
+    final result = await HouseholdService(repository: repository).getOrCreateForUser(userId: 'u1', defaultName: 'بيت العيلة');
     expect(result.name, 'بيت العيلة');
     expect(result.ownerUserId, 'u1');
     expect(repository.createCount, 1);
@@ -99,36 +93,45 @@ void main() {
         const HouseholdMember(householdId: 'h2', userId: 'u3', role: 'member', status: 'active'),
       ],
     );
-
     final result = await repository.listHouseholdMembers('h1');
-
     expect(result.map((member) => member.userId), containsAll(<String>['u1', 'u2']));
     expect(result.map((member) => member.userId), isNot(contains('u3')));
   });
 
   test('ignores inactive memberships', () async {
     final repository = _FakeHouseholdRepository(
-      memberships: [
-        const HouseholdMember(
-          householdId: 'h1',
-          userId: 'u1',
-          role: 'member',
-          status: 'left',
-        ),
-      ],
+      memberships: [const HouseholdMember(householdId: 'h1', userId: 'u1', role: 'member', status: 'left')],
     );
-
     await HouseholdService(repository: repository).getOrCreateForUser(userId: 'u1');
-
     expect(repository.createCount, 1);
+  });
+
+  test('updates a member role through the service', () async {
+    final repository = _FakeHouseholdRepository(
+      memberships: [const HouseholdMember(householdId: 'h1', userId: 'u2', role: 'member', status: 'active')],
+    );
+    final updated = await HouseholdService(repository: repository).updateMemberRole(
+      householdId: 'h1',
+      userId: 'u2',
+      role: 'admin',
+    );
+    expect(updated.role, 'admin');
+  });
+
+  test('rejects unsupported member roles', () async {
+    final repository = _FakeHouseholdRepository();
+    expect(
+      () => HouseholdService(repository: repository).updateMemberRole(
+        householdId: 'h1',
+        userId: 'u2',
+        role: 'owner',
+      ),
+      throwsArgumentError,
+    );
   });
 
   test('rejects empty user IDs before persistence', () {
     final repository = _FakeHouseholdRepository();
-
-    expect(
-      () => HouseholdService(repository: repository).getOrCreateForUser(userId: ' '),
-      throwsArgumentError,
-    );
+    expect(() => HouseholdService(repository: repository).getOrCreateForUser(userId: ' '), throwsArgumentError);
   });
 }
