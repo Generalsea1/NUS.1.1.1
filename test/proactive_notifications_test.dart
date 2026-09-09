@@ -30,7 +30,7 @@ void main() {
       scheduledAt: DateTime(2026, 9, 9, 10),
     );
 
-    final result = const NusProactiveNotificationPlanner().plan(
+    final result = NusProactiveNotificationPlanner().plan(
       now: now,
       signals: [signal],
     );
