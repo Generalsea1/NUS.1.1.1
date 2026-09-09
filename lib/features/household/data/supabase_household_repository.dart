@@ -133,6 +133,44 @@ class SupabaseHouseholdRepository implements HouseholdRepository {
     });
   }
 
+  @override
+  Future<HouseholdMember> updateMembershipRole({
+    required String householdId,
+    required String userId,
+    required String role,
+  }) async {
+    final cleanHouseholdId = householdId.trim();
+    final cleanUserId = userId.trim();
+    final cleanRole = role.trim().toLowerCase();
+    if (cleanHouseholdId.isEmpty) {
+      throw ArgumentError.value(householdId, 'householdId', 'Household ID is required.');
+    }
+    if (cleanUserId.isEmpty) {
+      throw ArgumentError.value(userId, 'userId', 'Member user ID is required.');
+    }
+    if (cleanRole != 'admin' && cleanRole != 'member') {
+      throw ArgumentError.value(role, 'role', 'Member role must be admin or member.');
+    }
+
+    final row = await _client()
+        .from('household_members')
+        .update(<String, dynamic>{'role': cleanRole})
+        .eq('household_id', cleanHouseholdId)
+        .eq('user_id', cleanUserId)
+        .eq('status', 'active')
+        .select('household_id,user_id,role,status')
+        .maybeSingle();
+    if (row == null) {
+      throw StateError('Member role could not be updated. The member may be inactive, the target may be the owner, or the actor may lack permission.');
+    }
+    return HouseholdMember.fromJson(<String, dynamic>{
+      'householdId': row['household_id'],
+      'userId': row['user_id'],
+      'role': row['role'],
+      'status': row['status'],
+    });
+  }
+
   void _requireCurrentUser(String userId) {
     final current = SupabaseService.client?.auth.currentUser?.id.trim();
     if (current == null || current.isEmpty || current != userId) {
