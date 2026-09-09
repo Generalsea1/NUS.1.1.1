@@ -29,8 +29,8 @@ NUS is evolving from a collection of personal organizer tools into a personal + 
 - [x] Arabic voice capture in Quick Add
 - [x] Deterministic Arabic natural date/time parsing for Quick Add
 - [x] Notification controls reachable from Today
-- [ ] Unified action routing across reminder / appointment / expense / shopping intents
-- [ ] Household-wide daily brief
+- [x] Unified action routing across reminder / appointment / expense / shopping intents
+- [x] Household-wide daily brief
 - [ ] Proactive cross-domain recommendations
 
 ## Phase 2 — Money Operating Layer
@@ -40,21 +40,22 @@ NUS is evolving from a collection of personal organizer tools into a personal + 
 - [x] Monthly actual totals and category analytics
 - [x] Recurring expense definitions
 - [x] Financial engine / household intelligence foundations
-- [ ] Cash-flow forecast
-- [ ] Installment and debt planner UX
-- [ ] Subscription detection and management
-- [ ] Affordability scenarios (“Can I afford this?”)
+- [x] Cash-flow forecast
+- [x] Installment planner UX
+- [ ] Debt planner UX
+- [x] Subscription management
+- [x] Affordability scenarios (“Can I afford this?”)
 - [ ] Anomaly and budget-pressure alerts
 
 ## Phase 3 — Smart Shopping
 - [x] Shopping lists
 - [x] Check-off workflow
 - [x] Local lifecycle service
-- [ ] Quick Add integration
+- [x] Quick Add integration
 - [ ] Budget-aware shopping mode
 - [ ] Household sharing
 - [ ] Recipe-to-shopping-list automation
-- [ ] Tests + CI gate for cross-domain flows
+- [x] Tests + CI gate for cross-domain flows
 
 ## Phase 4 — Recipes & Home Operations
 - [ ] Recipe search/input
@@ -67,11 +68,11 @@ NUS is evolving from a collection of personal organizer tools into a personal + 
 ## Phase 5 — Household
 - [ ] Household members
 - [ ] Roles and permissions
-- [ ] Shared tasks
+- [x] Shared tasks foundation
 - [ ] Shared shopping lists
 - [ ] Shared calendar / appointments
 - [ ] Household notification preferences
-- [ ] Secure invitation/join flow
+- [x] Secure invitation/join flow foundation
 
 ## Phase 6 — Health & Personal Records
 - [x] Medication lifecycle foundation
@@ -86,8 +87,8 @@ NUS is evolving from a collection of personal organizer tools into a personal + 
 - [x] Secure server-side provider boundary
 - [x] AI history / connection settings foundation
 - [x] AI quota / reservation foundations
-- [ ] Context-aware Copilot across Today + Money + Shopping + Household
-- [ ] Action proposals with explicit user confirmation
+- [x] Context-aware Copilot across Today + Money + Shopping + Household
+- [x] Action proposals with explicit user confirmation for authoritative writes
 - [ ] Proactive but user-controlled recommendations
 - [ ] Explainable AI decisions with source data references
 
