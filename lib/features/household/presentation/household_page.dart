@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import '../application/household_service.dart';
 import '../data/supabase_household_repository.dart';
 import '../domain/household.dart';
+import '../../shopping/application/shopping_lifecycle_service.dart';
+import '../../shopping/data/supabase_household_shopping_repository.dart';
+import '../../shopping/presentation/shopping_page.dart';
 
 class HouseholdPage extends StatefulWidget {
   const HouseholdPage({
@@ -60,6 +63,21 @@ class _HouseholdPageState extends State<HouseholdPage> {
         _error = 'تعذر فتح مساحة البيت الآن. لم يتم تغيير أي بيانات.';
       });
     }
+  }
+
+  void _openSharedShopping(Household household) {
+    Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => ShoppingPage(
+          service: ShoppingLifecycleService(
+            repository: SupabaseHouseholdShoppingRepository(
+              householdId: household.id,
+            ),
+          ),
+          isArabic: true,
+        ),
+      ),
+    );
   }
 
   String _roleLabel(String? role) {
@@ -144,20 +162,32 @@ class _HouseholdPageState extends State<HouseholdPage> {
                             ),
                 ),
               ),
+              if (household != null && membership?.isActive == true) ...[
+                const SizedBox(height: 12),
+                Card(
+                  child: ListTile(
+                    leading: const CircleAvatar(child: Icon(Icons.shopping_cart_outlined)),
+                    title: const Text('مشتريات البيت المشتركة', style: TextStyle(fontWeight: FontWeight.w900)),
+                    subtitle: const Text('قائمة واحدة للبيت كله، وكل عضو نشط يقدر يضيف ويعلّم العناصر كمكتملة.'),
+                    trailing: const Icon(Icons.chevron_left_rounded),
+                    onTap: () => _openSharedShopping(household),
+                  ),
+                ),
+              ],
               const SizedBox(height: 14),
-              Card(
-                child: const ListTile(
+              const Card(
+                child: ListTile(
                   leading: CircleAvatar(child: Icon(Icons.lock_outline_rounded)),
                   title: Text('المشاركة تُبنى بصلاحيات واضحة'),
                   subtitle: Text('لا يوجد هنا أي كشف لمعلومات أعضاء آخرين أو كتابة تلقائية لبيانات مشتركة.'),
                 ),
               ),
               const SizedBox(height: 10),
-              Card(
-                child: const ListTile(
+              const Card(
+                child: ListTile(
                   leading: CircleAvatar(child: Icon(Icons.construction_outlined)),
                   title: Text('الإدارة المتقدمة قيد البناء'),
-                  subtitle: Text('الدعوات، الأدوار، وقوائم التسوق المشتركة ستُفتح بعد اكتمال طبقة الصلاحيات.'),
+                  subtitle: Text('الدعوات، الأدوار، وقوائم التسوق المشتركة ستُفتح تدريجيًا بعد اكتمال طبقة الصلاحيات.'),
                 ),
               ),
             ],
