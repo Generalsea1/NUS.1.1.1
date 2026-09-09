@@ -205,6 +205,7 @@ class _AuthGateState extends State<AuthGate> {
       child: NusTodayPage(
         profile: profile,
         scheduleStore: widget.scheduleStore,
+        expenseManagementService: widget.expenseManagementService,
         onOpenFinance: () => _openFinance(context, profile),
         onOpenAppointments: widget.onOpenGeneralHome == null ? null : () => widget.onOpenGeneralHome!(context),
         onCreateReminder: widget.onCreateReminder,
