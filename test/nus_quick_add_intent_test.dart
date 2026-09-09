@@ -7,6 +7,7 @@ void main() {
 
     expect(result.kind, NusQuickAddKind.expense);
     expect(result.amountMajorUnits, 350);
+    expect(result.amountMinorUnits, 35000);
     expect(result.currencyCode, 'EGP');
     expect(result.expenseCategoryCode, 'transportation');
     expect(result.confidence, greaterThanOrEqualTo(90));
@@ -46,6 +47,7 @@ void main() {
 
     expect(result.kind, NusQuickAddKind.expense);
     expect(result.amountMajorUnits, 350);
+    expect(result.amountMinorUnits, 35000);
     expect(result.expenseCategoryCode, 'utilities');
   });
 
@@ -54,6 +56,7 @@ void main() {
 
     expect(result.kind, NusQuickAddKind.expense);
     expect(result.amountMajorUnits, 420);
+    expect(result.amountMinorUnits, 42000);
     expect(result.currencyCode, 'EGP');
     expect(result.expenseCategoryCode, 'transportation');
   });
@@ -63,6 +66,7 @@ void main() {
 
     expect(result.kind, NusQuickAddKind.expense);
     expect(result.amountMajorUnits, 50);
+    expect(result.amountMinorUnits, 5000);
     expect(result.currencyCode, 'USD');
     expect(result.expenseCategoryCode, 'food');
   });
@@ -79,5 +83,14 @@ void main() {
 
     expect(result.kind, NusQuickAddKind.reminder);
     expect(result.amountMajorUnits, isNull);
+    expect(result.amountMinorUnits, isNull);
+  });
+
+  test('does not silently round decimal amounts', () {
+    final result = NusQuickAddIntentClassifier.classify('دفعت 350.75 جنيه مواصلات');
+
+    expect(result.kind, NusQuickAddKind.reminder);
+    expect(result.amountMajorUnits, isNull);
+    expect(result.amountMinorUnits, isNull);
   });
 }
