@@ -19,8 +19,23 @@ void main() {
     expect(result.amountMajorUnits, isNull);
   });
 
+  test('classifies an explicit appointment as an appointment', () {
+    final result = NusQuickAddIntentClassifier.classify('كلم الدكتور بكرة الساعة 10');
+
+    expect(result.kind, NusQuickAddKind.appointment);
+    expect(result.confidence, greaterThanOrEqualTo(90));
+  });
+
+  test('keeps a paid doctor visit as an expense instead of an appointment', () {
+    final result = NusQuickAddIntentClassifier.classify('دفعت 500 للدكتور');
+
+    expect(result.kind, NusQuickAddKind.expense);
+    expect(result.amountMajorUnits, 500);
+    expect(result.expenseCategoryCode, 'healthcare');
+  });
+
   test('defaults ordinary natural language to reminder', () {
-    final result = NusQuickAddIntentClassifier.classify('كلم الدكتور بكرة');
+    final result = NusQuickAddIntentClassifier.classify('خلص تقرير الشغل بكرة');
 
     expect(result.kind, NusQuickAddKind.reminder);
     expect(result.confidence, greaterThan(0));
