@@ -30,6 +30,11 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const ValueKey<String>('installment-summary')), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey<String>('installment-row-1')),
+      400,
+      scrollable: find.byType(Scrollable),
+    );
     expect(find.byKey(const ValueKey<String>('installment-row-1')), findsOneWidget);
     expect(find.byKey(const ValueKey<String>('installment-row-2')), findsOneWidget);
     expect(find.byKey(const ValueKey<String>('installment-row-3')), findsOneWidget);
