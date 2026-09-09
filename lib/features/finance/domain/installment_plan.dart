@@ -1,4 +1,6 @@
 class InstallmentPlan {
+  static const maxInstallments = 120;
+
   factory InstallmentPlan({
     required String id,
     required String userId,
@@ -24,8 +26,12 @@ class InstallmentPlan {
     if (downPaymentMinorUnits < 0 || downPaymentMinorUnits >= totalMinorUnits) {
       throw ArgumentError.value(downPaymentMinorUnits, 'downPaymentMinorUnits', 'Down payment must be between zero and the total.');
     }
-    if (numberOfInstallments <= 0) {
-      throw ArgumentError.value(numberOfInstallments, 'numberOfInstallments', 'Number of installments must be greater than zero.');
+    if (numberOfInstallments <= 0 || numberOfInstallments > maxInstallments) {
+      throw ArgumentError.value(
+        numberOfInstallments,
+        'numberOfInstallments',
+        'Number of installments must be between 1 and $maxInstallments.',
+      );
     }
     if (paidInstallments < 0 || paidInstallments > numberOfInstallments) {
       throw ArgumentError.value(paidInstallments, 'paidInstallments', 'Paid installments must be within the plan.');
@@ -83,7 +89,16 @@ class InstallmentPlan {
 
   DateTime dueDateFor(int installmentNumber) {
     _validateInstallmentNumber(installmentNumber);
-    return DateTime(firstDueDate.year, firstDueDate.month + installmentNumber - 1, firstDueDate.day);
+    return _addMonths(firstDueDate, installmentNumber - 1);
+  }
+
+  static DateTime _addMonths(DateTime date, int months) {
+    final absoluteMonth = date.month - 1 + months;
+    final year = date.year + absoluteMonth ~/ 12;
+    final month = absoluteMonth % 12 + 1;
+    final lastDay = DateTime(year, month + 1, 0).day;
+    final day = date.day > lastDay ? lastDay : date.day;
+    return DateTime(year, month, day);
   }
 
   Map<String, dynamic> toMap({bool includeId = true}) => <String, dynamic>{
