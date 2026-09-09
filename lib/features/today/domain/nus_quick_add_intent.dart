@@ -28,22 +28,20 @@ class NusQuickAddIntentClassifier {
 
     final expenseSignal = _hasAny(text, const [
       'دفعت',
-      'دفعـت',
+      'دفعه',
       'دفعتل',
-      'صرفـت',
       'صرفت',
-      'دفعة',
+      'صرفـت',
       'دفع مبلغ',
-      'فاتورة',
+      'فاتوره',
     ]);
     final shoppingSignal = _hasAny(text, const [
       'اشتري',
       'اشترى',
-      'اشترى',
       'جيب',
       'هات',
       'ناقص',
-      'قائمة المشتريات',
+      'قائمه المشتريات',
       'مشتريات',
     ]);
 
@@ -74,24 +72,26 @@ class NusQuickAddIntentClassifier {
   }
 
   static int? _extractAmount(String text) {
-    final match = RegExp(r'(?:^|\s)(\d+(?:[\.,]\d{1,2})?)(?:\s*(?:جنيه|جنيها|جنية|egp|دولار|usd|\$))?(?=\s|$)', caseSensitive: false).firstMatch(text);
+    final match = RegExp(
+      r'(?:^|\s)(\d+(?:[\.,]\d{1,2})?)(?:\s*(?:جنيه|جنيها|جنيه|egp|دولار|usd|\$))?(?=\s|$)',
+      caseSensitive: false,
+    ).firstMatch(text);
     if (match == null) return null;
-    final raw = match.group(1)!;
-    final normalized = raw.replaceAll(',', '.');
+    final normalized = match.group(1)!.replaceAll(',', '.');
     final parsed = double.tryParse(normalized);
     if (parsed == null || parsed <= 0) return null;
     return parsed.round();
   }
 
   static String _category(String text) {
-    if (_hasAny(text, const ['كهربا', 'كهرباء', 'مية', 'مياه', 'غاز', 'انترنت', 'نت', 'تليفون'])) return 'utilities';
-    if (_hasAny(text, const ['مطعم', 'اكل', 'أكل', 'غدا', 'غذاء', 'سوبر ماركت'])) return 'food';
-    if (_hasAny(text, const ['تاكسي', 'اوبر', 'أوبر', 'مواصلات', 'بنزين', 'مترو'])) return 'transportation';
-    if (_hasAny(text, const ['دواء', 'صيدلية', 'كشف', 'دكتور', 'طبيب'])) return 'healthcare';
-    if (_hasAny(text, const ['مدرسة', 'درس', 'جامعة', 'تعليم'])) return 'education';
-    if (_hasAny(text, const ['ايجار', 'إيجار', 'شقة', 'سكن'])) return 'housing';
-    if (_hasAny(text, const ['اشتراك', 'نتفليكس', 'سبوتيفاي', 'عضوية'])) return 'subscriptions';
-    if (_hasAny(text, const ['صيانة', 'تصليح'])) return 'maintenance';
+    if (_hasAny(text, const ['كهربا', 'كهرباء', 'ميه', 'مياه', 'غاز', 'انترنت', 'نت', 'تليفون'])) return 'utilities';
+    if (_hasAny(text, const ['مطعم', 'اكل', 'غدا', 'غذاء', 'سوبر ماركت'])) return 'food';
+    if (_hasAny(text, const ['تاكسي', 'اوبر', 'مواصلات', 'بنزين', 'مترو'])) return 'transportation';
+    if (_hasAny(text, const ['دواء', 'صيدليه', 'كشف', 'دكتور', 'طبيب'])) return 'healthcare';
+    if (_hasAny(text, const ['مدرسه', 'درس', 'جامعه', 'تعليم'])) return 'education';
+    if (_hasAny(text, const ['ايجار', 'شقه', 'سكن'])) return 'housing';
+    if (_hasAny(text, const ['اشتراك', 'نتفليكس', 'سبوتيفاي', 'عضويه'])) return 'subscriptions';
+    if (_hasAny(text, const ['صيانه', 'تصليح'])) return 'maintenance';
     if (_hasAny(text, const ['قسط', 'دين', 'سداد'])) return 'debt';
     return 'other';
   }
