@@ -1,0 +1,250 @@
+import 'package:flutter/material.dart';
+
+import '../../appointments/data/local_appointment_repository.dart';
+import '../../appointments/domain/appointment.dart';
+import '../../onboarding/domain/household_profile.dart';
+
+class NusTodayPage extends StatefulWidget {
+  const NusTodayPage({
+    super.key,
+    required this.profile,
+    this.onOpenAppointments,
+    this.onOpenFinance,
+  });
+
+  final HouseholdProfile profile;
+  final VoidCallback? onOpenAppointments;
+  final VoidCallback? onOpenFinance;
+
+  @override
+  State<NusTodayPage> createState() => _NusTodayPageState();
+}
+
+class _NusTodayPageState extends State<NusTodayPage> {
+  final LocalAppointmentRepository _appointments = LocalAppointmentRepository();
+  List<Appointment> _items = <Appointment>[];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() => _loading = true);
+    final items = await _appointments.list();
+    if (!mounted) return;
+    setState(() {
+      _items = items;
+      _loading = false;
+    });
+  }
+
+  String _money(int value) => '${_format(value)} ${widget.profile.currencyCode}';
+
+  String _format(int value) {
+    final text = value.abs().toString();
+    final chunks = <String>[];
+    for (var i = text.length; i > 0; i -= 3) {
+      final start = i > 3 ? i - 3 : 0;
+      chunks.insert(0, text.substring(start, i));
+    }
+    return '${value < 0 ? '-' : ''}${chunks.join(',')}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final today = DateUtils.dateOnly(now);
+    final todayAppointments = _items
+        .where((item) => DateUtils.isSameDay(item.startsAt, today))
+        .where((item) => item.status != AppointmentStatus.cancelled)
+        .toList()
+      ..sort((a, b) => a.startsAt.compareTo(b.startsAt));
+    final next = _items
+        .where((item) => item.status == AppointmentStatus.upcoming)
+        .where((item) => item.startsAt.isAfter(now))
+        .toList()
+      ..sort((a, b) => a.startsAt.compareTo(b.startsAt));
+
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('NUS Today', style: TextStyle(fontWeight: FontWeight.w900)),
+          actions: [
+            IconButton(
+              tooltip: 'تحديث',
+              onPressed: _loading ? null : _load,
+              icon: const Icon(Icons.refresh_rounded),
+            ),
+          ],
+        ),
+        body: ListView(
+          padding: const EdgeInsets.fromLTRB(18, 10, 18, 32),
+          children: [
+            Card(
+              color: Theme.of(context).colorScheme.primaryContainer,
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _greeting(),
+                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'ده مركز القيادة اليومي بتاع NUS. من هنا تعرف أهم حاجة محتاجة انتباهك.',
+                      style: TextStyle(height: 1.4, color: Theme.of(context).colorScheme.onPrimaryContainer),
+                    ),
+                    const SizedBox(height: 16),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        _chip(Icons.people_alt_outlined, '${widget.profile.householdSize} أفراد'),
+                        _chip(Icons.payments_outlined, _money(widget.profile.remainingAfterObligations)),
+                        _chip(Icons.flag_outlined, 'الالتزامات ${_money(widget.profile.recurringObligations)}'),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: _actionCard(
+                    context,
+                    icon: Icons.account_balance_wallet_rounded,
+                    title: 'فلوسي',
+                    subtitle: 'الدخل والالتزامات والأهداف',
+                    onTap: widget.onOpenFinance,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _actionCard(
+                    context,
+                    icon: Icons.event_available_rounded,
+                    title: 'مواعيدي',
+                    subtitle: 'شوف اللي جاي',
+                    onTap: widget.onOpenAppointments,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            _section(
+              title: 'النهارده',
+              icon: Icons.today_rounded,
+              child: _loading
+                  ? const Padding(
+                      padding: EdgeInsets.all(18),
+                      child: Center(child: CircularProgressIndicator()),
+                    )
+                  : todayAppointments.isEmpty
+                      ? const Padding(
+                          padding: EdgeInsets.all(18),
+                          child: Text('مفيش مواعيد مسجلة النهارده.'),
+                        )
+                      : Column(
+                          children: [
+                            for (final item in todayAppointments) _appointmentTile(item),
+                          ],
+                        ),
+            ),
+            const SizedBox(height: 14),
+            _section(
+              title: 'الخطوة الجاية',
+              icon: Icons.arrow_circle_left_rounded,
+              child: next.isEmpty
+                  ? const Padding(
+                      padding: EdgeInsets.all(18),
+                      child: Text('مفيش مواعيد جاية مسجلة.'),
+                    )
+                  : _appointmentTile(next.first),
+            ),
+            const SizedBox(height: 14),
+            Card(
+              child: ListTile(
+                leading: const CircleAvatar(child: Icon(Icons.auto_awesome_rounded)),
+                title: const Text('NUS Copilot', style: TextStyle(fontWeight: FontWeight.w900)),
+                subtitle: const Text('الخطوة التالية: خلي NUS يستوعب بيانات يومك ويقترح إجراءات مباشرة.'),
+                trailing: const Icon(Icons.chevron_right_rounded),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _greeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return 'صباح الخير 👋';
+    if (hour < 18) return 'مساء الخير 👋';
+    return 'مساء الخير 🌙';
+  }
+
+  Widget _chip(IconData icon, String text) => Chip(
+        avatar: Icon(icon, size: 18),
+        label: Text(text, style: const TextStyle(fontWeight: FontWeight.w700)),
+      );
+
+  Widget _actionCard(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    VoidCallback? onTap,
+  }) {
+    return Card(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(22),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(icon, size: 28),
+              const SizedBox(height: 12),
+              Text(title, style: const TextStyle(fontWeight: FontWeight.w900)),
+              const SizedBox(height: 4),
+              Text(subtitle, maxLines: 2, overflow: TextOverflow.ellipsis),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _section({required String title, required IconData icon, required Widget child}) {
+    return Card(
+      child: Column(
+        children: [
+          ListTile(
+            leading: CircleAvatar(child: Icon(icon)),
+            title: Text(title, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18)),
+          ),
+          const Divider(height: 1),
+          child,
+        ],
+      ),
+    );
+  }
+
+  Widget _appointmentTile(Appointment item) {
+    final time = TimeOfDay.fromDateTime(item.startsAt).format(context);
+    return ListTile(
+      leading: Icon(item.isDoctor ? Icons.medical_services_outlined : item.isScheduledCall ? Icons.phone_callback_rounded : Icons.event_rounded),
+      title: Text(item.title, style: const TextStyle(fontWeight: FontWeight.w800)),
+      subtitle: Text('$time${item.location == null ? '' : ' • ${item.location}'}'),
+    );
+  }
+}

@@ -13,6 +13,7 @@ import '../application/household_profile_repository.dart';
 import '../application/household_profile_validator.dart';
 import '../data/supabase_household_profile_repository.dart';
 import '../domain/household_profile.dart';
+import '../../today/presentation/nus_today_page.dart';
 import 'auth_page.dart';
 import 'financial_dashboard_page.dart';
 import 'household_onboarding_page.dart';
@@ -152,6 +153,22 @@ class _AuthGateState extends State<AuthGate> {
     await _resolveAuthenticatedUser(_authState);
   }
 
+  void _openNusToday() {
+    final profile = _profile;
+    if (profile == null) return;
+    Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => NusTodayPage(
+          profile: profile,
+          onOpenFinance: () => Navigator.of(context).pop(),
+          onOpenAppointments: widget.onOpenGeneralHome == null
+              ? null
+              : () => widget.onOpenGeneralHome!(context),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_initializing || _loadingProfile) {
@@ -188,16 +205,32 @@ class _AuthGateState extends State<AuthGate> {
       );
     }
 
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: FinancialDashboardPage(
-        profile: profile,
-        incomeRepository: _incomeRepository,
-        expenseService: widget.expenseService,
-        expenseManagementService: widget.expenseManagementService,
-        onOpenGeneralHome: widget.onOpenGeneralHome,
-        onSignOut: () => _authRepository.signOut(),
-      ),
+    return Stack(
+      children: [
+        Directionality(
+          textDirection: TextDirection.rtl,
+          child: FinancialDashboardPage(
+            profile: profile,
+            incomeRepository: _incomeRepository,
+            expenseService: widget.expenseService,
+            expenseManagementService: widget.expenseManagementService,
+            onOpenGeneralHome: widget.onOpenGeneralHome,
+            onSignOut: () => _authRepository.signOut(),
+          ),
+        ),
+        Positioned(
+          left: 18,
+          bottom: 18,
+          child: SafeArea(
+            child: FloatingActionButton.extended(
+              heroTag: 'nus-today-entry',
+              onPressed: _openNusToday,
+              icon: const Icon(Icons.auto_awesome_rounded),
+              label: const Text('NUS Today'),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
