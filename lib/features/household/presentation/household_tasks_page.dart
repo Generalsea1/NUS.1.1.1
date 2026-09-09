@@ -58,70 +58,14 @@ class _HouseholdTasksPageState extends State<HouseholdTasksPage> {
 
   Future<void> _addTask() async {
     if (_saving) return;
-    final controller = TextEditingController();
-    DateTime? dueAt;
+    final result = await showDialog<(String, DateTime?)>(
+      context: context,
+      builder: (dialogContext) => const _HouseholdTaskDialog(),
+    );
+    if (!mounted || result == null || result.$1.trim().isEmpty) return;
+
+    setState(() => _saving = true);
     try {
-      final result = await showDialog<(String, DateTime?)>(
-        context: context,
-        builder: (dialogContext) => StatefulBuilder(
-          builder: (context, setLocalState) => AlertDialog(
-            title: const Text('مهمة جديدة للبيت'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: controller,
-                  autofocus: true,
-                  maxLength: 300,
-                  decoration: const InputDecoration(
-                    labelText: 'المهمة',
-                    hintText: 'مثال: دفع فاتورة الكهرباء',
-                  ),
-                ),
-                const SizedBox(height: 8),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.event_outlined),
-                  title: Text(
-                    dueAt == null
-                        ? 'بدون موعد'
-                        : MaterialLocalizations.of(context).formatFullDate(dueAt!),
-                  ),
-                  trailing: dueAt == null
-                      ? TextButton(
-                          onPressed: () async {
-                            final picked = await showDatePicker(
-                              context: context,
-                              firstDate: DateTime.now(),
-                              lastDate: DateTime.now().add(const Duration(days: 3650)),
-                              initialDate: DateTime.now(),
-                            );
-                            if (picked != null) setLocalState(() => dueAt = picked);
-                          },
-                          child: const Text('اختيار'),
-                        )
-                      : IconButton(
-                          onPressed: () => setLocalState(() => dueAt = null),
-                          icon: const Icon(Icons.clear_rounded),
-                        ),
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(),
-                child: const Text('إلغاء'),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.of(dialogContext).pop((controller.text, dueAt)),
-                child: const Text('إضافة'),
-              ),
-            ],
-          ),
-        ),
-      );
-      if (!mounted || result == null || result.$1.trim().isEmpty) return;
-      setState(() => _saving = true);
       await _service.create(
         householdId: widget.household.id,
         createdBy: widget.currentMembership.userId,
@@ -136,7 +80,6 @@ class _HouseholdTasksPageState extends State<HouseholdTasksPage> {
         );
       }
     } finally {
-      controller.dispose();
       if (mounted) setState(() => _saving = false);
     }
   }
@@ -225,38 +168,83 @@ class _HouseholdTasksPageState extends State<HouseholdTasksPage> {
                       Card(child: Padding(padding: const EdgeInsets.all(18), child: Column(children: [Text(_error!, textAlign: TextAlign.center), const SizedBox(height: 10), OutlinedButton(onPressed: _load, child: const Text('إعادة المحاولة'))])))
                     else if (_tasks.isEmpty)
                       const Card(child: Padding(padding: EdgeInsets.all(20), child: Text('مفيش مهام مشتركة لسه. أضف أول مهمة للبيت.')))
-                    else ...[
+                    else
                       for (final task in _tasks)
                         Card(
                           child: ListTile(
-                            leading: Checkbox(
-                              value: task.completed,
-                              onChanged: _saving ? null : (_) => _toggle(task),
-                            ),
-                            title: Text(
-                              task.title,
-                              style: TextStyle(
-                                fontWeight: FontWeight.w800,
-                                decoration: task.completed ? TextDecoration.lineThrough : null,
-                              ),
-                            ),
-                            subtitle: Text(
-                              task.dueAt == null
-                                  ? 'بدون موعد'
-                                  : 'الموعد: ${MaterialLocalizations.of(context).formatShortDate(task.dueAt!.toLocal())}',
-                            ),
-                            trailing: IconButton(
-                              tooltip: 'حذف',
-                              onPressed: _saving ? null : () => _delete(task),
-                              icon: const Icon(Icons.delete_outline_rounded),
-                            ),
+                            leading: Checkbox(value: task.completed, onChanged: _saving ? null : (_) => _toggle(task)),
+                            title: Text(task.title, style: TextStyle(fontWeight: FontWeight.w800, decoration: task.completed ? TextDecoration.lineThrough : null)),
+                            subtitle: Text(task.dueAt == null ? 'بدون موعد' : 'الموعد: ${MaterialLocalizations.of(context).formatShortDate(task.dueAt!.toLocal())}'),
+                            trailing: IconButton(tooltip: 'حذف', onPressed: _saving ? null : () => _delete(task), icon: const Icon(Icons.delete_outline_rounded)),
                           ),
                         ),
-                    ],
                   ],
                 ),
               ),
       ),
+    );
+  }
+}
+
+class _HouseholdTaskDialog extends StatefulWidget {
+  const _HouseholdTaskDialog();
+
+  @override
+  State<_HouseholdTaskDialog> createState() => _HouseholdTaskDialogState();
+}
+
+class _HouseholdTaskDialogState extends State<_HouseholdTaskDialog> {
+  final _controller = TextEditingController();
+  DateTime? _dueAt;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickDate() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      firstDate: DateUtils.dateOnly(now),
+      lastDate: DateUtils.dateOnly(now.add(const Duration(days: 3650))),
+      initialDate: _dueAt ?? DateUtils.dateOnly(now),
+    );
+    if (picked != null && mounted) setState(() => _dueAt = DateUtils.dateOnly(picked));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('مهمة جديدة للبيت'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: _controller,
+            autofocus: true,
+            maxLength: 300,
+            decoration: const InputDecoration(labelText: 'المهمة', hintText: 'مثال: دفع فاتورة الكهرباء'),
+          ),
+          const SizedBox(height: 8),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.event_outlined),
+            title: Text(_dueAt == null ? 'بدون موعد' : MaterialLocalizations.of(context).formatFullDate(_dueAt!)),
+            trailing: _dueAt == null
+                ? TextButton(onPressed: _pickDate, child: const Text('اختيار'))
+                : IconButton(onPressed: () => setState(() => _dueAt = null), icon: const Icon(Icons.clear_rounded)),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('إلغاء')),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop((_controller.text.trim(), _dueAt)),
+          child: const Text('إضافة'),
+        ),
+      ],
     );
   }
 }
