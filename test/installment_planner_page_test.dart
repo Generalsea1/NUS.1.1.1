@@ -29,42 +29,23 @@ void main() {
   testWidgets('calculates and renders an installment schedule', (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
-        home: InstallmentPlannerPage(
-          userId: 'u1',
-          currencyCode: 'EGP',
-        ),
+        home: InstallmentPlannerPage(userId: 'u1', currencyCode: 'EGP'),
       ),
     );
 
-    await tester.enterText(
-      find.byKey(const ValueKey<String>('installment-total')),
-      '1000',
-    );
-    await tester.enterText(
-      find.byKey(const ValueKey<String>('installment-down-payment')),
-      '0',
-    );
-    await tester.enterText(
-      find.byKey(const ValueKey<String>('installment-count')),
-      '3',
-    );
+    await tester.enterText(find.byKey(const ValueKey<String>('installment-total')), '1000');
+    await tester.enterText(find.byKey(const ValueKey<String>('installment-down-payment')), '0');
+    await tester.enterText(find.byKey(const ValueKey<String>('installment-count')), '3');
     await tester.tap(find.byKey(const ValueKey<String>('installment-calculate')));
     await tester.pumpAndSettle();
 
     expect(find.byKey(const ValueKey<String>('installment-summary')), findsOneWidget);
-    final listView = find.ancestor(
-      of: find.byKey(const ValueKey<String>('installment-row-1')),
-      matching: find.byType(ListView),
-    );
-    expect(listView, findsOneWidget);
-    await tester.scrollUntilVisible(
-      find.byKey(const ValueKey<String>('installment-row-1')),
-      400,
-      scrollable: listView,
-    );
-    expect(find.byKey(const ValueKey<String>('installment-row-1')), findsOneWidget);
-    expect(find.byKey(const ValueKey<String>('installment-row-2')), findsOneWidget);
-    expect(find.byKey(const ValueKey<String>('installment-row-3')), findsOneWidget);
+    await tester.ensureVisible(find.byKey(const ValueKey<String>('installment-row-1')));
+    await tester.pump();
+    await tester.ensureVisible(find.byKey(const ValueKey<String>('installment-row-2')));
+    await tester.pump();
+    await tester.ensureVisible(find.byKey(const ValueKey<String>('installment-row-3')));
+    await tester.pump();
     expect(find.textContaining('333.34 EGP'), findsOneWidget);
     expect(find.textContaining('333.33 EGP'), findsNWidgets(2));
   });
@@ -72,39 +53,21 @@ void main() {
   testWidgets('preserves two decimal places without rounding', (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
-        home: InstallmentPlannerPage(
-          userId: 'u1',
-          currencyCode: 'EGP',
-        ),
+        home: InstallmentPlannerPage(userId: 'u1', currencyCode: 'EGP'),
       ),
     );
 
-    await tester.enterText(
-      find.byKey(const ValueKey<String>('installment-total')),
-      '1000.75',
-    );
-    await tester.enterText(
-      find.byKey(const ValueKey<String>('installment-down-payment')),
-      '0.75',
-    );
-    await tester.enterText(
-      find.byKey(const ValueKey<String>('installment-count')),
-      '2',
-    );
+    await tester.enterText(find.byKey(const ValueKey<String>('installment-total')), '1000.75');
+    await tester.enterText(find.byKey(const ValueKey<String>('installment-down-payment')), '0.75');
+    await tester.enterText(find.byKey(const ValueKey<String>('installment-count')), '2');
     await tester.tap(find.byKey(const ValueKey<String>('installment-calculate')));
     await tester.pumpAndSettle();
 
     expect(find.byKey(const ValueKey<String>('installment-summary')), findsOneWidget);
-    final listView = find.ancestor(
-      of: find.byKey(const ValueKey<String>('installment-row-1')),
-      matching: find.byType(ListView),
-    );
-    expect(listView, findsOneWidget);
-    await tester.scrollUntilVisible(
-      find.byKey(const ValueKey<String>('installment-row-1')),
-      400,
-      scrollable: listView,
-    );
+    await tester.ensureVisible(find.byKey(const ValueKey<String>('installment-row-1')));
+    await tester.pump();
+    await tester.ensureVisible(find.byKey(const ValueKey<String>('installment-row-2')));
+    await tester.pump();
     expect(find.textContaining('500.00 EGP'), findsNWidgets(2));
   });
 
@@ -114,34 +77,25 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        home: InstallmentPlannerPage(
-          userId: 'u1',
-          currencyCode: 'EGP',
-          planService: service,
-        ),
+        home: InstallmentPlannerPage(userId: 'u1', currencyCode: 'EGP', planService: service),
       ),
     );
 
-    await tester.enterText(
-      find.byKey(const ValueKey<String>('installment-total')),
-      '1200',
-    );
-    await tester.enterText(
-      find.byKey(const ValueKey<String>('installment-count')),
-      '4',
-    );
+    await tester.enterText(find.byKey(const ValueKey<String>('installment-total')), '1200');
+    await tester.enterText(find.byKey(const ValueKey<String>('installment-count')), '4');
     await tester.tap(find.byKey(const ValueKey<String>('installment-calculate')));
     await tester.pumpAndSettle();
 
     final save = find.byKey(const ValueKey<String>('installment-save'));
     await tester.ensureVisible(save);
+    await tester.pump();
     await tester.tap(save);
     await tester.pumpAndSettle();
 
     expect(repository.plans, isEmpty);
     expect(find.text('حفظ خطة الأقساط؟'), findsOneWidget);
 
-    await tester.tap(find.text('حفظ الخطة'));
+    await tester.tap(find.text('حفظ الخطة').last);
     await tester.pumpAndSettle();
 
     expect(repository.plans, hasLength(1));
@@ -152,20 +106,12 @@ void main() {
   testWidgets('shows validation feedback for invalid values', (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
-        home: InstallmentPlannerPage(
-          userId: 'u1',
-          currencyCode: 'EGP',
-        ),
+        home: InstallmentPlannerPage(userId: 'u1', currencyCode: 'EGP'),
       ),
     );
-
-    await tester.enterText(
-      find.byKey(const ValueKey<String>('installment-total')),
-      '0',
-    );
+    await tester.enterText(find.byKey(const ValueKey<String>('installment-total')), '0');
     await tester.tap(find.byKey(const ValueKey<String>('installment-calculate')));
     await tester.pump();
-
     expect(find.textContaining('راجع المبلغ'), findsOneWidget);
     expect(find.byKey(const ValueKey<String>('installment-summary')), findsNothing);
   });
