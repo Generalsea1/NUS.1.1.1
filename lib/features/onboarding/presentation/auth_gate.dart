@@ -5,13 +5,17 @@ import 'package:flutter/material.dart';
 import '../../../core/auth/auth_repository.dart';
 import '../../../core/auth/auth_state.dart';
 import '../../../core/auth/supabase_auth_repository.dart';
+import '../../../core/supabase_service.dart';
 import '../../expenses/application/expense_lifecycle_service.dart';
 import '../../expenses/application/expense_management_service.dart';
 import '../../income/application/income_source_repository.dart';
 import '../../income/data/supabase_income_source_repository.dart';
 import '../../../legacy_main.dart' as legacy;
 import '../../shopping/application/shopping_lifecycle_service.dart';
+import '../../shopping/data/supabase_household_shopping_repository.dart';
+import '../../household/application/household_service.dart';
 import '../../household/presentation/household_page.dart';
+import '../../household/domain/household.dart';
 import '../application/household_profile_repository.dart';
 import '../application/household_profile_validator.dart';
 import '../data/supabase_household_profile_repository.dart';
@@ -58,6 +62,8 @@ class _AuthGateState extends State<AuthGate> {
 
   AuthState _authState = const UnauthenticatedAuthState();
   HouseholdProfile? _profile;
+  Household? _household;
+  ShoppingLifecycleService? _householdShoppingService;
   bool _initializing = true;
   bool _loadingProfile = false;
   String? _profileError;
@@ -98,6 +104,8 @@ class _AuthGateState extends State<AuthGate> {
     setState(() {
       _authState = state;
       _profile = null;
+      _household = null;
+      _householdShoppingService = null;
       _profileError = null;
       _loadingProfile = state.isAuthenticated;
     });
@@ -130,8 +138,27 @@ class _AuthGateState extends State<AuthGate> {
     try {
       final profile = await _profileRepository.load(userId);
       if (!mounted) return;
+
+      Household? household;
+      ShoppingLifecycleService? householdShoppingService;
+      final supabaseReady = SupabaseService.client != null;
+      if (supabaseReady) {
+        try {
+          household = await HouseholdService(repository: const SupabaseHouseholdRepository()).getOrCreateForUser(
+            userId: userId,
+          );
+          householdShoppingService = ShoppingLifecycleService(
+            repository: SupabaseHouseholdShoppingRepository(householdId: household.id),
+          );
+        } catch (_) {
+          // Keep Today usable in offline/local-first mode when household sharing is unavailable.
+        }
+      }
+
       setState(() {
         _profile = profile;
+        _household = household;
+        _householdShoppingService = householdShoppingService;
         _profileError = null;
         _loadingProfile = false;
         _initializing = false;
@@ -212,6 +239,7 @@ class _AuthGateState extends State<AuthGate> {
       );
     }
 
+    final shoppingService = _householdShoppingService ?? widget.shoppingService;
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Stack(
@@ -220,7 +248,7 @@ class _AuthGateState extends State<AuthGate> {
             profile: profile,
             scheduleStore: widget.scheduleStore,
             expenseManagementService: widget.expenseManagementService,
-            shoppingService: widget.shoppingService,
+            shoppingService: shoppingService,
             onOpenFinance: () => _openFinance(context, profile),
             onOpenAppointments: widget.onOpenGeneralHome == null ? null : () => widget.onOpenGeneralHome!(context),
             onCreateReminder: widget.onCreateReminder,
@@ -232,7 +260,7 @@ class _AuthGateState extends State<AuthGate> {
               key: const ValueKey<String>('open-household-space'),
               onPressed: () => _openHousehold(context, userId),
               icon: const Icon(Icons.home_work_outlined),
-              label: const Text('البيت'),
+              label: Text(_household == null ? 'البيت' : _household!.name),
             ),
           ),
         ],
