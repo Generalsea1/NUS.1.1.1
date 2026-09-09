@@ -1,7 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nus/core/proactive_notification_coordinator.dart';
 import 'package:nus/core/proactive_notification_delivery.dart';
-import 'package:nus/core/proactive_notifications.dart';
 import 'package:nus/notification_service.dart';
 import 'package:nus/features/appointments/domain/appointment.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -47,13 +46,14 @@ void main() {
   test('syncAppointments creates a 30-minute lead signal only when no explicit reminder exists', () async {
     SharedPreferences.setMockInitialValues({});
     final scheduler = _FakeScheduler();
+    final prefs = await SharedPreferences.getInstance();
     final coordinator = NusProactiveNotificationCoordinator(
       scheduler: scheduler,
       delivery: NusProactiveNotificationDelivery(
         scheduler: scheduler,
-        preferences: await SharedPreferences.getInstance(),
+        preferences: prefs,
       ),
-      preferences: await SharedPreferences.getInstance(),
+      preferences: prefs,
     );
     final now = DateTime(2026, 9, 9, 10);
 
