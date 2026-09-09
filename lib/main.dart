@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'core/proactive_notification_delivery.dart';
+import 'core/proactive_notifications.dart';
 import 'core/supabase_service.dart';
 import 'notification_service.dart';
+import 'features/appointments/data/local_appointment_repository.dart';
+import 'features/appointments/domain/appointment.dart';
 import 'features/expenses/application/expense_lifecycle_service.dart';
 import 'features/expenses/application/expense_management_service.dart';
 import 'features/expenses/data/supabase_expense_repository.dart';
@@ -26,6 +30,29 @@ Future<void> main() async {
   final store = legacy.ScheduleStore(notifications: notifications);
   await store.load();
   await store.reschedulePending();
+
+  final appointmentRepository = LocalAppointmentRepository();
+  final appointments = await appointmentRepository.list();
+  final now = DateTime.now();
+  final proactiveSignals = appointments
+      .where(
+        (appointment) =>
+            appointment.status == AppointmentStatus.upcoming &&
+            appointment.reminder == AppointmentReminder.none,
+      )
+      .map((appointment) {
+        final scheduledAt = appointment.startsAt.subtract(const Duration(minutes: 30));
+        return NusProactiveSignal(
+          id: 'appointment-lead:${appointment.id}',
+          title: 'موعد قريب',
+          body: 'عندك «${appointment.title}» بعد 30 دقيقة.',
+          scheduledAt: scheduledAt,
+        );
+      });
+  await NusProactiveNotificationDelivery(scheduler: notifications).sync(
+    now: now,
+    signals: proactiveSignals,
+  );
 
   final medicationService = MedicationLifecycleService(
     repository: LocalMedicationRepository(),
