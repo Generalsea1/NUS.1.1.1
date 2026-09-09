@@ -13,6 +13,7 @@ import '../../shopping/application/shopping_lifecycle_service.dart';
 import '../../shopping/data/local_shopping_repository.dart';
 import '../domain/nus_quick_add_intent.dart';
 import '../domain/nus_quick_add_parser.dart';
+import '../domain/nus_shopping_text_parser.dart';
 import '../domain/nus_voice_input.dart';
 
 class NusQuickAddPage extends StatefulWidget {
@@ -194,7 +195,7 @@ class _NusQuickAddPageState extends State<NusQuickAddPage> {
   Future<void> _saveShopping(String raw) async {
     final service = widget.shoppingService ??
         ShoppingLifecycleService(repository: LocalShoppingRepository());
-    final items = _extractShoppingItems(raw);
+    final items = NusShoppingTextParser.parse(raw);
     if (items.isEmpty) {
       _showMessage('محتاج أعرف اسم المشتريات الأول.');
       return;
@@ -283,44 +284,6 @@ class _NusQuickAddPageState extends State<NusQuickAddPage> {
     } finally {
       if (mounted) setState(() => _saving = false);
     }
-  }
-
-  List<String> _extractShoppingItems(String raw) {
-    var text = raw.trim();
-    const prefixes = <String>[
-      'قائمة المشتريات',
-      'قائمه المشتريات',
-      'مشتريات',
-      'هات ',
-      'هات',
-      'جيب ',
-      'جيب',
-      'اشتري ',
-      'اشتري',
-      'اشترى ',
-      'اشترى',
-      'عايز اجيب ',
-      'عايز أجيب ',
-      'عايز اجيب',
-      'عايز أجيب',
-    ];
-    for (final prefix in prefixes) {
-      if (text.startsWith(prefix)) {
-        text = text.substring(prefix.length).trim();
-        break;
-      }
-    }
-    text = text
-        .replaceAll('قائمة المشتريات', '')
-        .replaceAll('قائمه المشتريات', '')
-        .trim();
-    return text
-        .replaceAll('،', ',')
-        .split(RegExp(r'\s+و\s+|,|\n'))
-        .map((item) => item.trim())
-        .where((item) => item.isNotEmpty)
-        .toSet()
-        .toList(growable: false);
   }
 
   String _categoryLabel(String code) {
