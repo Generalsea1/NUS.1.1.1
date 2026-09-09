@@ -48,6 +48,18 @@ void main() {
     expect(insights.any((item) => item.message.contains('كشف طبي')), isTrue);
   });
 
+  test('surfaces pending shopping as a cross-domain daily insight', () {
+    final insights = NusDailyIntelligence.build(
+      profile: _profile(),
+      appointments: const [],
+      pendingShoppingItemCount: 4,
+      now: DateTime(2026, 9, 9, 9),
+    );
+
+    expect(insights.any((item) => item.title == 'قائمة المشتريات مستنياك'), isTrue);
+    expect(insights.any((item) => item.message.contains('4 عناصر')), isTrue);
+  });
+
   test('reports calendar overload when at least three appointments are upcoming', () {
     final appointments = List.generate(
       3,
