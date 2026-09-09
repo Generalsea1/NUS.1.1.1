@@ -18,7 +18,7 @@ class ShoppingLifecycleService {
   Future<ShoppingList> createList({required String name}) async {
     ShoppingList list;
     do {
-      list = ShoppingList(id: _newId(), name: name);
+      list = ShoppingList(id: _newId('sl'), name: name);
     } while (await _repository.getById(list.id) != null);
 
     await _repository.save(list);
@@ -66,7 +66,7 @@ class ShoppingLifecycleService {
 
     ShoppingItem item;
     do {
-      item = ShoppingItem(id: _newId(), name: cleanName, quantity: quantity);
+      item = ShoppingItem(id: _newId('si'), name: cleanName, quantity: quantity);
     } while (existing.items.any((current) => current.id == item.id));
 
     final updated = existing.addItem(item);
@@ -123,15 +123,9 @@ class ShoppingLifecycleService {
     return list;
   }
 
-  static String _newId() {
-    String hex(int width) =>
-        _random.nextInt(1 << (width * 4)).toRadixString(16).padLeft(width, '0');
-
-    final p1 = hex(8);
-    final p2 = hex(4);
-    final p3 = (0x4000 | _random.nextInt(0x1000)).toRadixString(16).padLeft(4, '0');
-    final p4 = (0x8000 | _random.nextInt(0x4000)).toRadixString(16).padLeft(4, '0');
-    final p5 = hex(12);
-    return '$p1-$p2-$p3-$p4-$p5';
+  static String _newId(String prefix) {
+    final first = _random.nextInt(1 << 32).toRadixString(16).padLeft(8, '0');
+    final second = _random.nextInt(1 << 32).toRadixString(16).padLeft(8, '0');
+    return '$prefix-$first$second';
   }
 }
