@@ -78,6 +78,29 @@ class SupabaseHouseholdRepository implements HouseholdRepository {
   }
 
   @override
+  Future<List<HouseholdMember>> listHouseholdMembers(String householdId) async {
+    final cleanHouseholdId = householdId.trim();
+    if (cleanHouseholdId.isEmpty) {
+      throw ArgumentError.value(householdId, 'householdId', 'Household ID is required.');
+    }
+
+    final rows = await _client()
+        .from('household_members')
+        .select('household_id,user_id,role,status')
+        .eq('household_id', cleanHouseholdId)
+        .order('created_at', ascending: true);
+
+    return rows
+        .map((row) => HouseholdMember.fromJson(<String, dynamic>{
+              'householdId': row['household_id'],
+              'userId': row['user_id'],
+              'role': row['role'],
+              'status': row['status'],
+            }))
+        .toList(growable: false);
+  }
+
+  @override
   Future<HouseholdMember> addMembership(HouseholdMember member) async {
     if (member.userId.trim().isEmpty || member.householdId.trim().isEmpty) {
       throw ArgumentError('Household membership requires householdId and userId.');
