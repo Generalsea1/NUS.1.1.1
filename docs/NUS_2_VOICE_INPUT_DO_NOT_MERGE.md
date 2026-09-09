@@ -1,0 +1,1 @@
+Do not merge the voice branch until the native dependency/platform configuration has been reviewed and CI is green. This branch is an implementation candidate, not yet a production release.
