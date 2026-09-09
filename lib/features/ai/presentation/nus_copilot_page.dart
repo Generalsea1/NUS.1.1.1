@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/ai/ai_insight.dart';
+import '../../finance/application/financial_advisor.dart';
 import '../../onboarding/domain/household_profile.dart';
 import '../../today/data/speech_to_text_nus_voice_input.dart';
 import '../../today/domain/nus_voice_input.dart';
@@ -10,6 +11,7 @@ class NusCopilotPage extends StatefulWidget {
   const NusCopilotPage({
     super.key,
     required this.profile,
+    required this.loadFinancialSnapshot,
     this.onCreateReminder,
     this.onOpenAppointments,
     this.onOpenFinance,
@@ -17,6 +19,7 @@ class NusCopilotPage extends StatefulWidget {
   });
 
   final HouseholdProfile profile;
+  final Future<FinancialAdvisorSnapshot?> Function()? loadFinancialSnapshot;
   final Future<void> Function(String title, DateTime dateTime)? onCreateReminder;
   final VoidCallback? onOpenAppointments;
   final VoidCallback? onOpenFinance;
@@ -64,18 +67,21 @@ class _NusCopilotPageState extends State<NusCopilotPage> {
     });
 
     try {
+      final loader = widget.loadFinancialSnapshot;
+      if (loader == null) {
+        throw const FinancialAdvisorUnavailableException('البيانات المالية غير جاهزة للمساعد حاليًا.');
+      }
+      final snapshot = await loader();
+      if (snapshot == null) {
+        throw const FinancialAdvisorUnavailableException('تعذر قراءة بيانات Financial Engine الحالية. لن نخترع أرقامًا.');
+      }
+
+      final request = snapshot.toAiRequest();
       final provider = FinancialCopilotProvider();
       final answer = await provider.generateInsight(
         AiInsightRequest(
-          objective: question,
-          context: [
-            AiContextItem(
-              domain: 'household_profile',
-              entityId: 'current_household',
-              summary:
-                  'country=${widget.profile.countryCode}; currency=${widget.profile.currencyCode}; householdSize=${widget.profile.householdSize}; adults=${widget.profile.adults}; children=${widget.profile.children}; monthlyIncome=${widget.profile.monthlyIncome}; recurringObligations=${widget.profile.recurringObligations}; remainingAfterObligations=${widget.profile.remainingAfterObligations}',
-            ),
-          ],
+          objective: '$question. $\{request.objective\}',
+          context: request.context,
         ),
       );
       if (!mounted) return;
@@ -137,7 +143,7 @@ class _NusCopilotPageState extends State<NusCopilotPage> {
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text('مساعد NUS المالي', style: TextStyle(fontSize: 23, fontWeight: FontWeight.w900)),
                   SizedBox(height: 6),
-                  Text('اسأل NUS عن الدخل والالتزامات والقرارات المالية. اختار الإجراء المناسب من تحت، والتنفيذ الحساس يفضل باختيار صريح منك.'),
+                  Text('اسأل NUS عن الدخل والالتزامات والقرارات المالية. البيانات بتتسحب من Financial Engine الحالي بدون اختراع أرقام.'),
                 ]),
               ),
             ),
@@ -222,24 +228,9 @@ class _NusCopilotPageState extends State<NusCopilotPage> {
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             const Text('إجراءات سريعة', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
             const SizedBox(height: 8),
-            _action(
-              icon: Icons.alarm_add_rounded,
-              title: 'اعملي تذكير',
-              subtitle: 'أضف تذكير عبر نفس محرك NUS الحالي.',
-              onTap: _createReminder,
-            ),
-            _action(
-              icon: Icons.event_available_rounded,
-              title: 'افتح مواعيدي',
-              subtitle: 'راجع أو عدّل مواعيدك.',
-              onTap: widget.onOpenAppointments,
-            ),
-            _action(
-              icon: Icons.account_balance_wallet_rounded,
-              title: 'افتح فلوسي',
-              subtitle: 'راجع الدخل والالتزامات والأهداف.',
-              onTap: widget.onOpenFinance,
-            ),
+            _action(icon: Icons.alarm_add_rounded, title: 'اعملي تذكير', subtitle: 'أضف تذكير عبر نفس محرك NUS الحالي.', onTap: _createReminder),
+            _action(icon: Icons.event_available_rounded, title: 'افتح مواعيدي', subtitle: 'راجع أو عدّل مواعيدك.', onTap: widget.onOpenAppointments),
+            _action(icon: Icons.account_balance_wallet_rounded, title: 'افتح فلوسي', subtitle: 'راجع الدخل والالتزامات والأهداف.', onTap: widget.onOpenFinance),
           ]),
         ),
       );
