@@ -1,4 +1,4 @@
-enum NusQuickAddKind { reminder, shopping, expense }
+enum NusQuickAddKind { reminder, appointment, shopping, expense }
 
 class NusQuickAddIntent {
   const NusQuickAddIntent({
@@ -41,6 +41,22 @@ class NusQuickAddIntentClassifier {
       'اشتريت',
       'دفعت الحساب',
     ]);
+    final appointmentSignal = _hasAny(text, const [
+      'ميعاد',
+      'موعد',
+      'اجتماع',
+      'ميتنج',
+      'مقابله',
+      'كشف',
+      'دكتور',
+      'طبيب',
+      'عياده',
+      'سفر',
+      'رحله',
+      'مكالمة',
+      'مكالمة',
+      'اتصال',
+    ]);
     final shoppingSignal = _hasAny(text, const [
       'اشتري',
       'اشتريت',
@@ -65,6 +81,14 @@ class NusQuickAddIntentClassifier {
         currencyCode: currency,
         expenseCategoryCode: _category(text),
         confidence: 95,
+      );
+    }
+
+    if (appointmentSignal && !expenseSignal) {
+      return NusQuickAddIntent(
+        kind: NusQuickAddKind.appointment,
+        normalizedText: text,
+        confidence: 94,
       );
     }
 
