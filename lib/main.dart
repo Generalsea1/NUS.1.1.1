@@ -152,6 +152,7 @@ class _Nus2AppState extends State<Nus2App> {
         scheduleStore: widget.store,
         expenseService: widget.expenseService,
         expenseManagementService: widget.expenseManagementService,
+        shoppingService: widget.shoppingService,
         onCreateReminder: (title, dateTime) => widget.store.add(title, dateTime),
         onOpenGeneralHome: (context) {
           Navigator.of(context).push(
