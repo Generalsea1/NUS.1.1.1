@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/proactive_notification_coordinator.dart';
 import '../../../notification_service.dart';
 import '../application/appointment_reminder_coordinator.dart';
 import '../data/appointment_reminder_adapter.dart';
@@ -19,6 +20,7 @@ class AppointmentsPage extends StatefulWidget {
 class _AppointmentsPageState extends State<AppointmentsPage> {
   late final AppointmentRepository _repository;
   late final AppointmentReminderCoordinator _reminders;
+  late final NusProactiveNotificationCoordinator _proactive;
   List<Appointment> _items = [];
   bool _loading = true;
   AppointmentStatus? _filter;
@@ -29,11 +31,13 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
     super.initState();
     _repository = widget.repository ?? LocalAppointmentRepository();
     _reminders = widget.reminderCoordinator ?? AppointmentReminderCoordinator(ReminderSchedulerAppointmentAdapter(NotificationService()));
+    _proactive = NusProactiveNotificationCoordinator(scheduler: NotificationService());
     _load();
   }
 
   Future<void> _load() async {
     final items = await _repository.list();
+    await _proactive.syncAppointments(now: DateTime.now(), appointments: items);
     if (!mounted) return;
     setState(() { _items = items; _loading = false; });
   }
