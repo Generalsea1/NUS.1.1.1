@@ -59,14 +59,9 @@ class NusDailyIntelligence {
     if (todayUpcoming.isNotEmpty || reminderIsToday) {
       final appointment = todayUpcoming.isEmpty ? null : todayUpcoming.first;
       final useReminder = reminderIsToday &&
-          (appointment == null || reminderAt.isBefore(appointment.startsAt));
+          (appointment == null || reminderAt!.isBefore(appointment.startsAt));
       final title = useReminder ? nextReminderTitle : appointment?.title;
-      final DateTime when;
-      if (useReminder && reminderAt != null) {
-        when = reminderAt;
-      } else {
-        when = appointment!.startsAt;
-      }
+      final when = useReminder ? reminderAt! : appointment!.startsAt;
 
       final time = TimeOfDay.fromDateTime(when);
       insights.add(NusDailyInsight(
