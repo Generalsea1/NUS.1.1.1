@@ -152,18 +152,19 @@ class _AuthGateState extends State<AuthGate> {
     await _resolveAuthenticatedUser(_authState);
   }
 
-  void _openNusToday() {
-    final profile = _profile;
-    if (profile == null) return;
+  void _openFinance(BuildContext context, HouseholdProfile profile) {
     Navigator.of(context).push<void>(
       MaterialPageRoute(
-        builder: (_) => NusTodayPage(
-          profile: profile,
-          onOpenFinance: () => Navigator.of(context).pop(),
-          onOpenAppointments: widget.onOpenGeneralHome == null
-              ? null
-              : () => widget.onOpenGeneralHome!(context),
-          onCreateReminder: widget.onCreateReminder,
+        builder: (_) => Directionality(
+          textDirection: TextDirection.rtl,
+          child: FinancialDashboardPage(
+            profile: profile,
+            incomeRepository: _incomeRepository,
+            expenseService: widget.expenseService,
+            expenseManagementService: widget.expenseManagementService,
+            onOpenGeneralHome: widget.onOpenGeneralHome,
+            onSignOut: () => _authRepository.signOut(),
+          ),
         ),
       ),
     );
@@ -183,7 +184,9 @@ class _AuthGateState extends State<AuthGate> {
     }
 
     final userId = _authState.session!.user.id;
-    if (_profileError != null) return _ErrorView(message: _profileError!, onRetry: _retryProfile);
+    if (_profileError != null) {
+      return _ErrorView(message: _profileError!, onRetry: _retryProfile);
+    }
 
     final profile = _profile;
     if (profile == null || !const HouseholdProfileValidator().isValid(profile)) {
@@ -201,32 +204,16 @@ class _AuthGateState extends State<AuthGate> {
       );
     }
 
-    return Stack(
-      children: [
-        Directionality(
-          textDirection: TextDirection.rtl,
-          child: FinancialDashboardPage(
-            profile: profile,
-            incomeRepository: _incomeRepository,
-            expenseService: widget.expenseService,
-            expenseManagementService: widget.expenseManagementService,
-            onOpenGeneralHome: widget.onOpenGeneralHome,
-            onSignOut: () => _authRepository.signOut(),
-          ),
-        ),
-        Positioned(
-          left: 18,
-          bottom: 18,
-          child: SafeArea(
-            child: FloatingActionButton.extended(
-              heroTag: 'nus-today-entry',
-              onPressed: _openNusToday,
-              icon: const Icon(Icons.auto_awesome_rounded),
-              label: const Text('NUS Today'),
-            ),
-          ),
-        ),
-      ],
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: NusTodayPage(
+        profile: profile,
+        onOpenFinance: () => _openFinance(context, profile),
+        onOpenAppointments: widget.onOpenGeneralHome == null
+            ? null
+            : () => widget.onOpenGeneralHome!(context),
+        onCreateReminder: widget.onCreateReminder,
+      ),
     );
   }
 }
