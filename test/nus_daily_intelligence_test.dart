@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:nus/features/appointments/domain/appointment.dart';
 import 'package:nus/features/onboarding/domain/household_profile.dart';
 import 'package:nus/features/today/domain/nus_daily_intelligence.dart';
+import 'package:nus/features/today/domain/nus_household_daily_brief.dart';
 
 HouseholdProfile _profile({int income = 10000, int obligations = 3000}) => HouseholdProfile(
       userId: 'user-1',
@@ -78,5 +79,72 @@ void main() {
     );
 
     expect(insights.any((item) => item.title == 'الأسبوع محتاج تنظيم'), isTrue);
+  });
+
+  test('daily brief prioritizes financial pressure over shopping', () {
+    final brief = NusHouseholdDailyBrief.build(
+      profile: _profile(),
+      appointments: const [],
+      pendingReminderCount: 0,
+      pendingShoppingItemCount: 5,
+      monthlyActualExpenseMinorUnits: 700000,
+      monthlyIncomeMinorUnits: 1000000,
+      monthlyObligationsMinorUnits: 400000,
+      now: DateTime(2026, 9, 9, 9),
+    );
+
+    expect(brief.priority, 'مالي');
+    expect(brief.headline, 'النهارده محتاج حماية للسيولة');
+  });
+
+  test('daily brief chooses organization when workload is heavy', () {
+    final brief = NusHouseholdDailyBrief.build(
+      profile: _profile(),
+      appointments: [
+        Appointment(
+          id: 'a1',
+          title: 'اجتماع',
+          startsAt: DateTime(2026, 9, 9, 10),
+        ),
+      ],
+      pendingReminderCount: 2,
+      pendingShoppingItemCount: 0,
+      monthlyActualExpenseMinorUnits: 100000,
+      monthlyIncomeMinorUnits: 1000000,
+      monthlyObligationsMinorUnits: 200000,
+      now: DateTime(2026, 9, 9, 9),
+    );
+
+    expect(brief.priority, 'تنظيم');
+    expect(brief.summary, contains('3'));
+    expect(brief.action, contains('موعدك الأقرب'));
+  });
+
+  test('daily brief is deterministic for identical facts', () {
+    final first = NusHouseholdDailyBrief.build(
+      profile: _profile(),
+      appointments: const [],
+      pendingReminderCount: 1,
+      pendingShoppingItemCount: 2,
+      monthlyActualExpenseMinorUnits: 100000,
+      monthlyIncomeMinorUnits: 1000000,
+      monthlyObligationsMinorUnits: 200000,
+      now: DateTime(2026, 9, 9, 9),
+    );
+    final second = NusHouseholdDailyBrief.build(
+      profile: _profile(),
+      appointments: const [],
+      pendingReminderCount: 1,
+      pendingShoppingItemCount: 2,
+      monthlyActualExpenseMinorUnits: 100000,
+      monthlyIncomeMinorUnits: 1000000,
+      monthlyObligationsMinorUnits: 200000,
+      now: DateTime(2026, 9, 9, 9),
+    );
+
+    expect(first.headline, second.headline);
+    expect(first.summary, second.summary);
+    expect(first.priority, second.priority);
+    expect(first.action, second.action);
   });
 }
