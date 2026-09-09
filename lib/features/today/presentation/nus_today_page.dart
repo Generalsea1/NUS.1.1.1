@@ -4,6 +4,7 @@ import '../../../legacy_main.dart' as legacy;
 import '../../ai/presentation/ai_hub_page.dart';
 import '../../appointments/data/local_appointment_repository.dart';
 import '../../appointments/domain/appointment.dart';
+import '../../expenses/application/expense_management_service.dart';
 import '../../onboarding/domain/household_profile.dart';
 import '../../settings/presentation/notification_settings_page.dart';
 import '../data/speech_to_text_nus_voice_input.dart';
@@ -15,6 +16,7 @@ class NusTodayPage extends StatefulWidget {
     super.key,
     required this.profile,
     this.scheduleStore,
+    this.expenseManagementService,
     this.onOpenAppointments,
     this.onOpenFinance,
     this.onCreateReminder,
@@ -22,6 +24,7 @@ class NusTodayPage extends StatefulWidget {
 
   final HouseholdProfile profile;
   final legacy.ScheduleStore? scheduleStore;
+  final ExpenseManagementService? expenseManagementService;
   final VoidCallback? onOpenAppointments;
   final VoidCallback? onOpenFinance;
   final Future<void> Function(String title, DateTime dateTime)? onCreateReminder;
@@ -34,12 +37,16 @@ class _NusTodayPageState extends State<NusTodayPage> {
   final LocalAppointmentRepository _appointments = LocalAppointmentRepository();
   List<Appointment> _appointmentItems = <Appointment>[];
   bool _loadingAppointments = true;
+  bool _loadingSpending = true;
+  int? _monthlyActual;
+  Object? _spendingError;
 
   @override
   void initState() {
     super.initState();
     widget.scheduleStore?.addListener(_onScheduleChanged);
     _loadAppointments();
+    _loadSpending();
   }
 
   @override
@@ -60,6 +67,37 @@ class _NusTodayPageState extends State<NusTodayPage> {
       _appointmentItems = items;
       _loadingAppointments = false;
     });
+  }
+
+  Future<void> _loadSpending() async {
+    final service = widget.expenseManagementService;
+    if (service == null) {
+      if (mounted) setState(() => _loadingSpending = false);
+      return;
+    }
+    setState(() {
+      _loadingSpending = true;
+      _spendingError = null;
+    });
+    try {
+      final now = DateTime.now();
+      final total = await service.monthlyActualTotal(
+        year: now.year,
+        month: now.month,
+        currencyCode: widget.profile.currencyCode,
+      );
+      if (!mounted) return;
+      setState(() {
+        _monthlyActual = total;
+        _loadingSpending = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _spendingError = error;
+        _loadingSpending = false;
+      });
+    }
   }
 
   Future<void> _openQuickAdd() async {
@@ -164,7 +202,12 @@ class _NusTodayPageState extends State<NusTodayPage> {
             ),
             IconButton(
               tooltip: 'تحديث',
-              onPressed: _loadingAppointments ? null : _loadAppointments,
+              onPressed: _loadingAppointments || _loadingSpending
+                  ? null
+                  : () async {
+                      await _loadAppointments();
+                      await _loadSpending();
+                    },
               icon: const Icon(Icons.refresh_rounded),
             ),
           ],
@@ -179,19 +222,13 @@ class _NusTodayPageState extends State<NusTodayPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      _greeting(),
-                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900),
-                    ),
+                    Text(_greeting(), style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900)),
                     const SizedBox(height: 6),
                     Text(
                       focusCount == 0
                           ? 'النهارده مفيش حاجة عاجلة في الجدول. NUS جاهز لأي إضافة جديدة.'
                           : 'عندك $focusCount ${focusCount == 1 ? 'حاجة' : 'حاجات'} محتاجة انتباه النهارده.',
-                      style: TextStyle(
-                        height: 1.4,
-                        color: Theme.of(context).colorScheme.onPrimaryContainer,
-                      ),
+                      style: TextStyle(height: 1.4, color: Theme.of(context).colorScheme.onPrimaryContainer),
                     ),
                     const SizedBox(height: 16),
                     Wrap(
@@ -207,6 +244,8 @@ class _NusTodayPageState extends State<NusTodayPage> {
                 ),
               ),
             ),
+            const SizedBox(height: 12),
+            _spendingSnapshot(),
             const SizedBox(height: 14),
             _dailyBriefing(insights),
             const SizedBox(height: 12),
@@ -217,7 +256,7 @@ class _NusTodayPageState extends State<NusTodayPage> {
                     context,
                     icon: Icons.add_task_rounded,
                     title: 'إضافة سريعة',
-                    subtitle: 'سجّل تذكير في ثواني',
+                    subtitle: 'سجّل تذكير بصوتك أو بالكلام الطبيعي',
                     onTap: _openQuickAdd,
                   ),
                 ),
@@ -266,11 +305,7 @@ class _NusTodayPageState extends State<NusTodayPage> {
                       padding: EdgeInsets.all(18),
                       child: Text('مفيش تذكيرات للنهارده. أضف أول حاجة محتاج تفتكرها.'),
                     )
-                  : Column(
-                      children: [
-                        for (final item in todayReminders) _reminderTile(item),
-                      ],
-                    ),
+                  : Column(children: [for (final item in todayReminders) _reminderTile(item)]),
             ),
             const SizedBox(height: 14),
             _section(
@@ -286,20 +321,13 @@ class _NusTodayPageState extends State<NusTodayPage> {
                           padding: EdgeInsets.all(18),
                           child: Text('مفيش مواعيد مسجلة النهارده.'),
                         )
-                      : Column(
-                          children: [
-                            for (final item in todayAppointments) _appointmentTile(item),
-                          ],
-                        ),
+                      : Column(children: [for (final item in todayAppointments) _appointmentTile(item)]),
             ),
             const SizedBox(height: 14),
             _section(
               title: 'الخطوة الجاية',
               icon: Icons.arrow_circle_left_rounded,
-              child: _nextAction(
-                appointments: nextAppointments,
-                reminders: upcomingReminders,
-              ),
+              child: _nextAction(appointments: nextAppointments, reminders: upcomingReminders),
             ),
             const SizedBox(height: 14),
             Card(
@@ -317,19 +345,62 @@ class _NusTodayPageState extends State<NusTodayPage> {
     );
   }
 
-  Widget _nextAction({
-    required List<Appointment> appointments,
-    required List<legacy.ScheduleItem> reminders,
-  }) {
+  Widget _spendingSnapshot() {
+    final monthName = MaterialLocalizations.of(context).formatMonthYear(DateTime.now());
+    if (_loadingSpending) {
+      return const Card(
+        child: ListTile(
+          leading: CircularProgressIndicator(),
+          title: Text('المصروف الفعلي هذا الشهر', style: TextStyle(fontWeight: FontWeight.w900)),
+          subtitle: Text('NUS بيقرأ البيانات المحفوظة…'),
+        ),
+      );
+    }
+    if (_spendingError != null) {
+      return Card(
+        child: ListTile(
+          leading: const Icon(Icons.info_outline_rounded),
+          title: const Text('المصروف الفعلي هذا الشهر', style: TextStyle(fontWeight: FontWeight.w900)),
+          subtitle: const Text('تعذر قراءة المصروفات الآن. البيانات المالية الأساسية لم تتغير.'),
+          trailing: IconButton(onPressed: _loadSpending, icon: const Icon(Icons.refresh_rounded)),
+        ),
+      );
+    }
+    final total = _monthlyActual ?? 0;
+    final elapsedDays = DateTime.now().day;
+    final averagePerDay = elapsedDays <= 0 ? 0 : total ~/ elapsedDays;
+    return Card(
+      color: Theme.of(context).colorScheme.secondaryContainer,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const CircleAvatar(child: Icon(Icons.account_balance_wallet_rounded)),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text('الصرف الفعلي — $monthName', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 17)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Text(_money(total), style: const TextStyle(fontSize: 27, fontWeight: FontWeight.w900)),
+            const SizedBox(height: 4),
+            Text('متوسط مسجل حتى الآن: ${_money(averagePerDay)} يوميًا'),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _nextAction({required List<Appointment> appointments, required List<legacy.ScheduleItem> reminders}) {
     final appointment = appointments.isEmpty ? null : appointments.first;
     final reminder = reminders.isEmpty ? null : reminders.first;
     if (appointment == null && reminder == null) {
-      return const Padding(
-        padding: EdgeInsets.all(18),
-        child: Text('مفيش حاجة جاية مسجلة. NUS فاضي وجاهز للي بعده.'),
-      );
+      return const Padding(padding: EdgeInsets.all(18), child: Text('مفيش حاجة جاية مسجلة. NUS فاضي وجاهز للي بعده.'));
     }
-
     if (appointment != null && (reminder == null || appointment.startsAt.isBefore(reminder.dateTime))) {
       return _appointmentTile(appointment);
     }
@@ -433,10 +504,7 @@ class _NusTodayPageState extends State<NusTodayPage> {
     final time = TimeOfDay.fromDateTime(item.dateTime).format(context);
     return ListTile(
       key: ValueKey<String>('today-reminder-${item.id}'),
-      leading: Checkbox(
-        value: item.completed,
-        onChanged: (_) => _toggleReminder(item),
-      ),
+      leading: Checkbox(value: item.completed, onChanged: (_) => _toggleReminder(item)),
       title: Text(
         item.title,
         style: TextStyle(
