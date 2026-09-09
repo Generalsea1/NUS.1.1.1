@@ -1,0 +1,1 @@
+CI gate: Analyze and full test suite must pass before voice input is merged. Production APK build must also complete successfully with an uploaded artifact.
