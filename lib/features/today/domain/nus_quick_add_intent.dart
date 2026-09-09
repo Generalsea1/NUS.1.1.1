@@ -36,9 +36,6 @@ class NusQuickAddIntentClassifier {
       'دفعه',
       'صرفت',
       'صرف',
-      'صرفـت',
-      'دفعة',
-      'دفع مبلغ',
       'فاتوره',
       'سددت',
       'سداد',
@@ -57,7 +54,7 @@ class NusQuickAddIntentClassifier {
       'عياده',
       'سفر',
       'رحله',
-      'مكالمة',
+      'مكالمه',
       'اتصال',
     ]);
     final shoppingSignal = _hasAny(text, const [
