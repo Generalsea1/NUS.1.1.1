@@ -108,7 +108,7 @@ void main() {
     expect(find.text('Netflix'), findsOneWidget);
     expect(find.text('Salary unrelated'), findsNothing);
     expect(find.text('JPY Service'), findsNothing);
-    expect(find.textContaining('300.00 EGP'), findsOneWidget);
+    expect(find.textContaining('300.00 EGP'), findsNWidgets(2));
 
     await tester.tap(find.byType(PopupMenuButton<String>).first);
     await tester.pumpAndSettle();
