@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../appointments/domain/appointment.dart';
+import '../../expenses/domain/currency_registry.dart';
 import '../../onboarding/domain/household_profile.dart';
 
 import 'nus_household_daily_brief.dart';
@@ -39,8 +40,8 @@ class NusDailyIntelligence {
       pendingReminderCount: pendingReminderCount,
       pendingShoppingItemCount: pendingShoppingItemCount,
       monthlyActualExpenseMinorUnits: 0,
-      monthlyIncomeMinorUnits: profile.monthlyIncome * _currencyScale(profile),
-      monthlyObligationsMinorUnits: profile.recurringObligations * _currencyScale(profile),
+      monthlyIncomeMinorUnits: profile.monthlyIncome * _currencyScale(profile.currencyCode),
+      monthlyObligationsMinorUnits: profile.recurringObligations * _currencyScale(profile.currencyCode),
       now: current,
     );
     insights.add(
@@ -115,9 +116,7 @@ class NusDailyIntelligence {
     return insights.take(3).toList(growable: false);
   }
 
-  static int _currencyScale(HouseholdProfile profile) {
-    final code = profile.currencyCode.trim().toUpperCase();
-    if (code == 'JPY' || code == 'KRW') return 1;
-    return 100;
+  static int _currencyScale(String currencyCode) {
+    return CurrencyRegistry.get(currencyCode.trim().toUpperCase()).scale;
   }
 }
