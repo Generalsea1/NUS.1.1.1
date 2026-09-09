@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/ai/ai_insight.dart';
-import '../../../core/supabase_service.dart';
 import '../../onboarding/domain/household_profile.dart';
 import '../../today/data/speech_to_text_nus_voice_input.dart';
 import '../../today/domain/nus_voice_input.dart';
@@ -199,7 +198,7 @@ class _NusCopilotPageState extends State<NusCopilotPage> {
                 child: Padding(
                   padding: const EdgeInsets.all(18),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Row(children: const [Icon(Icons.insights_rounded), SizedBox(width: 8), Text('رد NUS', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900))]),
+                    const Row(children: [Icon(Icons.insights_rounded), SizedBox(width: 8), Text('رد NUS', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900))]),
                     const SizedBox(height: 12),
                     SelectableText(_answer!.summary, style: const TextStyle(height: 1.55)),
                   ]),
