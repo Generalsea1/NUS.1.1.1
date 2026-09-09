@@ -31,7 +31,7 @@ class DebtPayoffPlan {
 
     final effectivePayment = monthlyPaymentMinorUnits + extraMonthlyPaymentMinorUnits;
     final months = (totalBalanceMinorUnits + effectivePayment - 1) ~/ effectivePayment;
-    if (months > 360) {
+    if (months > maxPayoffMonths) {
       throw ArgumentError.value(
         months,
         'payoffMonths',
@@ -79,10 +79,18 @@ class DebtPayoffPlan {
           remainingMinorUnits: remaining,
         ),
       );
-      dueDate = DateTime(dueDate.year, dueDate.month + 1, dueDate.day);
+      dueDate = _addOneMonth(dueDate);
       installmentNumber++;
     }
     return List.unmodifiable(result);
+  }
+
+  static DateTime _addOneMonth(DateTime date) {
+    final year = date.month == 12 ? date.year + 1 : date.year;
+    final month = date.month == 12 ? 1 : date.month + 1;
+    final lastDay = DateTime(year, month + 1, 0).day;
+    final day = date.day > lastDay ? lastDay : date.day;
+    return DateTime(year, month, day);
   }
 
   Map<String, dynamic> toMap() => <String, dynamic>{

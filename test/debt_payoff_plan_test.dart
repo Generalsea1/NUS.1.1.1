@@ -92,4 +92,36 @@ void main() {
       throwsArgumentError,
     );
   });
+
+  test('month-end dates stay in the next month instead of overflowing it', () {
+    final plan = DebtPayoffPlan(
+      id: 'd-month-end',
+      userId: 'u1',
+      title: 'إيجار متأخر',
+      currencyCode: 'EGP',
+      totalBalanceMinorUnits: 300,
+      monthlyPaymentMinorUnits: 100,
+      firstDueDate: DateTime(2026, 1, 31),
+    );
+
+    expect(
+      plan.schedule.map((item) => '${item.dueDate.year}-${item.dueDate.month}-${item.dueDate.day}').toList(),
+      ['2026-1-31', '2026-2-28', '2026-3-28'],
+    );
+
+    final leapPlan = DebtPayoffPlan(
+      id: 'd-leap-month-end',
+      userId: 'u1',
+      title: 'دفع يوم 29',
+      currencyCode: 'EGP',
+      totalBalanceMinorUnits: 300,
+      monthlyPaymentMinorUnits: 100,
+      firstDueDate: DateTime(2028, 1, 29),
+    );
+
+    expect(
+      leapPlan.schedule.map((item) => '${item.dueDate.year}-${item.dueDate.month}-${item.dueDate.day}').toList(),
+      ['2028-1-29', '2028-2-29', '2028-3-29'],
+    );
+  });
 }
