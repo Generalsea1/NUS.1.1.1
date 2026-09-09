@@ -27,6 +27,7 @@ class AuthGate extends StatefulWidget {
     this.expenseService,
     this.expenseManagementService,
     this.onOpenGeneralHome,
+    this.onCreateReminder,
   });
 
   final AuthRepository? authRepository;
@@ -35,6 +36,7 @@ class AuthGate extends StatefulWidget {
   final ExpenseLifecycleService? expenseService;
   final ExpenseManagementService? expenseManagementService;
   final void Function(BuildContext context)? onOpenGeneralHome;
+  final Future<void> Function(String title, DateTime dateTime)? onCreateReminder;
 
   @override
   State<AuthGate> createState() => _AuthGateState();
@@ -76,9 +78,7 @@ class _AuthGateState extends State<AuthGate> {
       final state = await _authRepository.initialize();
       if (!mounted) return;
       setState(() => _authState = state);
-      if (!_receivedAuthEvent) {
-        await _resolveAuthenticatedUser(state);
-      }
+      if (!_receivedAuthEvent) await _resolveAuthenticatedUser(state);
     } catch (error) {
       if (!mounted) return;
       setState(() {
@@ -136,8 +136,7 @@ class _AuthGateState extends State<AuthGate> {
       if (!mounted) return;
       setState(() {
         _profile = null;
-        _profileError =
-            'تعذر قراءة الملف المالي المحفوظ. لن نعتبر الإعداد مكتملًا قبل التأكد من البيانات.';
+        _profileError = 'تعذر قراءة الملف المالي المحفوظ. لن نعتبر الإعداد مكتملًا قبل التأكد من البيانات.';
         _loadingProfile = false;
         _initializing = false;
       });
@@ -164,6 +163,7 @@ class _AuthGateState extends State<AuthGate> {
           onOpenAppointments: widget.onOpenGeneralHome == null
               ? null
               : () => widget.onOpenGeneralHome!(context),
+          onCreateReminder: widget.onCreateReminder,
         ),
       ),
     );
@@ -172,9 +172,7 @@ class _AuthGateState extends State<AuthGate> {
   @override
   Widget build(BuildContext context) {
     if (_initializing || _loadingProfile) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     if (!_authState.isAuthenticated) {
@@ -185,9 +183,7 @@ class _AuthGateState extends State<AuthGate> {
     }
 
     final userId = _authState.session!.user.id;
-    if (_profileError != null) {
-      return _ErrorView(message: _profileError!, onRetry: _retryProfile);
-    }
+    if (_profileError != null) return _ErrorView(message: _profileError!, onRetry: _retryProfile);
 
     final profile = _profile;
     if (profile == null || !const HouseholdProfileValidator().isValid(profile)) {
