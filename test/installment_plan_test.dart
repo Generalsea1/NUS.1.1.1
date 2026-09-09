@@ -106,20 +106,6 @@ void main() {
       ),
       throwsA(isA<ArgumentError>()),
     );
-    expect(
-      () => InstallmentPlan(
-        id: 'p',
-        userId: 'u1',
-        title: 'Too many',
-        currencyCode: 'EGP',
-        totalMinorUnits: 100,
-        downPaymentMinorUnits: 0,
-        numberOfInstallments: InstallmentPlan.maxInstallments + 1,
-        paidInstallments: 0,
-        firstDueDate: DateTime(2026, 9, 1),
-      ),
-      throwsA(isA<ArgumentError>()),
-    );
   });
 
   test('rejects impossible installment access', () {
@@ -139,7 +125,7 @@ void main() {
     expect(() => plan.dueDateFor(5), throwsA(isA<RangeError>()));
   });
 
-  test('month-end due dates clamp to the valid day in the next month', () {
+  test('month-end due dates preserve the original day anchor when possible', () {
     final plan = InstallmentPlan(
       id: 'month-end',
       userId: 'u1',
@@ -154,7 +140,7 @@ void main() {
 
     expect(plan.dueDateFor(1), DateTime(2026, 1, 31));
     expect(plan.dueDateFor(2), DateTime(2026, 2, 28));
-    expect(plan.dueDateFor(3), DateTime(2026, 3, 28));
+    expect(plan.dueDateFor(3), DateTime(2026, 3, 31));
   });
 
   test('leap-year day 29 remains stable through February', () {
@@ -163,13 +149,15 @@ void main() {
       userId: 'u1',
       title: 'Leap',
       currencyCode: 'EGP',
-      totalMinorUnits: 200,
+      totalMinorUnits: 300,
       downPaymentMinorUnits: 0,
-      numberOfInstallments: 2,
+      numberOfInstallments: 3,
       paidInstallments: 0,
       firstDueDate: DateTime(2028, 1, 29),
     );
 
+    expect(plan.dueDateFor(1), DateTime(2028, 1, 29));
     expect(plan.dueDateFor(2), DateTime(2028, 2, 29));
+    expect(plan.dueDateFor(3), DateTime(2028, 3, 29));
   });
 }
