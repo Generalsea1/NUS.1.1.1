@@ -19,6 +19,17 @@ class ExpenseManagementService {
 
   Future<Expense> createExpense(Expense expense) async {
     _validateOccurrence(expense);
+
+    // Quick Add generates a fresh UI-level identifier for every attempt.
+    // Protect the authoritative boundary from a retry duplicating the same
+    // confirmed expense after a successful write followed by a transient UI
+    // failure. This fingerprint is intentionally limited to Quick Add writes
+    // so normal financial entry continues to permit legitimate duplicates.
+    if (expense.id.startsWith('quick-add-')) {
+      final duplicate = await _findEquivalentQuickAddExpense(expense);
+      if (duplicate != null) return duplicate;
+    }
+
     final actual = _looksLikeUuid(expense.id)
         ? expense
         : Expense(
@@ -39,6 +50,25 @@ class ExpenseManagementService {
           );
     await _expenses.save(actual);
     return actual;
+  }
+
+  Future<Expense?> _findEquivalentQuickAddExpense(Expense candidate) async {
+    for (final existing in await _expenses.list()) {
+      if (existing.userId != candidate.userId ||
+          existing.date != candidate.date ||
+          existing.amount != candidate.amount ||
+          existing.categoryCode != candidate.categoryCode ||
+          existing.expenseType != candidate.expenseType ||
+          existing.description != candidate.description ||
+          existing.merchant != candidate.merchant ||
+          existing.paymentMethod != candidate.paymentMethod ||
+          existing.recurringDefinitionId != candidate.recurringDefinitionId ||
+          existing.obligationId != candidate.obligationId) {
+        continue;
+      }
+      return existing;
+    }
+    return null;
   }
 
   Future<Expense> updateExpense(Expense expense) async {
