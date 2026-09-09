@@ -6,9 +6,6 @@ import 'package:nus/features/finance/domain/affordability.dart';
 import 'package:nus/features/finance/presentation/affordability_page.dart';
 
 class _FakeAffordabilityService implements AffordabilityService {
-  _FakeAffordabilityService({this.assessment});
-
-  final AffordabilityAssessment? assessment;
   int? lastScenarioMonths;
   bool? lastRecurring;
 
@@ -24,18 +21,17 @@ class _FakeAffordabilityService implements AffordabilityService {
   }) async {
     lastRecurring = recurring;
     lastScenarioMonths = scenarioMonths;
-    return assessment ??
-        AffordabilityAssessment(
-          status: AffordabilityStatus.affordable,
-          currencyCode: currencyCode,
-          proposedMinorUnits: proposedMinorUnits,
-          monthlyIncomeMinorUnits: 1000000,
-          monthlyObligationsMinorUnits: 200000,
-          existingActualExpensesMinorUnits: 100000,
-          resultingFreeCashMinorUnits: 600000,
-          horizonMonths: recurring ? scenarioMonths : 1,
-          minimumProjectedFreeCashMinorUnits: 600000,
-        );
+    return AffordabilityAssessment(
+      status: AffordabilityStatus.affordable,
+      currencyCode: currencyCode,
+      proposedMinorUnits: proposedMinorUnits,
+      monthlyIncomeMinorUnits: 1000000,
+      monthlyObligationsMinorUnits: 200000,
+      existingActualExpensesMinorUnits: 100000,
+      resultingFreeCashMinorUnits: 600000,
+      horizonMonths: recurring ? scenarioMonths : 1,
+      minimumProjectedFreeCashMinorUnits: 600000,
+    );
   }
 }
 
@@ -57,7 +53,7 @@ void main() {
 
     await tester.enterText(
       find.byKey(const ValueKey<String>('affordability-amount-input')),
-      '1000',
+      '1000.50',
     );
     await tester.tap(find.byKey(const ValueKey<String>('affordability-recurring-toggle')));
     await tester.pump();
