@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 
 import '../application/household_service.dart';
+import '../application/household_task_service.dart';
 import '../data/supabase_household_repository.dart';
+import '../data/supabase_household_task_repository.dart';
 import '../domain/household.dart';
 import 'household_members_page.dart';
+import 'household_tasks_page.dart';
 import '../../ai/presentation/nus_copilot_page.dart';
 import '../../shopping/application/shopping_lifecycle_service.dart';
 import '../../shopping/data/supabase_household_shopping_repository.dart';
@@ -72,9 +75,7 @@ class _HouseholdPageState extends State<HouseholdPage> {
       MaterialPageRoute(
         builder: (_) => ShoppingPage(
           service: ShoppingLifecycleService(
-            repository: SupabaseHouseholdShoppingRepository(
-              householdId: household.id,
-            ),
+            repository: SupabaseHouseholdShoppingRepository(householdId: household.id),
           ),
           isArabic: true,
         ),
@@ -88,6 +89,20 @@ class _HouseholdPageState extends State<HouseholdPage> {
         builder: (_) => HouseholdMembersPage(
           household: household,
           currentMembership: membership,
+        ),
+      ),
+    );
+  }
+
+  void _openTasks(Household household, HouseholdMember membership) {
+    Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => HouseholdTasksPage(
+          household: household,
+          currentMembership: membership,
+          service: HouseholdTaskService(
+            repository: const SupabaseHouseholdTaskRepository(),
+          ),
         ),
       ),
     );
@@ -200,6 +215,16 @@ class _HouseholdPageState extends State<HouseholdPage> {
                     subtitle: const Text('عرض العضوية والأدوار ودعوة أفراد جدد بصلاحيات واضحة.'),
                     trailing: const Icon(Icons.chevron_left_rounded),
                     onTap: () => _openMembers(household, membership!),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Card(
+                  child: ListTile(
+                    leading: const CircleAvatar(child: Icon(Icons.checklist_rounded)),
+                    title: const Text('مهام البيت', style: TextStyle(fontWeight: FontWeight.w900)),
+                    subtitle: const Text('قائمة مهام واحدة لكل أفراد البيت، مع مواعيد وإنجاز مشترك.'),
+                    trailing: const Icon(Icons.chevron_left_rounded),
+                    onTap: () => _openTasks(household, membership!),
                   ),
                 ),
                 const SizedBox(height: 12),
