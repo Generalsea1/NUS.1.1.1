@@ -27,6 +27,10 @@ class _FakeHouseholdRepository implements HouseholdRepository {
       memberships.where((member) => member.userId == userId).toList(growable: false);
 
   @override
+  Future<List<HouseholdMember>> listHouseholdMembers(String householdId) async =>
+      memberships.where((member) => member.householdId == householdId).toList(growable: false);
+
+  @override
   Future<HouseholdMember> addMembership(HouseholdMember member) async {
     memberships = [...memberships, member];
     return member;
@@ -85,6 +89,21 @@ void main() {
     expect(result.name, 'بيت العيلة');
     expect(result.ownerUserId, 'u1');
     expect(repository.createCount, 1);
+  });
+
+  test('lists only members of the requested household', () async {
+    final repository = _FakeHouseholdRepository(
+      memberships: [
+        const HouseholdMember(householdId: 'h1', userId: 'u1', role: 'owner', status: 'active'),
+        const HouseholdMember(householdId: 'h1', userId: 'u2', role: 'member', status: 'active'),
+        const HouseholdMember(householdId: 'h2', userId: 'u3', role: 'member', status: 'active'),
+      ],
+    );
+
+    final result = await repository.listHouseholdMembers('h1');
+
+    expect(result.map((member) => member.userId), containsAll(<String>['u1', 'u2']));
+    expect(result.map((member) => member.userId), isNot(contains('u3')));
   });
 
   test('ignores inactive memberships', () async {
