@@ -21,6 +21,7 @@ class _NusQuickAddPageState extends State<NusQuickAddPage> {
   bool _listening = false;
   String? _voiceError;
   bool _scheduleDetected = false;
+  bool _timeWasExplicitlySelected = false;
   NusQuickAddIntent? _intent;
 
   @override
@@ -29,7 +30,12 @@ class _NusQuickAddPageState extends State<NusQuickAddPage> {
     super.dispose();
   }
 
-  void _setTime(DateTime value) => setState(() => _dateTime = value);
+  void _setTime(DateTime value, {bool explicit = true}) {
+    setState(() {
+      _dateTime = value;
+      _timeWasExplicitlySelected = explicit;
+    });
+  }
 
   void _refreshIntent() {
     final raw = _title.text.trim();
@@ -104,6 +110,7 @@ class _NusQuickAddPageState extends State<NusQuickAddPage> {
     setState(() {
       _dateTime = parsed.dateTime;
       _scheduleDetected = parsed.scheduleDetected;
+      _timeWasExplicitlySelected = parsed.scheduleDetected;
       _intent = NusQuickAddIntentClassifier.classify(parsed.title);
     });
     if (parsed.scheduleDetected && parsed.title != raw) {
@@ -131,7 +138,7 @@ class _NusQuickAddPageState extends State<NusQuickAddPage> {
     }
     final parsed = NusQuickAddParser.parse(raw, now: DateTime.now());
     final title = parsed.title;
-    final dateTime = _scheduleDetected ? _dateTime : parsed.dateTime;
+    final dateTime = _timeWasExplicitlySelected ? _dateTime : parsed.dateTime;
     if (title.isEmpty || dateTime.isBefore(DateTime.now())) return;
     setState(() => _saving = true);
     try {
