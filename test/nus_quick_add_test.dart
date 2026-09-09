@@ -25,7 +25,8 @@ void main() {
 
     await tester.enterText(find.byType(TextField), 'دفع الكهرباء');
     await tester.tap(find.text('بكرة 9 صباحًا'));
-    await tester.ensureVisible(find.byKey(const ValueKey<String>('quick-add-save')));
+    await tester.drag(find.byType(ListView), const Offset(0, -900));
+    await tester.pump();
     await tester.tap(find.byKey(const ValueKey<String>('quick-add-save')));
     await tester.pumpAndSettle();
 
@@ -53,9 +54,9 @@ void main() {
     expect(find.text('NUS فهمها كـ مصروف'), findsOneWidget);
     expect(find.textContaining('350 EGP'), findsOneWidget);
 
-    final saveButtonFinder = find.byKey(const ValueKey<String>('quick-add-save'));
-    await tester.ensureVisible(saveButtonFinder);
+    await tester.drag(find.byType(ListView), const Offset(0, -1100));
     await tester.pump();
+    final saveButtonFinder = find.byKey(const ValueKey<String>('quick-add-save'));
     final saveButton = tester.widget<FilledButton>(saveButtonFinder);
     expect(saveButton.onPressed, isNull);
 
