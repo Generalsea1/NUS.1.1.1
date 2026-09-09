@@ -20,15 +20,15 @@ HouseholdProfile _profile({int income = 10000, int obligations = 3000}) => House
     );
 
 void main() {
-  test('flags negative remaining income without inventing values', () {
+  test('integrates the household daily brief as the primary Today insight', () {
     final insights = NusDailyIntelligence.build(
       profile: _profile(income: 5000, obligations: 7000),
       appointments: const [],
       now: DateTime(2026, 9, 9, 9),
     );
 
-    expect(insights.first.title, 'الميزانية محتاجة تركيز');
-    expect(insights.first.message, contains('أعلى من الدخل المسجل'));
+    expect(insights.first.title, 'النهارده محتاج حماية للسيولة');
+    expect(insights.first.message, contains('راجع أقرب التزامات'));
   });
 
   test('surfaces the next appointment today', () {
@@ -57,8 +57,8 @@ void main() {
       now: DateTime(2026, 9, 9, 9),
     );
 
-    expect(insights.any((item) => item.title == 'قائمة المشتريات مستنياك'), isTrue);
-    expect(insights.any((item) => item.message.contains('4 عناصر')), isTrue);
+    expect(insights.any((item) => item.title == 'المشتريات جاهزة للخطوة التالية'), isTrue);
+    expect(insights.any((item) => item.message.contains('4 عنصر')), isTrue);
   });
 
   test('reports calendar overload when at least three appointments are upcoming', () {
