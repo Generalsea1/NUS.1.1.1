@@ -137,6 +137,7 @@ void main() {
       scrollable: find.byType(Scrollable),
     );
     expect(find.byKey(const ValueKey<String>('cashflow-point-12/2026')), findsOneWidget);
-    expect(find.textContaining('السيولة المتوقعة موجبة'), findsOneWidget);
+
+    expect(find.byKey(const ValueKey<String>('cashflow-forecast-status-positive')), findsOneWidget);
   });
 }
