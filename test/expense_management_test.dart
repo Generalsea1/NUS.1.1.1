@@ -76,6 +76,7 @@ Expense _expense({
   ExpenseDate? date,
   String userId = 'u1',
   String? recurringId,
+  String? description,
 }) => Expense(
       id: id,
       userId: userId,
@@ -84,6 +85,7 @@ Expense _expense({
       categoryCode: category,
       expenseType: type,
       recurringDefinitionId: recurringId,
+      description: description,
     );
 
 RecurringExpenseDefinition _recurring({
@@ -152,6 +154,45 @@ void main() {
       service.createExpense(_expense(type: ExpenseType.recurring)),
       throwsA(isA<ArgumentError>()),
     );
+  });
+
+  test('quick-add expense creation is idempotent across fresh request IDs', () async {
+    final expenses = _ExpenseRepo();
+    final service = ExpenseManagementService(
+      expenseRepository: expenses,
+      recurringRepository: _RecurringRepo(),
+    );
+    final first = _expense(
+      id: 'quick-add-1',
+      minor: 35000,
+      category: 'transportation',
+      description: 'دفعت 350 جنيه مواصلات',
+    );
+    final second = _expense(
+      id: 'quick-add-2',
+      minor: 35000,
+      category: 'transportation',
+      description: 'دفعت 350 جنيه مواصلات',
+    );
+
+    final savedFirst = await service.createExpense(first);
+    final savedSecond = await service.createExpense(second);
+
+    expect(savedSecond.id, savedFirst.id);
+    expect(expenses.items, hasLength(1));
+    expect(expenses.items.single.amount.minorUnits, 35000);
+  });
+
+  test('ordinary expense creation still permits legitimate identical expenses', () async {
+    final expenses = _ExpenseRepo();
+    final service = ExpenseManagementService(
+      expenseRepository: expenses,
+      recurringRepository: _RecurringRepo(),
+    );
+    await service.createExpense(_expense(id: 'ordinary-1', minor: 1000));
+    await service.createExpense(_expense(id: 'ordinary-2', minor: 1000));
+
+    expect(expenses.items, hasLength(2));
   });
 
   test('recurring normalization is deterministic and respects effective dates', () {
