@@ -6,6 +6,15 @@ class HouseholdService {
 
   final HouseholdRepository _repository;
 
+  Future<List<HouseholdMember>> currentMemberships(String userId) async {
+    final cleanUserId = userId.trim();
+    if (cleanUserId.isEmpty) {
+      throw ArgumentError.value(userId, 'userId', 'Authenticated user is required.');
+    }
+    final memberships = await _repository.listMemberships(cleanUserId);
+    return List<HouseholdMember>.unmodifiable(memberships);
+  }
+
   Future<Household> getOrCreateForUser({
     required String userId,
     String defaultName = 'My Household',
@@ -15,7 +24,7 @@ class HouseholdService {
       throw ArgumentError.value(userId, 'userId', 'Authenticated user is required.');
     }
 
-    final memberships = await _repository.listMemberships(cleanUserId);
+    final memberships = await currentMemberships(cleanUserId);
     for (final membership in memberships) {
       if (!membership.isActive) continue;
       final household = await _repository.getById(membership.householdId);
