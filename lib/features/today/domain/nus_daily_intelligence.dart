@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart';
+
 import '../../appointments/domain/appointment.dart';
 import '../../onboarding/domain/household_profile.dart';
 
@@ -5,12 +7,12 @@ class NusDailyInsight {
   const NusDailyInsight({
     required this.title,
     required this.message,
-    required this.iconCodePoint,
+    required this.icon,
   });
 
   final String title;
   final String message;
-  final int iconCodePoint;
+  final IconData icon;
 }
 
 class NusDailyIntelligence {
@@ -22,20 +24,20 @@ class NusDailyIntelligence {
     DateTime? now,
   }) {
     final current = now ?? DateTime.now();
-    final today = DateTime(current.year, current.month, current.day);
+    final today = DateUtils.dateOnly(current);
     final insights = <NusDailyInsight>[];
 
     if (profile.remainingAfterObligations < 0) {
       insights.add(const NusDailyInsight(
         title: 'الميزانية محتاجة تركيز',
         message: 'الالتزامات الشهرية أعلى من الدخل المسجل. راجع الأرقام قبل أي التزام جديد.',
-        iconCodePoint: 0xe8e8,
+        icon: Icons.warning_amber_rounded,
       ));
     } else {
       insights.add(NusDailyInsight(
         title: 'مساحتك المالية الحالية',
         message: 'بعد الالتزامات المسجلة، المتاح هو ${profile.remainingAfterObligations} ${profile.currencyCode}.',
-        iconCodePoint: 0xe8e0,
+        icon: Icons.payments_outlined,
       ));
     }
 
@@ -48,41 +50,32 @@ class NusDailyIntelligence {
 
     if (todayUpcoming.isNotEmpty) {
       final next = todayUpcoming.first;
+      final time = TimeOfDay.fromDateTime(next.startsAt);
       insights.add(NusDailyInsight(
         title: 'عندك حاجة جاية النهارده',
-        message: '${next.title} الساعة ${TimeOfDay.fromDateTime(next.startsAt).format(_ContextlessTimeFormat.context)}.',
-        iconCodePoint: 0xe878,
+        message: '${next.title} الساعة ${time.hour}:${time.minute.toString().padLeft(2, '0')}.',
+        icon: Icons.event_available_rounded,
       ));
     } else {
       insights.add(const NusDailyInsight(
         title: 'اليوم هادي',
         message: 'مفيش موعد قادم مسجل النهارده. استغل المساحة في إنهاء أهم حاجة مؤجلة.',
-        iconCodePoint: 0xe8b8,
+        icon: Icons.wb_sunny_outlined,
       ));
     }
 
     final upcoming = appointments
         .where((item) => item.status == AppointmentStatus.upcoming)
         .where((item) => item.startsAt.isAfter(current))
-        .toList();
-    if (upcoming.length >= 3) {
+        .length;
+    if (upcoming >= 3) {
       insights.add(NusDailyInsight(
         title: 'الأسبوع محتاج تنظيم',
-        message: 'عندك ${upcoming.length} مواعيد جاية. راجعها مرة واحدة وحدد أولوياتك.',
-        iconCodePoint: 0xe8b5,
+        message: 'عندك $upcoming مواعيد جاية. راجعها مرة واحدة وحدد أولوياتك.',
+        icon: Icons.calendar_month_rounded,
       ));
     }
 
     return insights.take(3).toList();
   }
-}
-
-class _ContextlessTimeFormat {
-  const _ContextlessTimeFormat._();
-  static const context = _MaterialLocalizationsProxy();
-}
-
-class _MaterialLocalizationsProxy implements dynamic {
-  const _MaterialLocalizationsProxy();
-  String format(TimeOfDay time) => '${time.hour}:${time.minute.toString().padLeft(2, '0')}';
 }
