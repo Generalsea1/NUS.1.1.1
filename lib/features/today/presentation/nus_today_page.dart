@@ -43,7 +43,9 @@ class _NusTodayPageState extends State<NusTodayPage> {
   List<Appointment> _appointmentItems = const [];
   bool _loadingAppointments = true;
   bool _loadingSpending = true;
+  bool _loadingShopping = true;
   int? _monthlyActual;
+  int _pendingShoppingItemCount = 0;
   Object? _spendingError;
 
   @override
@@ -52,6 +54,7 @@ class _NusTodayPageState extends State<NusTodayPage> {
     widget.scheduleStore?.addListener(_onScheduleChanged);
     _loadAppointments();
     _loadSpending();
+    _loadShopping();
   }
 
   @override
@@ -60,6 +63,9 @@ class _NusTodayPageState extends State<NusTodayPage> {
     if (oldWidget.scheduleStore != widget.scheduleStore) {
       oldWidget.scheduleStore?.removeListener(_onScheduleChanged);
       widget.scheduleStore?.addListener(_onScheduleChanged);
+    }
+    if (oldWidget.shoppingService != widget.shoppingService) {
+      _loadShopping();
     }
   }
 
@@ -126,6 +132,36 @@ class _NusTodayPageState extends State<NusTodayPage> {
     }
   }
 
+  Future<void> _loadShopping() async {
+    final service = widget.shoppingService;
+    if (mounted) {
+      setState(() {
+        _loadingShopping = service != null;
+        if (service == null) _pendingShoppingItemCount = 0;
+      });
+    }
+    if (service == null) return;
+
+    try {
+      final lists = await service.getAllLists();
+      final pending = lists.fold<int>(
+        0,
+        (total, list) => total + list.items.where((item) => !item.isCompleted).length,
+      );
+      if (!mounted) return;
+      setState(() {
+        _pendingShoppingItemCount = pending;
+        _loadingShopping = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _pendingShoppingItemCount = 0;
+        _loadingShopping = false;
+      });
+    }
+  }
+
   Future<void> _openQuickAdd() async {
     final createReminder = widget.onCreateReminder;
     if (createReminder == null) {
@@ -148,6 +184,7 @@ class _NusTodayPageState extends State<NusTodayPage> {
     if (mounted) {
       await _loadAppointments();
       await _loadSpending();
+      await _loadShopping();
       setState(() {});
     }
   }
@@ -244,6 +281,7 @@ class _NusTodayPageState extends State<NusTodayPage> {
       profile: widget.profile,
       appointments: _appointmentItems,
       pendingReminderCount: upcomingReminders.length,
+      pendingShoppingItemCount: _pendingShoppingItemCount,
       nextReminderTitle: upcomingTodayReminders.isEmpty ? null : upcomingTodayReminders.first.title,
       nextReminderAt: upcomingTodayReminders.isEmpty ? null : upcomingTodayReminders.first.dateTime,
       now: now,
@@ -272,11 +310,12 @@ class _NusTodayPageState extends State<NusTodayPage> {
             ),
             IconButton(
               tooltip: 'تحديث',
-              onPressed: _loadingAppointments || _loadingSpending
+              onPressed: _loadingAppointments || _loadingSpending || _loadingShopping
                   ? null
                   : () async {
                       await _loadAppointments();
                       await _loadSpending();
+                      await _loadShopping();
                       if (mounted) setState(() {});
                     },
               icon: const Icon(Icons.refresh_rounded),
@@ -287,6 +326,7 @@ class _NusTodayPageState extends State<NusTodayPage> {
           onRefresh: () async {
             await _loadAppointments();
             await _loadSpending();
+            await _loadShopping();
             if (mounted) setState(() {});
           },
           child: ListView(
@@ -404,6 +444,8 @@ class _NusTodayPageState extends State<NusTodayPage> {
                 _chip(Icons.people_alt_outlined, '${widget.profile.householdSize} أفراد'),
                 _chip(Icons.payments_outlined, _money(widget.profile.remainingAfterObligations)),
                 _chip(Icons.flag_outlined, 'التزامات ${_money(widget.profile.recurringObligations)}'),
+                if (_pendingShoppingItemCount > 0)
+                  _chip(Icons.shopping_cart_outlined, 'مشتريات $_pendingShoppingItemCount'),
               ],
             ),
           ],
