@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../ai/presentation/nus_copilot_page.dart';
 import '../../appointments/data/local_appointment_repository.dart';
 import '../../appointments/domain/appointment.dart';
+import '../../finance/application/financial_advisor.dart';
 import '../../onboarding/domain/household_profile.dart';
 import '../../settings/presentation/notification_settings_page.dart';
 import '../data/speech_to_text_nus_voice_input.dart';
@@ -10,9 +11,10 @@ import '../domain/nus_daily_intelligence.dart';
 import 'nus_quick_add_page.dart';
 
 class NusTodayPage extends StatefulWidget {
-  const NusTodayPage({super.key, required this.profile, this.onOpenAppointments, this.onOpenFinance, this.onCreateReminder});
+  const NusTodayPage({super.key, required this.profile, this.loadFinancialSnapshot, this.onOpenAppointments, this.onOpenFinance, this.onCreateReminder});
 
   final HouseholdProfile profile;
+  final Future<FinancialAdvisorSnapshot?> Function()? loadFinancialSnapshot;
   final VoidCallback? onOpenAppointments;
   final VoidCallback? onOpenFinance;
   final Future<void> Function(String title, DateTime dateTime)? onCreateReminder;
@@ -61,6 +63,7 @@ class _NusTodayPageState extends State<NusTodayPage> {
       MaterialPageRoute(
         builder: (_) => NusCopilotPage(
           profile: widget.profile,
+          loadFinancialSnapshot: widget.loadFinancialSnapshot,
           onCreateReminder: widget.onCreateReminder,
           onOpenAppointments: widget.onOpenAppointments,
           onOpenFinance: widget.onOpenFinance,
