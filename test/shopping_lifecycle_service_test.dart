@@ -134,6 +134,33 @@ void main() {
       expect(repository.saveCount, 2);
     });
 
+    test('does not duplicate an existing active item on repeated add', () async {
+      final repository = _FakeShoppingRepository();
+      final list = _list(items: <ShoppingItem>[_item(name: 'Milk')]);
+      await repository.save(list);
+      final service = ShoppingLifecycleService(repository: repository);
+      final savesBeforeRetry = repository.saveCount;
+
+      final retried = await service.addItem(list.id, name: ' milk ');
+
+      expect(retried.items, hasLength(1));
+      expect(retried.items.single.name, 'Milk');
+      expect(repository.saveCount, savesBeforeRetry);
+    });
+
+    test('allows adding an item again after the previous one is completed', () async {
+      final repository = _FakeShoppingRepository();
+      final list = _list(items: <ShoppingItem>[_item(name: 'Milk', isCompleted: true)]);
+      await repository.save(list);
+      final service = ShoppingLifecycleService(repository: repository);
+
+      final updated = await service.addItem(list.id, name: 'Milk');
+
+      expect(updated.items, hasLength(2));
+      expect(updated.items.where((item) => item.name == 'Milk'), hasLength(2));
+      expect(updated.items.last.isCompleted, isFalse);
+    });
+
     test('updates an existing item through the aggregate', () async {
       final repository = _FakeShoppingRepository();
       final list = _list(items: <ShoppingItem>[_item(quantity: '1')]);
