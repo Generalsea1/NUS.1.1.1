@@ -16,7 +16,6 @@ import '../../income/application/income_source_service.dart';
 import '../../income/data/supabase_income_source_repository.dart';
 import '../../obligations/application/obligation_service.dart';
 import '../../obligations/data/supabase_obligation_repository.dart';
-import '../../onboarding/application/household_profile_repository.dart';
 import '../../onboarding/data/supabase_household_profile_repository.dart';
 import '../../onboarding/domain/household_profile.dart';
 import '../../shopping/data/supabase_household_shopping_repository.dart';
@@ -26,9 +25,11 @@ class NusCopilotPage extends StatefulWidget {
   const NusCopilotPage({
     super.key,
     this.provider = const FinancialAdvisorProvider(),
+    this.contextBuilder,
   });
 
   final AiInsightProvider provider;
+  final Future<AiInsightRequest> Function(String question)? contextBuilder;
 
   @override
   State<NusCopilotPage> createState() => _NusCopilotPageState();
@@ -46,7 +47,11 @@ class _NusCopilotPageState extends State<NusCopilotPage> {
   @override
   void initState() {
     super.initState();
-    _loadContext();
+    if (widget.contextBuilder == null) {
+      _loadContext();
+    } else {
+      _loadingContext = false;
+    }
   }
 
   @override
@@ -90,12 +95,13 @@ class _NusCopilotPageState extends State<NusCopilotPage> {
       throw StateError('بيانات الحساب والبيت غير جاهزة بعد.');
     }
 
-    final context = <AiContextItem>[];
-    context.add(AiContextItem(
-      domain: 'household',
-      entityId: 'current-household',
-      summary: 'البيت: ${profile.householdSize} أفراد، ${profile.adults} بالغين، ${profile.children} أطفال، العملة ${profile.currencyCode}.',
-    ));
+    final context = <AiContextItem>[
+      AiContextItem(
+        domain: 'household',
+        entityId: 'current-household',
+        summary: 'البيت: ${profile.householdSize} أفراد، ${profile.adults} بالغين، ${profile.children} أطفال، العملة ${profile.currencyCode}.',
+      ),
+    ];
 
     try {
       final household = await HouseholdService(
@@ -120,7 +126,7 @@ class _NusCopilotPageState extends State<NusCopilotPage> {
         summary: 'عدد عناصر المشتريات غير المكتملة حاليًا: $pending.',
       ));
     } catch (_) {
-      // Keep Copilot usable when optional household-sharing data is offline.
+      // Optional shared household context must never block Copilot.
     }
 
     try {
@@ -136,41 +142,39 @@ class _NusCopilotPageState extends State<NusCopilotPage> {
         summary: 'عدد المواعيد القادمة: ${upcoming.length}.${upcoming.isEmpty ? '' : ' أقرب موعد: ${upcoming.first.title} في ${upcoming.first.startsAt.toLocal()}.'}',
       ));
     } catch (_) {
-      // Calendar context is optional and must never block the full Copilot flow.
+      // Calendar context is optional and must never block Copilot.
     }
 
-    if (widget.provider is FinancialAdvisorProvider || true) {
-      try {
-        final incomeService = IncomeSourceService(
-          repository: const SupabaseIncomeSourceRepository(),
-        );
-        final obligationService = ObligationService(
-          repository: const SupabaseObligationRepository(),
-        );
-        final expenseManagementService = ExpenseManagementService(
-          expenseRepository: const SupabaseExpenseRepository(),
-          recurringRepository: const SupabaseRecurringExpenseRepository(),
-        );
-        final engine = FinancialEngine(
-          incomeService: incomeService,
-          obligationService: obligationService,
-          expenseService: expenseManagementService,
-        );
-        final now = DateTime.now();
-        final snapshot = await engine.calculate(
-          userId: userId,
-          year: now.year,
-          month: now.month,
-          currencyCode: profile.currencyCode,
-        );
-        context.add(AiContextItem(
-          domain: 'finance',
-          entityId: 'current-month',
-          summary: 'الشهر الحالي ${now.month}/${now.year}: الدخل ${snapshot.monthlyIncome} ${snapshot.currencyCode}، الالتزامات ${snapshot.monthlyObligations} ${snapshot.currencyCode}، المصروفات الفعلية ${snapshot.actualExpensesMinorUnits} minor units، والمتكرر المتوقع ${snapshot.expectedRecurringExpensesMinorUnits} minor units.',
-        ));
-      } catch (_) {
-        // Financial context is optional when the backend is unavailable.
-      }
+    try {
+      final incomeService = IncomeSourceService(
+        repository: const SupabaseIncomeSourceRepository(),
+      );
+      final obligationService = ObligationService(
+        repository: const SupabaseObligationRepository(),
+      );
+      final expenseManagementService = ExpenseManagementService(
+        expenseRepository: const SupabaseExpenseRepository(),
+        recurringRepository: const SupabaseRecurringExpenseRepository(),
+      );
+      final engine = FinancialEngine(
+        incomeService: incomeService,
+        obligationService: obligationService,
+        expenseService: expenseManagementService,
+      );
+      final now = DateTime.now();
+      final snapshot = await engine.calculate(
+        userId: userId,
+        year: now.year,
+        month: now.month,
+        currencyCode: profile.currencyCode,
+      );
+      context.add(AiContextItem(
+        domain: 'finance',
+        entityId: 'current-month',
+        summary: 'الشهر الحالي ${now.month}/${now.year}: الدخل ${snapshot.monthlyIncome} ${snapshot.currencyCode}، الالتزامات ${snapshot.monthlyObligations} ${snapshot.currencyCode}، المصروفات الفعلية ${snapshot.actualExpensesMinorUnits} minor units، والمتكرر المتوقع ${snapshot.expectedRecurringExpensesMinorUnits} minor units.',
+      ));
+    } catch (_) {
+      // Financial context is optional when the backend is unavailable.
     }
 
     return NusAiContextComposer.compose(
@@ -190,7 +194,9 @@ class _NusCopilotPageState extends State<NusCopilotPage> {
       _answerError = null;
     });
     try {
-      final request = await _buildRequest(question);
+      final request = widget.contextBuilder == null
+          ? await _buildRequest(question)
+          : await widget.contextBuilder!(question);
       final insight = await widget.provider.generateInsight(request);
       if (!mounted) return;
       setState(() {
