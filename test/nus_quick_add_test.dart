@@ -32,4 +32,33 @@ void main() {
     expect(savedAt, isNotNull);
     expect(savedAt!.hour, 9);
   });
+
+  testWidgets('quick add previews an expense and blocks reminder persistence', (tester) async {
+    var saveCalls = 0;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: NusQuickAddPage(
+          onCreateReminder: (_, __) async {
+            saveCalls += 1;
+          },
+        ),
+      ),
+    );
+
+    await tester.enterText(find.byType(TextField), 'دفعت 350 جنيه مواصلات');
+    await tester.pump();
+
+    expect(find.text('NUS فهمها كـ مصروف'), findsOneWidget);
+    expect(find.textContaining('350 EGP'), findsOneWidget);
+
+    final saveButton = tester.widget<FilledButton>(
+      find.byKey(const ValueKey<String>('quick-add-save')),
+    );
+    expect(saveButton.onPressed, isNull);
+
+    await tester.tap(find.byKey(const ValueKey<String>('quick-add-save')));
+    await tester.pump();
+    expect(saveCalls, 0);
+  });
 }
