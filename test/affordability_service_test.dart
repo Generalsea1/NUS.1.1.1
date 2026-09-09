@@ -128,18 +128,19 @@ void main() {
     expect(result.resultingFreeCashMinorUnits, 300000);
   });
 
-  test('marks a proposal as pressure when it leaves less than ten percent of income', () async {
+  test('marks a proposal as pressure when it leaves positive cash below ten percent of income', () async {
     final result = await _service().assess(
       userId: 'user-1',
       year: 2026,
       month: 9,
       currencyCode: 'EGP',
-      proposedMinorUnits: 550000,
+      proposedMinorUnits: 749999,
       recurring: true,
     );
 
     expect(result.status, AffordabilityStatus.pressure);
     expect(result.isPressure, isTrue);
+    expect(result.resultingFreeCashMinorUnits, 1);
   });
 
   test('rejects zero or negative proposals', () async {
