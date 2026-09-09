@@ -58,16 +58,21 @@ void main() {
     expect(find.byType(HouseholdOnboardingPage), findsOneWidget);
   });
 
-  testWidgets('existing valid profile bypasses onboarding', (tester) async {
+  testWidgets('existing valid profile bypasses onboarding and opens NUS Today', (tester) async {
     final auth = FakeAuthRepository(_authenticatedState());
     final profiles = FakeProfileRepository()..profile = _profile();
     await tester.pumpWidget(_host(AuthGate(authRepository: auth, profileRepository: profiles)));
     await tester.pumpAndSettle();
-    expect(find.text('حالتي المالية'), findsOneWidget);
-    expect(find.text('10,000 EGP'), findsOneWidget);
-    expect(find.text('غير متاح'), findsAtLeastNWidgets(1));
-    expect(find.textContaining('لن نعرض رقمًا قديمًا'), findsOneWidget);
-    expect(find.text('إعداد بيتك'), findsNothing);
+
+    // The Today surface is a scrollable dashboard; assert its complete semantic
+    // surface without depending on whether lower cards are currently in the viewport.
+    expect(find.text('NUS Today'), findsOneWidget);
+    expect(find.text('إضافة سريعة', skipOffstage: false), findsOneWidget);
+    expect(find.text('NUS Copilot', skipOffstage: false), findsAtLeastNWidgets(1));
+    expect(find.text('فلوسي', skipOffstage: false), findsOneWidget);
+    expect(find.text('مواعيدي', skipOffstage: false), findsOneWidget);
+    expect(find.text('إعداد بيتك', skipOffstage: false), findsNothing);
+    expect(find.byType(HouseholdOnboardingPage), findsNothing);
   });
 
   testWidgets('registration flow calls the existing email registration boundary', (tester) async {
