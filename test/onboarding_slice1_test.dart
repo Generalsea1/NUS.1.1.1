@@ -58,16 +58,18 @@ void main() {
     expect(find.byType(HouseholdOnboardingPage), findsOneWidget);
   });
 
-  testWidgets('existing valid profile bypasses onboarding', (tester) async {
+  testWidgets('existing valid profile bypasses onboarding and opens NUS Today', (tester) async {
     final auth = FakeAuthRepository(_authenticatedState());
     final profiles = FakeProfileRepository()..profile = _profile();
     await tester.pumpWidget(_host(AuthGate(authRepository: auth, profileRepository: profiles)));
     await tester.pumpAndSettle();
-    expect(find.text('حالتي المالية'), findsOneWidget);
-    expect(find.text('10,000 EGP'), findsOneWidget);
-    expect(find.text('غير متاح'), findsAtLeastNWidgets(1));
-    expect(find.textContaining('لن نعرض رقمًا قديمًا'), findsOneWidget);
+    expect(find.text('NUS Today'), findsOneWidget);
+    expect(find.text('إضافة سريعة'), findsOneWidget);
+    expect(find.text('NUS Copilot'), findsAtLeastNWidgets(1));
+    expect(find.text('فلوسي'), findsOneWidget);
+    expect(find.text('مواعيدي'), findsOneWidget);
     expect(find.text('إعداد بيتك'), findsNothing);
+    expect(find.byType(HouseholdOnboardingPage), findsNothing);
   });
 
   testWidgets('registration flow calls the existing email registration boundary', (tester) async {
