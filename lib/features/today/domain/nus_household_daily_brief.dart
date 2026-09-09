@@ -88,7 +88,6 @@ class NusHouseholdDailyBrief {
       );
     }
 
-    final currency = profile.currencyCode;
     return NusHouseholdDailyBrief(
       headline: 'ابدأ بحاجة صغيرة محسوبة',
       summary: available >= 0
