@@ -33,7 +33,7 @@ void main() {
     await tester.scrollUntilVisible(
       find.byKey(const ValueKey<String>('installment-row-1')),
       400,
-      scrollable: find.byType(ListView),
+      scrollable: find.byType(Scrollable).first,
     );
     expect(find.byKey(const ValueKey<String>('installment-row-1')), findsOneWidget);
     expect(find.byKey(const ValueKey<String>('installment-row-2')), findsOneWidget);
