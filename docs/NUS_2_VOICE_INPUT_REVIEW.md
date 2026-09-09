@@ -1,0 +1,1 @@
+Review target: dependency compatibility, Android microphone permissions, and generated project settings must be checked before production integration.
