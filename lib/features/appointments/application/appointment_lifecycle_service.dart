@@ -19,6 +19,8 @@ class AppointmentLifecycleService {
     required String title,
     required DateTime startsAt,
     AppointmentType type = AppointmentType.personal,
+    String? doctorName,
+    String? specialty,
   }) async {
     final cleanTitle = title.trim();
     if (cleanTitle.isEmpty) {
@@ -40,6 +42,8 @@ class AppointmentLifecycleService {
         title: cleanTitle,
         type: type,
         startsAt: startsAt,
+        doctorName: doctorName?.trim().isEmpty == true ? null : doctorName?.trim(),
+        specialty: specialty?.trim().isEmpty == true ? null : specialty?.trim(),
       );
     } while (existing.any((current) => current.id == appointment.id));
 
