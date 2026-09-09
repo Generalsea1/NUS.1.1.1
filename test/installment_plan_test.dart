@@ -40,6 +40,29 @@ void main() {
     expect(plan.remainingBalanceMinorUnits, 60000);
   });
 
+  test('round trips exact values through the persistence map', () {
+    final plan = InstallmentPlan(
+      id: 'p1',
+      userId: 'u1',
+      title: 'Phone',
+      currencyCode: 'USD',
+      totalMinorUnits: 100075,
+      downPaymentMinorUnits: 75,
+      numberOfInstallments: 2,
+      paidInstallments: 1,
+      firstDueDate: DateTime(2026, 9, 20),
+    );
+
+    final restored = InstallmentPlan.fromMap(plan.toMap());
+
+    expect(restored.id, plan.id);
+    expect(restored.userId, plan.userId);
+    expect(restored.totalMinorUnits, plan.totalMinorUnits);
+    expect(restored.downPaymentMinorUnits, plan.downPaymentMinorUnits);
+    expect(restored.paidInstallments, plan.paidInstallments);
+    expect(restored.firstDueDate, plan.firstDueDate);
+  });
+
   test('rejects invalid core values', () {
     expect(
       () => InstallmentPlan(
