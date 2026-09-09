@@ -20,7 +20,7 @@ class HouseholdPage extends StatefulWidget {
 
 class _HouseholdPageState extends State<HouseholdPage> {
   late final HouseholdService _service =
-      widget.service ?? const HouseholdService(repository: SupabaseHouseholdRepository());
+      widget.service ?? HouseholdService(repository: const SupabaseHouseholdRepository());
   Household? _household;
   HouseholdMember? _membership;
   bool _loading = true;
@@ -40,7 +40,13 @@ class _HouseholdPageState extends State<HouseholdPage> {
     try {
       final household = await _service.getOrCreateForUser(userId: widget.userId);
       final memberships = await _service.currentMemberships(widget.userId);
-      final membership = memberships.where((item) => item.householdId == household.id).firstOrNull;
+      HouseholdMember? membership;
+      for (final item in memberships) {
+        if (item.householdId == household.id) {
+          membership = item;
+          break;
+        }
+      }
       if (!mounted) return;
       setState(() {
         _household = household;
@@ -107,9 +113,9 @@ class _HouseholdPageState extends State<HouseholdPage> {
                           : Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                                CircleAvatar(
+                                const CircleAvatar(
                                   radius: 28,
-                                  child: const Icon(Icons.home_work_outlined, size: 30),
+                                  child: Icon(Icons.home_work_outlined, size: 30),
                                 ),
                                 const SizedBox(height: 14),
                                 Text(
@@ -118,7 +124,7 @@ class _HouseholdPageState extends State<HouseholdPage> {
                                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900),
                                 ),
                                 const SizedBox(height: 8),
-                                Text(
+                                const Text(
                                   'البيانات المشتركة هتتربط بالبيت ده تدريجيًا، مع احترام صلاحيات كل عضو.',
                                   textAlign: TextAlign.center,
                                 ),
@@ -140,18 +146,18 @@ class _HouseholdPageState extends State<HouseholdPage> {
               ),
               const SizedBox(height: 14),
               Card(
-                child: ListTile(
-                  leading: const CircleAvatar(child: Icon(Icons.lock_outline_rounded)),
-                  title: const Text('المشاركة تُبنى بصلاحيات واضحة'),
-                  subtitle: const Text('لا يوجد هنا أي كشف لمعلومات أعضاء آخرين أو كتابة تلقائية لبيانات مشتركة.'),
+                child: const ListTile(
+                  leading: CircleAvatar(child: Icon(Icons.lock_outline_rounded)),
+                  title: Text('المشاركة تُبنى بصلاحيات واضحة'),
+                  subtitle: Text('لا يوجد هنا أي كشف لمعلومات أعضاء آخرين أو كتابة تلقائية لبيانات مشتركة.'),
                 ),
               ),
               const SizedBox(height: 10),
               Card(
-                child: ListTile(
-                  leading: const CircleAvatar(child: Icon(Icons.construction_outlined)),
-                  title: const Text('الإدارة المتقدمة قيد البناء'),
-                  subtitle: const Text('الدعوات، الأدوار، وقوائم التسوق المشتركة ستُفتح بعد اكتمال طبقة الصلاحيات.'),
+                child: const ListTile(
+                  leading: CircleAvatar(child: Icon(Icons.construction_outlined)),
+                  title: Text('الإدارة المتقدمة قيد البناء'),
+                  subtitle: Text('الدعوات، الأدوار، وقوائم التسوق المشتركة ستُفتح بعد اكتمال طبقة الصلاحيات.'),
                 ),
               ),
             ],
