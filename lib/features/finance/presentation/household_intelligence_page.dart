@@ -12,6 +12,7 @@ import '../../obligations/data/supabase_obligation_repository.dart';
 import '../application/cashflow_forecast_service.dart';
 import '../application/financial_engine.dart';
 import '../application/household_intelligence_service.dart';
+import '../domain/financial_alert.dart';
 import 'cashflow_forecast_page.dart';
 import 'financial_goals_page.dart';
 
@@ -200,6 +201,13 @@ class _HouseholdIntelligencePageState extends State<HouseholdIntelligencePage> {
         .where((i) => i.dataState == HouseholdDataState.insufficient)
         .toList();
 
+    final alerts = _buildAlerts(snapshot);
+    if (alerts.isNotEmpty) {
+      widgets.add(
+        _alertsCard(context, alerts),
+      );
+    }
+
     final highest = _first(snapshot, 'highest_category');
     widgets.add(
       _sectionCard(
@@ -326,6 +334,93 @@ class _HouseholdIntelligencePageState extends State<HouseholdIntelligencePage> {
         widgets[i],
       ],
     ];
+  }
+
+  List<FinancialAlert> _buildAlerts(HouseholdIntelligenceSnapshot snapshot) {
+    final obligation = _first(snapshot, 'obligation_burden');
+    final currentActual = snapshot.periods.isEmpty ? 0 : snapshot.periods.last.valueMinorUnits;
+    final historical = _first(snapshot, 'unusual_months')?.valueMinorUnits;
+    final income = obligation?.comparisonValueMinorUnits ?? 0;
+    final obligations = obligation?.valueMinorUnits ?? 0;
+    if (income <= 0) return const [];
+    return FinancialAlertEngine.evaluate(
+      monthlyIncomeMinorUnits: income,
+      monthlyObligationsMinorUnits: obligations,
+      actualExpensesMinorUnits: currentActual,
+      historicalAverageMinorUnits: historical,
+    );
+  }
+
+  Widget _alertsCard(BuildContext context, List<FinancialAlert> alerts) {
+    return Card(
+      key: const ValueKey<String>('financial-alerts-card'),
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                CircleAvatar(child: Icon(_alertIcon(alerts.first.severity))),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'تنبيهات مالية',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w900,
+                        ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            for (var i = 0; i < alerts.length; i++) ...[
+              if (i > 0) const Divider(height: 20),
+              _alertRow(context, alerts[i]),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _alertRow(BuildContext context, FinancialAlert alert) {
+    final scheme = Theme.of(context).colorScheme;
+    final critical = alert.severity == FinancialAlertSeverity.critical;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(
+          _alertIcon(alert.severity),
+          color: critical ? scheme.error : scheme.primary,
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                alert.title,
+                style: const TextStyle(fontWeight: FontWeight.w900),
+              ),
+              const SizedBox(height: 4),
+              Text(alert.message),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  IconData _alertIcon(FinancialAlertSeverity severity) {
+    switch (severity) {
+      case FinancialAlertSeverity.critical:
+        return Icons.warning_amber_rounded;
+      case FinancialAlertSeverity.warning:
+        return Icons.priority_high_rounded;
+      case FinancialAlertSeverity.info:
+        return Icons.info_outline_rounded;
+    }
   }
 
   HouseholdInsight? _first(
