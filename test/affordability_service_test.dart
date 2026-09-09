@@ -134,7 +134,7 @@ void main() {
       year: 2026,
       month: 9,
       currencyCode: 'EGP',
-      proposedMinorUnits: 749999,
+      proposedMinorUnits: 499999,
       recurring: true,
     );
 
@@ -153,20 +153,52 @@ void main() {
         proposedMinorUnits: 0,
         recurring: false,
       ),
-      throwsA(isA<ArgumentError>()),
+      throwsArgumentError,
+    );
+    expect(
+      () => _service().assess(
+        userId: 'user-1',
+        year: 2026,
+        month: 9,
+        currencyCode: 'EGP',
+        proposedMinorUnits: -1,
+        recurring: false,
+      ),
+      throwsArgumentError,
     );
   });
 
   test('does not persist any financial record', () async {
-    final result = await _service().assess(
+    var saved = false;
+    final expenseService = ExpenseManagementService(
+      expenseRepository: _WriteTrackingExpenseRepo(onSave: () => saved = true),
+      recurringRepository: _RecurringRepo(),
+    );
+    final service = AffordabilityService(
+      financialEngine: FinancialEngine(
+        incomeService: IncomeSourceService(repository: _IncomeRepo()),
+        obligationService: ObligationService(repository: _ObligationRepo()),
+        expenseService: expenseService,
+      ),
+    );
+
+    await service.assess(
       userId: 'user-1',
       year: 2026,
       month: 9,
       currencyCode: 'EGP',
-      proposedMinorUnits: 900000,
+      proposedMinorUnits: 100000,
       recurring: false,
     );
 
-    expect(result.status, AffordabilityStatus.notAffordable);
+    expect(saved, isFalse);
   });
+}
+
+class _WriteTrackingExpenseRepo extends _ExpenseRepo {
+  _WriteTrackingExpenseRepo({required this.onSave});
+  final void Function() onSave;
+
+  @override
+  Future<void> save(Expense entity) async => onSave();
 }
