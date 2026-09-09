@@ -58,10 +58,21 @@ class NusDailyIntelligence {
 
     if (todayUpcoming.isNotEmpty || reminderIsToday) {
       final appointment = todayUpcoming.isEmpty ? null : todayUpcoming.first;
-      final useReminder = reminderIsToday &&
-          (appointment == null || reminderAt!.isBefore(appointment.startsAt));
-      final title = useReminder ? nextReminderTitle : appointment?.title;
-      final when = useReminder ? reminderAt : appointment!.startsAt;
+      final DateTime when;
+      final String? title;
+      final bool useReminder;
+
+      if (reminderIsToday &&
+          (appointment == null || reminderAt!.isBefore(appointment.startsAt))) {
+        useReminder = true;
+        title = nextReminderTitle;
+        when = reminderAt;
+      } else {
+        useReminder = false;
+        title = appointment?.title;
+        when = appointment!.startsAt;
+      }
+
       final time = TimeOfDay.fromDateTime(when);
       insights.add(NusDailyInsight(
         title: useReminder ? 'عندك مهمة جاية النهارده' : 'عندك حاجة جاية النهارده',
