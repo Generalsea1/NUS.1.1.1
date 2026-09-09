@@ -33,7 +33,6 @@ class NusQuickAddParser {
 
     int hour = 9;
     int minute = 0;
-    RegExp? timePattern;
     final explicitTimePattern = RegExp(
       r'(?:^|\s)الساعة\s*(\d{1,2})(?::(\d{2}))?\s*(صباحًا|صباحا|صباح|مساءً|مساء|م|ص)?(?=\s|$)',
       caseSensitive: false,
@@ -45,7 +44,7 @@ class NusQuickAddParser {
     final explicitTimeMatch = explicitTimePattern.firstMatch(title);
     final meridiemOnlyTimeMatch = meridiemOnlyTimePattern.firstMatch(title);
     final timeMatch = explicitTimeMatch ?? meridiemOnlyTimeMatch;
-    timePattern = explicitTimeMatch != null ? explicitTimePattern : meridiemOnlyTimePattern;
+    final timePattern = explicitTimeMatch != null ? explicitTimePattern : meridiemOnlyTimePattern;
 
     if (timeMatch != null) {
       final parsedHour = int.tryParse(timeMatch.group(1) ?? '');
