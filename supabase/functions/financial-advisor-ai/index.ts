@@ -88,7 +88,7 @@ function asStringArray(value: unknown) {
 function sanitizeProviderText(value: string) {
   return value
     .replace(/-----BEGIN [^-]+-----[\s\S]*?-----END [^-]+-----/gi, "[REDACTED_BLOCK]")
-    .replace(/(?:x-goog-api-key|api[-_ ]?key|authorization|bearer|access[-_ ]?token|refresh[-_ ]?token|cookie|set-cookie)\s*[:=]\s*[^,\s;]+/gi, "$1=[REDACTED]")
+    .replace(/(?:x-goog-api-key|api[-_ ]?key|authorization|bearer|access[-_ ]?token|refresh[-_ ]?token|cookie|set-cookie)\s*[:=]\s*[^,\s;]+/gi, "[REDACTED]")
     .replace(/\bAIza[0-9A-Za-z_-]{20,}\b/g, "[REDACTED_KEY]")
     .replace(/\beyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/g, "[REDACTED_TOKEN]")
     .replace(/\s+/g, " ")
