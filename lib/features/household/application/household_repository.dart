@@ -6,4 +6,9 @@ abstract interface class HouseholdRepository {
   Future<List<HouseholdMember>> listMemberships(String userId);
   Future<List<HouseholdMember>> listHouseholdMembers(String householdId);
   Future<HouseholdMember> addMembership(HouseholdMember member);
+  Future<HouseholdMember> updateMembershipRole({
+    required String householdId,
+    required String userId,
+    required String role,
+  });
 }
