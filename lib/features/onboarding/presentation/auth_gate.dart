@@ -7,8 +7,13 @@ import '../../../core/auth/auth_state.dart';
 import '../../../core/auth/supabase_auth_repository.dart';
 import '../../expenses/application/expense_lifecycle_service.dart';
 import '../../expenses/application/expense_management_service.dart';
+import '../../finance/application/financial_advisor.dart';
+import '../../finance/application/financial_engine.dart';
 import '../../income/application/income_source_repository.dart';
+import '../../income/application/income_source_service.dart';
 import '../../income/data/supabase_income_source_repository.dart';
+import '../../obligations/application/obligation_service.dart';
+import '../../obligations/data/supabase_obligation_repository.dart';
 import '../application/household_profile_repository.dart';
 import '../application/household_profile_validator.dart';
 import '../data/supabase_household_profile_repository.dart';
@@ -152,6 +157,39 @@ class _AuthGateState extends State<AuthGate> {
     await _resolveAuthenticatedUser(_authState);
   }
 
+  Future<FinancialAdvisorSnapshot?> _loadFinancialAdvisorSnapshot(
+    HouseholdProfile profile,
+  ) async {
+    final expenseManagement = widget.expenseManagementService;
+    if (expenseManagement == null) return null;
+
+    final incomeService = IncomeSourceService(repository: _incomeRepository);
+    const obligationService = ObligationService(
+      repository: SupabaseObligationRepository(),
+    );
+    final engine = FinancialEngine(
+      incomeService: incomeService,
+      obligationService: obligationService,
+      expenseService: expenseManagement,
+    );
+    final now = DateTime.now();
+    final financial = await engine.calculate(
+      userId: profile.userId,
+      year: now.year,
+      month: now.month,
+      currencyCode: profile.currencyCode,
+    );
+    final actualByCategory = await expenseManagement.monthlyActualByCategory(
+      year: now.year,
+      month: now.month,
+      currencyCode: profile.currencyCode,
+    );
+    return FinancialAdvisorSnapshot(
+      financial: financial,
+      actualByCategory: Map<String, int>.unmodifiable(actualByCategory),
+    );
+  }
+
   void _openFinance(BuildContext context, HouseholdProfile profile) {
     Navigator.of(context).push<void>(
       MaterialPageRoute(
@@ -208,6 +246,7 @@ class _AuthGateState extends State<AuthGate> {
       textDirection: TextDirection.rtl,
       child: NusTodayPage(
         profile: profile,
+        loadFinancialSnapshot: () => _loadFinancialAdvisorSnapshot(profile),
         onOpenFinance: () => _openFinance(context, profile),
         onOpenAppointments: widget.onOpenGeneralHome == null
             ? null

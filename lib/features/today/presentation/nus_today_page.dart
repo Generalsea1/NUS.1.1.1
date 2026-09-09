@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../../ai/presentation/ai_hub_page.dart';
+import '../../ai/presentation/nus_copilot_page.dart';
 import '../../appointments/data/local_appointment_repository.dart';
 import '../../appointments/domain/appointment.dart';
+import '../../finance/application/financial_advisor.dart';
 import '../../onboarding/domain/household_profile.dart';
 import '../../settings/presentation/notification_settings_page.dart';
 import '../data/speech_to_text_nus_voice_input.dart';
@@ -10,9 +11,10 @@ import '../domain/nus_daily_intelligence.dart';
 import 'nus_quick_add_page.dart';
 
 class NusTodayPage extends StatefulWidget {
-  const NusTodayPage({super.key, required this.profile, this.onOpenAppointments, this.onOpenFinance, this.onCreateReminder});
+  const NusTodayPage({super.key, required this.profile, this.loadFinancialSnapshot, this.onOpenAppointments, this.onOpenFinance, this.onCreateReminder});
 
   final HouseholdProfile profile;
+  final Future<FinancialAdvisorSnapshot?> Function()? loadFinancialSnapshot;
   final VoidCallback? onOpenAppointments;
   final VoidCallback? onOpenFinance;
   final Future<void> Function(String title, DateTime dateTime)? onCreateReminder;
@@ -57,7 +59,18 @@ class _NusTodayPageState extends State<NusTodayPage> {
   }
 
   Future<void> _openCopilot() async {
-    await Navigator.of(context).push<void>(MaterialPageRoute(builder: (_) => const AiHubPage(isArabic: true)));
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => NusCopilotPage(
+          profile: widget.profile,
+          loadFinancialSnapshot: widget.loadFinancialSnapshot,
+          onCreateReminder: widget.onCreateReminder,
+          onOpenAppointments: widget.onOpenAppointments,
+          onOpenFinance: widget.onOpenFinance,
+          voiceInput: SpeechToTextNusVoiceInput(),
+        ),
+      ),
+    );
   }
 
   Future<void> _openNotificationSettings() async {
@@ -126,7 +139,7 @@ class _NusTodayPageState extends State<NusTodayPage> {
             Row(children: [
               Expanded(child: _actionCard(context, icon: Icons.add_task_rounded, title: 'إضافة سريعة', subtitle: 'سجّل تذكير في ثواني', onTap: _openQuickAdd)),
               const SizedBox(width: 10),
-              Expanded(child: _actionCard(context, icon: Icons.auto_awesome_rounded, title: 'NUS Copilot', subtitle: 'افتح خدمات الذكاء الاصطناعي', onTap: _openCopilot)),
+              Expanded(child: _actionCard(context, icon: Icons.auto_awesome_rounded, title: 'NUS Copilot', subtitle: 'اسأل وخلي NUS يتحرك معاك', onTap: _openCopilot)),
             ]),
             const SizedBox(height: 12),
             Row(children: [
@@ -153,7 +166,7 @@ class _NusTodayPageState extends State<NusTodayPage> {
                   : _appointmentTile(next.first),
             ),
             const SizedBox(height: 14),
-            Card(child: ListTile(onTap: _openCopilot, leading: const CircleAvatar(child: Icon(Icons.auto_awesome_rounded)), title: const Text('NUS Copilot', style: TextStyle(fontWeight: FontWeight.w900)), subtitle: const Text('اسأل NUS عن بياناتك واستخدم أدوات الذكاء الموجودة بالفعل.'), trailing: const Icon(Icons.chevron_right_rounded))),
+            Card(child: ListTile(onTap: _openCopilot, leading: const CircleAvatar(child: Icon(Icons.auto_awesome_rounded)), title: const Text('NUS Copilot', style: TextStyle(fontWeight: FontWeight.w900)), subtitle: const Text('اسأل NUS عن بياناتك واختار الإجراء المناسب.'), trailing: const Icon(Icons.chevron_right_rounded))),
           ],
         ),
       ),
