@@ -39,19 +39,19 @@ void main() {
     final startsAt = DateTime.now().add(const Duration(days: 1));
 
     final first = await service.create(
-      title: 'كشف دكتور',
+      title: 'موعد مهم',
       startsAt: startsAt,
-      type: AppointmentType.doctor,
+      type: AppointmentType.personal,
     );
     final duplicate = await service.create(
-      title: '  كشف دكتور  ',
+      title: '  موعد مهم  ',
       startsAt: startsAt,
-      type: AppointmentType.doctor,
+      type: AppointmentType.personal,
     );
 
     expect(repository.items, hasLength(1));
     expect(duplicate.id, first.id);
-    expect(first.type, AppointmentType.doctor);
+    expect(first.type, AppointmentType.personal);
   });
 
   test('rejects an empty title before persistence', () async {
