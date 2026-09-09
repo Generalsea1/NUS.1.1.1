@@ -15,6 +15,15 @@ class HouseholdService {
     return List<HouseholdMember>.unmodifiable(memberships);
   }
 
+  Future<List<HouseholdMember>> householdMembers(String householdId) async {
+    final cleanHouseholdId = householdId.trim();
+    if (cleanHouseholdId.isEmpty) {
+      throw ArgumentError.value(householdId, 'householdId', 'Household is required.');
+    }
+    final members = await _repository.listHouseholdMembers(cleanHouseholdId);
+    return List<HouseholdMember>.unmodifiable(members);
+  }
+
   Future<Household> getOrCreateForUser({
     required String userId,
     String defaultName = 'My Household',
