@@ -10,6 +10,7 @@ import '../../expenses/application/expense_management_service.dart';
 import '../../income/application/income_source_repository.dart';
 import '../../income/data/supabase_income_source_repository.dart';
 import '../../../legacy_main.dart' as legacy;
+import '../../shopping/application/shopping_lifecycle_service.dart';
 import '../application/household_profile_repository.dart';
 import '../application/household_profile_validator.dart';
 import '../data/supabase_household_profile_repository.dart';
@@ -27,6 +28,7 @@ class AuthGate extends StatefulWidget {
     this.incomeRepository,
     this.expenseService,
     this.expenseManagementService,
+    this.shoppingService,
     this.onOpenGeneralHome,
     this.onCreateReminder,
     this.scheduleStore,
@@ -37,6 +39,7 @@ class AuthGate extends StatefulWidget {
   final IncomeSourceRepository? incomeRepository;
   final ExpenseLifecycleService? expenseService;
   final ExpenseManagementService? expenseManagementService;
+  final ShoppingLifecycleService? shoppingService;
   final void Function(BuildContext context)? onOpenGeneralHome;
   final Future<void> Function(String title, DateTime dateTime)? onCreateReminder;
   final legacy.ScheduleStore? scheduleStore;
@@ -206,6 +209,7 @@ class _AuthGateState extends State<AuthGate> {
         profile: profile,
         scheduleStore: widget.scheduleStore,
         expenseManagementService: widget.expenseManagementService,
+        shoppingService: widget.shoppingService,
         onOpenFinance: () => _openFinance(context, profile),
         onOpenAppointments: widget.onOpenGeneralHome == null ? null : () => widget.onOpenGeneralHome!(context),
         onCreateReminder: widget.onCreateReminder,
