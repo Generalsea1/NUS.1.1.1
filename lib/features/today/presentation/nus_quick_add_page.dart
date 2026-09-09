@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/supabase_service.dart';
 import '../../expenses/application/expense_management_service.dart';
+import '../../expenses/data/supabase_expense_repository.dart';
+import '../../expenses/data/supabase_recurring_expense_repository.dart';
 import '../../expenses/domain/currency_registry.dart';
 import '../../expenses/domain/expense.dart';
 import '../../expenses/domain/expense_date.dart';
 import '../../expenses/domain/expense_type.dart';
 import '../../expenses/domain/money.dart';
 import '../../shopping/application/shopping_lifecycle_service.dart';
+import '../../shopping/data/local_shopping_repository.dart';
 import '../domain/nus_quick_add_intent.dart';
 import '../domain/nus_quick_add_parser.dart';
 import '../domain/nus_voice_input.dart';
@@ -188,11 +192,8 @@ class _NusQuickAddPageState extends State<NusQuickAddPage> {
   }
 
   Future<void> _saveShopping(String raw) async {
-    final service = widget.shoppingService;
-    if (service == null) {
-      _showMessage('المشتريات غير متاحة في الإعداد الحالي.');
-      return;
-    }
+    final service = widget.shoppingService ??
+        ShoppingLifecycleService(repository: LocalShoppingRepository());
     final items = _extractShoppingItems(raw);
     if (items.isEmpty) {
       _showMessage('محتاج أعرف اسم المشتريات الأول.');
@@ -220,13 +221,18 @@ class _NusQuickAddPageState extends State<NusQuickAddPage> {
   }
 
   Future<void> _confirmAndSaveExpense(NusQuickAddIntent intent, String raw) async {
-    final service = widget.expenseManagementService;
-    final userId = widget.userId?.trim();
+    final service = widget.expenseManagementService ??
+        const ExpenseManagementService(
+          expenseRepository: SupabaseExpenseRepository(),
+          recurringRepository: SupabaseRecurringExpenseRepository(),
+        );
+    final userId = widget.userId?.trim() ??
+        SupabaseService.client?.auth.currentUser?.id.trim();
     final amount = intent.amountMajorUnits;
     final currency = intent.currencyCode?.trim().toUpperCase();
     final category = intent.expenseCategoryCode;
 
-    if (service == null || userId == null || userId.isEmpty || amount == null || currency == null || category == null) {
+    if (userId == null || userId.isEmpty || amount == null || currency == null || category == null) {
       _showMessage('لا يمكن تسجيل المصروف قبل اكتمال بيانات الحساب والمبلغ والتصنيف.');
       return;
     }
