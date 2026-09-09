@@ -123,6 +123,7 @@ void main() {
     expect(find.byKey(const ValueKey<String>('cashflow-forecast-status')), findsOneWidget);
     expect(find.byKey(const ValueKey<String>('cashflow-forecast-summary')), findsOneWidget);
     expect(find.byKey(const ValueKey<String>('cashflow-point-10/2026')), findsOneWidget);
+    expect(find.byKey(const ValueKey<String>('cashflow-forecast-status-positive')), findsOneWidget);
 
     await tester.scrollUntilVisible(
       find.byKey(const ValueKey<String>('cashflow-point-11/2026')),
@@ -137,7 +138,5 @@ void main() {
       scrollable: find.byType(Scrollable),
     );
     expect(find.byKey(const ValueKey<String>('cashflow-point-12/2026')), findsOneWidget);
-
-    expect(find.byKey(const ValueKey<String>('cashflow-forecast-status-positive')), findsOneWidget);
   });
 }
