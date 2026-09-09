@@ -1,0 +1,117 @@
+import 'package:flutter/material.dart';
+
+import '../../../core/proactive_notification_coordinator.dart';
+import '../../../features/appointments/data/local_appointment_repository.dart';
+import '../../../notification_service.dart';
+
+class NotificationSettingsPage extends StatefulWidget {
+  const NotificationSettingsPage({super.key, this.isArabic = true});
+
+  final bool isArabic;
+
+  @override
+  State<NotificationSettingsPage> createState() => _NotificationSettingsPageState();
+}
+
+class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
+  late final NusProactiveNotificationCoordinator _coordinator;
+  bool _enabled = true;
+  bool _loading = true;
+
+  String t(String en, String ar) => widget.isArabic ? ar : en;
+
+  @override
+  void initState() {
+    super.initState();
+    _coordinator = NusProactiveNotificationCoordinator(scheduler: NotificationService());
+    _load();
+  }
+
+  Future<void> _load() async {
+    final enabled = await _coordinator.isEnabled();
+    if (!mounted) return;
+    setState(() {
+      _enabled = enabled;
+      _loading = false;
+    });
+  }
+
+  Future<void> _setEnabled(bool value) async {
+    setState(() => _enabled = value);
+    final appointments = await LocalAppointmentRepository().list();
+    try {
+      await _coordinator.setEnabled(
+        enabled: value,
+        now: DateTime.now(),
+        appointments: appointments,
+      );
+    } on Object {
+      if (!mounted) return;
+      setState(() => _enabled = !value);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(t('Could not update notification settings.', 'ماقدرتش أغيّر إعدادات التنبيهات.'))),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(
+            t('Notifications', 'التنبيهات'),
+            style: const TextStyle(fontWeight: FontWeight.w900),
+          ),
+        ),
+        body: _loading
+            ? const Center(child: CircularProgressIndicator())
+            : ListView(
+                padding: const EdgeInsets.fromLTRB(18, 16, 18, 32),
+                children: [
+                  Card(
+                    child: SwitchListTile.adaptive(
+                      value: _enabled,
+                      onChanged: _setEnabled,
+                      secondary: const CircleAvatar(child: Icon(Icons.notifications_active_outlined)),
+                      title: Text(
+                        t('Proactive appointment reminders', 'التنبيهات الاستباقية للمواعيد'),
+                        style: const TextStyle(fontWeight: FontWeight.w900),
+                      ),
+                      subtitle: Text(
+                        t(
+                          'When an upcoming appointment has no reminder, NUS can alert you 30 minutes before it.',
+                          'لما يكون عندك موعد قادم من غير تذكير محدد، NUS يقدر يفكّرك قبله بـ30 دقيقة.',
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(18),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(Icons.privacy_tip_outlined),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              t(
+                                'These proactive rules are generated locally from your saved appointments. NUS does not need an AI call to create them.',
+                                'القواعد دي بتتكوّن محليًا من مواعيدك المحفوظة، ومش محتاجة أي استدعاء للذكاء الاصطناعي.',
+                              ),
+                              style: const TextStyle(height: 1.45),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
+}
