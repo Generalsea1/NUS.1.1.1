@@ -203,41 +203,48 @@ class _CashflowForecastPageState extends State<CashflowForecastPage> {
     return Card(
       key: const ValueKey<String>('cashflow-forecast-status'),
       color: positive ? scheme.primaryContainer : scheme.errorContainer,
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            CircleAvatar(
-              backgroundColor: positive ? scheme.primary : scheme.error,
-              foregroundColor: positive ? scheme.onPrimary : scheme.onError,
-              child: Icon(positive ? Icons.savings_outlined : Icons.warning_amber_rounded),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    positive ? 'السيولة المتوقعة موجبة' : 'في ضغط سيولة متوقع',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w900,
-                          color: positive ? scheme.onPrimaryContainer : scheme.onErrorContainer,
-                        ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    positive
-                        ? 'بالبيانات الحالية، النموذج لا يرى عجزًا متوقعًا في الشهور المعروضة.'
-                        : 'بالبيانات الحالية، النموذج يرى عجزًا متوقعًا ويستحق مراجعة الأرقام قبل أي التزام جديد.',
-                    style: TextStyle(
-                      color: positive ? scheme.onPrimaryContainer : scheme.onErrorContainer,
-                    ),
-                  ),
-                ],
+      child: Semantics(
+        container: true,
+        label: positive ? 'السيولة المتوقعة موجبة' : 'في ضغط سيولة متوقع',
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CircleAvatar(
+                backgroundColor: positive ? scheme.primary : scheme.error,
+                foregroundColor: positive ? scheme.onPrimary : scheme.onError,
+                child: Icon(positive ? Icons.savings_outlined : Icons.warning_amber_rounded),
               ),
-            ),
-          ],
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  key: ValueKey<String>(
+                    positive ? 'cashflow-forecast-status-positive' : 'cashflow-forecast-status-negative',
+                  ),
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      positive ? 'السيولة المتوقعة موجبة' : 'في ضغط سيولة متوقع',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w900,
+                            color: positive ? scheme.onPrimaryContainer : scheme.onErrorContainer,
+                          ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      positive
+                          ? 'بالبيانات الحالية، النموذج لا يرى عجزًا متوقعًا في الشهور المعروضة.'
+                          : 'بالبيانات الحالية، النموذج يرى عجزًا متوقعًا ويستحق مراجعة الأرقام قبل أي التزام جديد.',
+                      style: TextStyle(
+                        color: positive ? scheme.onPrimaryContainer : scheme.onErrorContainer,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
