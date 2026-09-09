@@ -154,7 +154,7 @@ void main() {
     expect(expenseRepository.saved.single.userId, 'user-1');
   });
 
-  testWidgets('quick add executes shopping items into the canonical shopping list', (tester) async {
+  testWidgets('quick add executes each shopping item into the canonical shopping list', (tester) async {
     final shoppingRepository = _FakeShoppingRepository();
     final shoppingService = ShoppingLifecycleService(repository: shoppingRepository);
 
@@ -178,6 +178,6 @@ void main() {
 
     expect(shoppingRepository.saved, hasLength(1));
     final items = shoppingRepository.saved.single.items;
-    expect(items.map((item) => item.name), contains('هات لبن وبيض وعيش'));
+    expect(items.map((item) => item.name), <String>['لبن', 'بيض', 'عيش']);
   });
 }
