@@ -1,8 +1,18 @@
 import 'package:flutter/material.dart';
 
+import '../../expenses/application/expense_management_service.dart';
+import '../../expenses/data/supabase_expense_repository.dart';
+import '../../expenses/data/supabase_recurring_expense_repository.dart';
 import '../../expenses/domain/currency_registry.dart';
 import '../../expenses/domain/expense_category.dart';
+import '../../income/application/income_source_service.dart';
+import '../../income/data/supabase_income_source_repository.dart';
+import '../../obligations/application/obligation_service.dart';
+import '../../obligations/data/supabase_obligation_repository.dart';
+import '../application/cashflow_forecast_service.dart';
+import '../application/financial_engine.dart';
 import '../application/household_intelligence_service.dart';
+import 'cashflow_forecast_page.dart';
 import 'financial_goals_page.dart';
 
 class HouseholdIntelligencePage extends StatefulWidget {
@@ -73,6 +83,33 @@ class _HouseholdIntelligencePageState extends State<HouseholdIntelligencePage> {
     );
   }
 
+  void _openCashflowForecast() {
+    final expenseService = ExpenseManagementService(
+      expenseRepository: const SupabaseExpenseRepository(),
+      recurringRepository: const SupabaseRecurringExpenseRepository(),
+    );
+    final financialEngine = FinancialEngine(
+      incomeService: IncomeSourceService(
+        repository: const SupabaseIncomeSourceRepository(),
+      ),
+      obligationService: const ObligationService(
+        repository: SupabaseObligationRepository(),
+      ),
+      expenseService: expenseService,
+    );
+    Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => CashflowForecastPage(
+          userId: widget.userId,
+          year: widget.year,
+          month: widget.month,
+          currencyCode: widget.currencyCode,
+          service: CashflowForecastService(financialEngine: financialEngine),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -94,11 +131,26 @@ class _HouseholdIntelligencePageState extends State<HouseholdIntelligencePage> {
                 'تحليل موثوق لبياناتك المسجلة فقط — بدون توقعات أو تخمينات.',
               ),
               const SizedBox(height: 14),
-              FilledButton.icon(
-                key: const ValueKey<String>('financial-goals-section-entry'),
-                onPressed: _openGoals,
-                icon: const Icon(Icons.flag_rounded),
-                label: const Text('الأهداف المالية'),
+              Row(
+                children: [
+                  Expanded(
+                    child: FilledButton.icon(
+                      key: const ValueKey<String>('financial-goals-section-entry'),
+                      onPressed: _openGoals,
+                      icon: const Icon(Icons.flag_rounded),
+                      label: const Text('الأهداف المالية'),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: FilledButton.icon(
+                      key: const ValueKey<String>('cashflow-forecast-entry'),
+                      onPressed: _loading ? null : _openCashflowForecast,
+                      icon: const Icon(Icons.trending_up_rounded),
+                      label: const Text('توقع السيولة'),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 18),
               if (_loading)
