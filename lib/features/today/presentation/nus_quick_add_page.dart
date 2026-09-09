@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 
+import '../domain/nus_voice_input.dart';
+
 class NusQuickAddPage extends StatefulWidget {
-  const NusQuickAddPage({super.key, required this.onCreateReminder});
+  const NusQuickAddPage({super.key, required this.onCreateReminder, this.voiceInput});
 
   final Future<void> Function(String title, DateTime dateTime) onCreateReminder;
+  final NusVoiceInput? voiceInput;
 
   @override
   State<NusQuickAddPage> createState() => _NusQuickAddPageState();
@@ -13,6 +16,8 @@ class _NusQuickAddPageState extends State<NusQuickAddPage> {
   final _title = TextEditingController();
   DateTime _dateTime = DateTime.now().add(const Duration(hours: 1));
   bool _saving = false;
+  bool _listening = false;
+  String? _voiceError;
 
   @override
   void dispose() {
@@ -21,7 +26,6 @@ class _NusQuickAddPageState extends State<NusQuickAddPage> {
   }
 
   void _setTime(DateTime value) => setState(() => _dateTime = value);
-
   void _inOneHour() => _setTime(DateTime.now().add(const Duration(hours: 1)));
 
   void _tomorrowMorning() {
@@ -50,6 +54,35 @@ class _NusQuickAddPageState extends State<NusQuickAddPage> {
     _setTime(DateTime(date.year, date.month, date.day, time.hour, time.minute));
   }
 
+  Future<void> _listen() async {
+    final voice = widget.voiceInput;
+    if (voice == null || _listening) return;
+    setState(() {
+      _listening = true;
+      _voiceError = null;
+    });
+    try {
+      if (!await voice.isAvailable()) {
+        if (mounted) setState(() => _voiceError = 'الإدخال الصوتي غير متاح على الجهاز حاليًا.');
+        return;
+      }
+      final transcript = await voice.listen(localeId: 'ar-EG');
+      if (!mounted) return;
+      if (transcript == null || transcript.trim().isEmpty) {
+        setState(() => _voiceError = 'ماقدرتش ألتقط الكلام. جرّب تاني بصوت أوضح.');
+        return;
+      }
+      setState(() {
+        _title.text = transcript.trim();
+        _title.selection = TextSelection.collapsed(offset: _title.text.length);
+      });
+    } catch (_) {
+      if (mounted) setState(() => _voiceError = 'حصلت مشكلة في الإدخال الصوتي. جرّب تاني.');
+    } finally {
+      if (mounted) setState(() => _listening = false);
+    }
+  }
+
   Future<void> _save() async {
     final title = _title.text.trim();
     if (title.isEmpty || _dateTime.isBefore(DateTime.now())) return;
@@ -63,25 +96,19 @@ class _NusQuickAddPageState extends State<NusQuickAddPage> {
     }
   }
 
-  String _dateTimeLabel(BuildContext context) {
-    return '${MaterialLocalizations.of(context).formatFullDate(_dateTime)} • ${TimeOfDay.fromDateTime(_dateTime).format(context)}';
-  }
+  String _dateTimeLabel(BuildContext context) =>
+      '${MaterialLocalizations.of(context).formatFullDate(_dateTime)} • ${TimeOfDay.fromDateTime(_dateTime).format(context)}';
 
   @override
   Widget build(BuildContext context) {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        appBar: AppBar(
-          title: const Text('إضافة سريعة', style: TextStyle(fontWeight: FontWeight.w900)),
-        ),
+        appBar: AppBar(title: const Text('إضافة سريعة', style: TextStyle(fontWeight: FontWeight.w900))),
         body: ListView(
           padding: const EdgeInsets.all(20),
           children: [
-            const Text(
-              'اكتب الحاجة، اختار وقتها بسرعة، وNUS هيفظها ويجهّز الإشعار.',
-              style: TextStyle(fontSize: 17, height: 1.5),
-            ),
+            const Text('اكتب الحاجة، اختار وقتها بسرعة، وNUS هيفظها ويجهّز الإشعار.', style: TextStyle(fontSize: 17, height: 1.5)),
             const SizedBox(height: 16),
             TextField(
               controller: _title,
@@ -89,12 +116,24 @@ class _NusQuickAddPageState extends State<NusQuickAddPage> {
               maxLines: 3,
               textInputAction: TextInputAction.done,
               onSubmitted: (_) => _saving ? null : _save(),
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'إيه اللي عايز تفتكره؟',
                 hintText: 'مثال: أدفع الكهرباء يوم 15',
-                prefixIcon: Icon(Icons.edit_note_rounded),
+                prefixIcon: const Icon(Icons.edit_note_rounded),
+                suffixIcon: widget.voiceInput == null
+                    ? null
+                    : IconButton(
+                        key: const Key('quick-add-voice'),
+                        tooltip: 'إضافة بالصوت',
+                        onPressed: _saving || _listening ? null : _listen,
+                        icon: Icon(_listening ? Icons.mic : Icons.mic_none_rounded),
+                      ),
               ),
             ),
+            if (_voiceError != null) ...[
+              const SizedBox(height: 8),
+              Text(_voiceError!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+            ],
             const SizedBox(height: 12),
             const Text('وقت سريع', style: TextStyle(fontWeight: FontWeight.w900)),
             const SizedBox(height: 8),
@@ -102,21 +141,9 @@ class _NusQuickAddPageState extends State<NusQuickAddPage> {
               spacing: 8,
               runSpacing: 8,
               children: [
-                ActionChip(
-                  avatar: const Icon(Icons.schedule_rounded, size: 18),
-                  label: const Text('بعد ساعة'),
-                  onPressed: _inOneHour,
-                ),
-                ActionChip(
-                  avatar: const Icon(Icons.wb_sunny_outlined, size: 18),
-                  label: const Text('بكرة 9 صباحًا'),
-                  onPressed: _tomorrowMorning,
-                ),
-                ActionChip(
-                  avatar: const Icon(Icons.nightlight_outlined, size: 18),
-                  label: const Text('بكرة 6 مساءً'),
-                  onPressed: _tomorrowEvening,
-                ),
+                ActionChip(avatar: const Icon(Icons.schedule_rounded, size: 18), label: const Text('بعد ساعة'), onPressed: _inOneHour),
+                ActionChip(avatar: const Icon(Icons.wb_sunny_outlined, size: 18), label: const Text('بكرة 9 صباحًا'), onPressed: _tomorrowMorning),
+                ActionChip(avatar: const Icon(Icons.nightlight_outlined, size: 18), label: const Text('بكرة 6 مساءً'), onPressed: _tomorrowEvening),
               ],
             ),
             const SizedBox(height: 14),
@@ -133,13 +160,8 @@ class _NusQuickAddPageState extends State<NusQuickAddPage> {
             FilledButton.icon(
               key: const ValueKey<String>('quick-add-save'),
               onPressed: _saving ? null : _save,
-              icon: _saving
-                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                  : const Icon(Icons.add_task_rounded),
-              label: Text(
-                _saving ? 'جاري الحفظ…' : 'حفظ التذكير',
-                style: const TextStyle(fontWeight: FontWeight.w900),
-              ),
+              icon: _saving ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.add_task_rounded),
+              label: Text(_saving ? 'جاري الحفظ…' : 'حفظ التذكير', style: const TextStyle(fontWeight: FontWeight.w900)),
             ),
           ],
         ),
