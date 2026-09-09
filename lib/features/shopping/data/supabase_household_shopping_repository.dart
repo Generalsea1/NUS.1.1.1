@@ -96,21 +96,33 @@ class SupabaseHouseholdShoppingRepository implements ShoppingRepository {
   @override
   Future<void> save(ShoppingList entity) async {
     final listId = entity.id.trim();
+    if (listId.isEmpty) {
+      throw ArgumentError.value(entity.id, 'id', 'Shopping list ID is required.');
+    }
     final household = _requireHouseholdId();
     final currentUser = _requireUserId();
+    final client = _client();
 
-    await _client().from('household_shopping_lists').upsert(
+    final existingList = await client
+        .from('household_shopping_lists')
+        .select('created_by')
+        .eq('id', listId)
+        .eq('household_id', household)
+        .maybeSingle();
+    final createdBy = existingList?['created_by']?.toString() ?? currentUser;
+
+    await client.from('household_shopping_lists').upsert(
       <String, dynamic>{
         'id': listId,
         'household_id': household,
         'name': entity.name.trim(),
-        'created_by': currentUser,
+        'created_by': createdBy,
         'updated_at': DateTime.now().toUtc().toIso8601String(),
       },
       onConflict: 'id',
     );
 
-    final existingRows = await _client()
+    final existingRows = await client
         .from('household_shopping_items')
         .select('id')
         .eq('shopping_list_id', listId);
@@ -118,12 +130,16 @@ class SupabaseHouseholdShoppingRepository implements ShoppingRepository {
     final incomingIds = entity.items.map((item) => item.id.trim()).toSet();
     final removedIds = existingIds.difference(incomingIds).toList(growable: false);
     if (removedIds.isNotEmpty) {
-      await _client().from('household_shopping_items').delete().inFilter('id', removedIds);
+      await client
+          .from('household_shopping_items')
+          .delete()
+          .eq('shopping_list_id', listId)
+          .inFilter('id', removedIds);
     }
 
     if (entity.items.isEmpty) return;
 
-    await _client().from('household_shopping_items').upsert(
+    await client.from('household_shopping_items').upsert(
       entity.items
           .map(
             (item) => <String, dynamic>{
