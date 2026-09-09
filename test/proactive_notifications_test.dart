@@ -39,4 +39,23 @@ void main() {
     expect(result.single.body, signal.body);
     expect(result.single.scheduledAt, signal.scheduledAt);
   });
+
+  test('planner respects an explicit zero notification budget', () {
+    final now = DateTime(2026, 9, 9, 8);
+    final planner = NusProactiveNotificationPlanner(maxItems: 0);
+
+    final result = planner.plan(
+      now: now,
+      signals: [
+        NusProactiveSignal(
+          id: 'one',
+          title: 'One',
+          body: 'One',
+          scheduledAt: now.add(const Duration(minutes: 10)),
+        ),
+      ],
+    );
+
+    expect(result, isEmpty);
+  });
 }
