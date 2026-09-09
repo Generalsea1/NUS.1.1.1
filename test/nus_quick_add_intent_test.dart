@@ -27,6 +27,12 @@ void main() {
     expect(result.confidence, greaterThanOrEqualTo(90));
   });
 
+  test('classifies a normalized Arabic call as an appointment', () {
+    final result = NusQuickAddIntentClassifier.classify('عندي مكالمة بكرة الساعة 9');
+
+    expect(result.kind, NusQuickAddKind.appointment);
+  });
+
   test('keeps a paid doctor visit as an expense instead of an appointment', () {
     final result = NusQuickAddIntentClassifier.classify('دفعت 500 للدكتور');
 
