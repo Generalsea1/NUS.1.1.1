@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../application/household_service.dart';
 import '../data/supabase_household_repository.dart';
 import '../domain/household.dart';
+import 'household_members_page.dart';
 import '../../shopping/application/shopping_lifecycle_service.dart';
 import '../../shopping/data/supabase_household_shopping_repository.dart';
 import '../../shopping/presentation/shopping_page.dart';
@@ -80,6 +81,17 @@ class _HouseholdPageState extends State<HouseholdPage> {
     );
   }
 
+  void _openMembers(Household household, HouseholdMember membership) {
+    Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => HouseholdMembersPage(
+          household: household,
+          currentMembership: membership,
+        ),
+      ),
+    );
+  }
+
   String _roleLabel(String? role) {
     switch (role) {
       case 'owner':
@@ -143,7 +155,7 @@ class _HouseholdPageState extends State<HouseholdPage> {
                                 ),
                                 const SizedBox(height: 8),
                                 const Text(
-                                  'البيانات المشتركة هتتربط بالبيت ده تدريجيًا، مع احترام صلاحيات كل عضو.',
+                                  'مساحة مشتركة للبيت، مع فصل واضح بين البيانات الشخصية والصلاحيات المشتركة.',
                                   textAlign: TextAlign.center,
                                 ),
                                 const SizedBox(height: 16),
@@ -166,6 +178,16 @@ class _HouseholdPageState extends State<HouseholdPage> {
                 const SizedBox(height: 12),
                 Card(
                   child: ListTile(
+                    leading: const CircleAvatar(child: Icon(Icons.people_outline_rounded)),
+                    title: const Text('أعضاء البيت', style: TextStyle(fontWeight: FontWeight.w900)),
+                    subtitle: const Text('عرض العضوية والأدوار ودعوة أفراد جدد بصلاحيات واضحة.'),
+                    trailing: const Icon(Icons.chevron_left_rounded),
+                    onTap: () => _openMembers(household, membership!),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Card(
+                  child: ListTile(
                     leading: const CircleAvatar(child: Icon(Icons.shopping_cart_outlined)),
                     title: const Text('مشتريات البيت المشتركة', style: TextStyle(fontWeight: FontWeight.w900)),
                     subtitle: const Text('قائمة واحدة للبيت كله، وكل عضو نشط يقدر يضيف ويعلّم العناصر كمكتملة.'),
@@ -178,16 +200,8 @@ class _HouseholdPageState extends State<HouseholdPage> {
               const Card(
                 child: ListTile(
                   leading: CircleAvatar(child: Icon(Icons.lock_outline_rounded)),
-                  title: Text('المشاركة تُبنى بصلاحيات واضحة'),
-                  subtitle: Text('لا يوجد هنا أي كشف لمعلومات أعضاء آخرين أو كتابة تلقائية لبيانات مشتركة.'),
-                ),
-              ),
-              const SizedBox(height: 10),
-              const Card(
-                child: ListTile(
-                  leading: CircleAvatar(child: Icon(Icons.construction_outlined)),
-                  title: Text('الإدارة المتقدمة قيد البناء'),
-                  subtitle: Text('الدعوات، الأدوار، وقوائم التسوق المشتركة ستُفتح تدريجيًا بعد اكتمال طبقة الصلاحيات.'),
+                  title: Text('الخصوصية أولوية'),
+                  subtitle: Text('البيت يرى بيانات المشاركة المطلوبة فقط، ولا يكشف البريد أو التفاصيل المالية الشخصية تلقائيًا.'),
                 ),
               ),
             ],
