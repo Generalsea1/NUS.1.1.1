@@ -28,31 +28,37 @@ class NusQuickAddParser {
 
     final hasTomorrow = RegExp(r'\b(?:بكرة|غدا|غدًا)\b', caseSensitive: false).hasMatch(title);
     final hasToday = RegExp(r'\bالنهارده\b|\bاليوم\b', caseSensitive: false).hasMatch(title);
-    final dayMatch = RegExp(r'\b(?:يوم\s*)?(\d{1,2})\b').firstMatch(title);
     final slashDateMatch = RegExp(r'\b(\d{1,2})\s*/\s*(\d{1,2})\b').firstMatch(title);
 
     int hour = 9;
     int minute = 0;
-    final timeMatch = RegExp(
-      r'(?:الساعة\s*)?(\d{1,2})(?::(\d{2}))?\s*(صباحًا|صباحا|صباح|مساءً|مساء|م|ص)?',
+    RegExpMatch? timeMatch;
+    final explicitTime = RegExp(
+      r'الساعة\s*(\d{1,2})(?::(\d{2}))?\s*(صباحًا|صباحا|صباح|مساءً|مساء|م|ص)?',
       caseSensitive: false,
     ).firstMatch(title);
+    final meridiemOnlyTime = RegExp(
+      r'\b(\d{1,2})(?::(\d{2}))\s*(صباحًا|صباحا|صباح|مساءً|مساء|م|ص)\b',
+      caseSensitive: false,
+    ).firstMatch(title);
+    timeMatch = explicitTime ?? meridiemOnlyTime;
+
     if (timeMatch != null) {
-      final parsedHour = int.tryParse(timeMatch.group(1) ?? '');
-      final parsedMinute = int.tryParse(timeMatch.group(2) ?? '0') ?? 0;
+      final hourIndex = explicitTime != null ? 1 : 1;
+      final minuteIndex = explicitTime != null ? 2 : 2;
+      final meridiemIndex = 3;
+      final parsedHour = int.tryParse(timeMatch.group(hourIndex) ?? '');
+      final parsedMinute = int.tryParse(timeMatch.group(minuteIndex) ?? '0') ?? 0;
       if (parsedHour != null && parsedHour >= 0 && parsedHour <= 23 && parsedMinute >= 0 && parsedMinute <= 59) {
         hour = parsedHour;
         minute = parsedMinute;
-        final meridiem = (timeMatch.group(3) ?? '').toLowerCase();
+        final meridiem = (timeMatch.group(meridiemIndex) ?? '').toLowerCase();
         if ((meridiem.contains('مساء') || meridiem == 'م') && hour < 12) hour += 12;
         if ((meridiem.contains('صباح') || meridiem == 'ص') && hour == 12) hour = 0;
-        if (hour <= 7 && (meridiem.isEmpty || meridiem == 'م')) hour += 12;
-        if (meridiem.isEmpty && hour >= 24) hour = 23;
+        if (meridiem.isEmpty && hour <= 7) hour += 12;
         detected = true;
       }
-      if (timeMatch.group(0)?.contains('الساعة') ?? false) {
-        title = title.replaceFirst(timeMatch, '');
-      }
+      title = title.replaceFirst(timeMatch, '');
     }
 
     DateTime? explicitDate;
@@ -77,30 +83,31 @@ class NusQuickAddParser {
         explicitDate = explicitDate.add(const Duration(days: 1));
       }
       detected = true;
-    } else if (dayMatch != null && RegExp(r'\b(?:يوم\s*)\d{1,2}\b').hasMatch(title)) {
-      final day = int.tryParse(dayMatch.group(1) ?? '');
-      if (day != null && day >= 1 && day <= 31) {
-        var candidate = DateTime(current.year, current.month, day, hour, minute);
-        if (candidate.isBefore(current)) {
-          final nextMonth = current.month == 12 ? 1 : current.month + 1;
-          final nextYear = current.month == 12 ? current.year + 1 : current.year;
-          candidate = DateTime(nextYear, nextMonth, day, hour, minute);
+    } else {
+      final dayMatch = RegExp(r'\b(?:يوم\s*)?(\d{1,2})\b').firstMatch(title);
+      final dayPhrase = RegExp(r'\b(?:يوم\s*)\d{1,2}\b');
+      if (dayMatch != null && dayPhrase.hasMatch(title)) {
+        final day = int.tryParse(dayMatch.group(1) ?? '');
+        if (day != null && day >= 1 && day <= 31) {
+          var candidate = DateTime(current.year, current.month, day, hour, minute);
+          if (candidate.isBefore(current)) {
+            final nextMonth = current.month == 12 ? 1 : current.month + 1;
+            final nextYear = current.month == 12 ? current.year + 1 : current.year;
+            candidate = DateTime(nextYear, nextMonth, day, hour, minute);
+          }
+          explicitDate = candidate;
+          detected = true;
         }
-        explicitDate = candidate;
-        detected = true;
+        title = title.replaceFirst(dayPhrase, '');
       }
-      title = title.replaceFirst(RegExp(r'\b(?:يوم\s*)\d{1,2}\b'), '');
     }
 
-    if (explicitDate != null) {
-      dateTime = explicitDate;
-    }
+    if (explicitDate != null) dateTime = explicitDate;
 
     title = title
         .replaceAll(RegExp(r'\s{2,}'), ' ')
         .replaceAll(RegExp(r'^[،,.:\-]+|[،,.:\-]+$'), '')
         .trim();
-
     if (title.isEmpty) title = _normalize(raw).trim();
 
     return NusQuickAddParsedInput(
