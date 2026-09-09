@@ -1,14 +1,15 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter/material.dart';
 
 import 'package:nus/features/household/application/household_task_repository.dart';
 import 'package:nus/features/household/application/household_task_service.dart';
 import 'package:nus/features/household/domain/household_task.dart';
 import 'package:nus/features/household/domain/household.dart';
 import 'package:nus/features/household/presentation/household_tasks_page.dart';
-import 'package:flutter/material.dart';
 
 class _FakeTaskRepository implements HouseholdTaskRepository {
-  _FakeTaskRepository({this.tasks = const []});
+  _FakeTaskRepository()
+      : tasks = <HouseholdTask>[];
 
   List<HouseholdTask> tasks;
   var nextId = 1;
