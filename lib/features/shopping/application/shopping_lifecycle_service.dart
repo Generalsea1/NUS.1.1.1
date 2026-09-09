@@ -49,15 +49,29 @@ class ShoppingLifecycleService {
     required String name,
     String? quantity,
   }) async {
-    var list = await _requireList(listId);
+    final existing = await _requireList(listId);
+    final cleanName = name.trim();
+    if (cleanName.isEmpty) {
+      throw ArgumentError.value(name, 'name', 'Shopping item name must not be empty.');
+    }
+
+    // Quick Add can be retried after transient UI/repository failures. Treat
+    // an identical active item as the same logical request rather than adding
+    // a duplicate row to the aggregate. Explicit quantity changes are kept as
+    // a distinct update path through [updateItem].
+    final existingActive = existing.items.where((item) =>
+        !item.isCompleted &&
+        item.name.trim().toLowerCase() == cleanName.toLowerCase());
+    if (existingActive.isNotEmpty) return existing;
+
     ShoppingItem item;
     do {
-      item = ShoppingItem(id: _newId('si'), name: name, quantity: quantity);
-    } while (list.items.any((existing) => existing.id == item.id));
+      item = ShoppingItem(id: _newId('si'), name: cleanName, quantity: quantity);
+    } while (existing.items.any((current) => current.id == item.id));
 
-    list = list.addItem(item);
-    await _repository.save(list);
-    return list;
+    final updated = existing.addItem(item);
+    await _repository.save(updated);
+    return updated;
   }
 
   Future<ShoppingList> updateItem(
