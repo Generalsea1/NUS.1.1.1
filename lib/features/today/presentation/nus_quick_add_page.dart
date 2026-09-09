@@ -20,6 +20,20 @@ class _NusQuickAddPageState extends State<NusQuickAddPage> {
     super.dispose();
   }
 
+  void _setTime(DateTime value) => setState(() => _dateTime = value);
+
+  void _inOneHour() => _setTime(DateTime.now().add(const Duration(hours: 1)));
+
+  void _tomorrowMorning() {
+    final now = DateTime.now();
+    _setTime(DateTime(now.year, now.month, now.day + 1, 9));
+  }
+
+  void _tomorrowEvening() {
+    final now = DateTime.now();
+    _setTime(DateTime(now.year, now.month, now.day + 1, 18));
+  }
+
   Future<void> _pickDateTime() async {
     final date = await showDatePicker(
       context: context,
@@ -33,9 +47,7 @@ class _NusQuickAddPageState extends State<NusQuickAddPage> {
       initialTime: TimeOfDay.fromDateTime(_dateTime),
     );
     if (time == null || !mounted) return;
-    setState(() {
-      _dateTime = DateTime(date.year, date.month, date.day, time.hour, time.minute);
-    });
+    _setTime(DateTime(date.year, date.month, date.day, time.hour, time.minute));
   }
 
   Future<void> _save() async {
@@ -51,17 +63,26 @@ class _NusQuickAddPageState extends State<NusQuickAddPage> {
     }
   }
 
+  String _dateTimeLabel(BuildContext context) {
+    return '${MaterialLocalizations.of(context).formatFullDate(_dateTime)} • ${TimeOfDay.fromDateTime(_dateTime).format(context)}';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        appBar: AppBar(title: const Text('إضافة سريعة', style: TextStyle(fontWeight: FontWeight.w900))),
+        appBar: AppBar(
+          title: const Text('إضافة سريعة', style: TextStyle(fontWeight: FontWeight.w900)),
+        ),
         body: ListView(
           padding: const EdgeInsets.all(20),
           children: [
-            const Text('فكّر في الحاجة، اكتبها، وحدد وقتها. NUS هيفظ التذكير ويجهّز الإشعار.', style: TextStyle(fontSize: 17, height: 1.5)),
-            const SizedBox(height: 18),
+            const Text(
+              'اكتب الحاجة، اختار وقتها بسرعة، وNUS هيفظها ويجهّز الإشعار.',
+              style: TextStyle(fontSize: 17, height: 1.5),
+            ),
+            const SizedBox(height: 16),
             TextField(
               controller: _title,
               autofocus: true,
@@ -74,23 +95,51 @@ class _NusQuickAddPageState extends State<NusQuickAddPage> {
                 prefixIcon: Icon(Icons.edit_note_rounded),
               ),
             ),
+            const SizedBox(height: 12),
+            const Text('وقت سريع', style: TextStyle(fontWeight: FontWeight.w900)),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                ActionChip(
+                  avatar: const Icon(Icons.schedule_rounded, size: 18),
+                  label: const Text('بعد ساعة'),
+                  onPressed: _inOneHour,
+                ),
+                ActionChip(
+                  avatar: const Icon(Icons.wb_sunny_outlined, size: 18),
+                  label: const Text('بكرة 9 صباحًا'),
+                  onPressed: _tomorrowMorning,
+                ),
+                ActionChip(
+                  avatar: const Icon(Icons.nightlight_outlined, size: 18),
+                  label: const Text('بكرة 6 مساءً'),
+                  onPressed: _tomorrowEvening,
+                ),
+              ],
+            ),
             const SizedBox(height: 14),
             Card(
               child: ListTile(
-                leading: const CircleAvatar(child: Icon(Icons.schedule_rounded)),
+                leading: const CircleAvatar(child: Icon(Icons.event_rounded)),
                 title: const Text('موعد التذكير', style: TextStyle(fontWeight: FontWeight.w900)),
-                subtitle: Text(MaterialLocalizations.of(context).formatFullDate(_dateTime) + ' • ' + TimeOfDay.fromDateTime(_dateTime).format(context)),
+                subtitle: Text(_dateTimeLabel(context)),
                 trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: _pickDateTime,
               ),
             ),
             const SizedBox(height: 18),
             FilledButton.icon(
+              key: const ValueKey<String>('quick-add-save'),
               onPressed: _saving ? null : _save,
               icon: _saving
                   ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
                   : const Icon(Icons.add_task_rounded),
-              label: Text(_saving ? 'جاري الحفظ…' : 'حفظ التذكير', style: const TextStyle(fontWeight: FontWeight.w900)),
+              label: Text(
+                _saving ? 'جاري الحفظ…' : 'حفظ التذكير',
+                style: const TextStyle(fontWeight: FontWeight.w900),
+              ),
             ),
           ],
         ),
