@@ -38,7 +38,6 @@ class _FakeAffordabilityService implements AffordabilityService {
 void main() {
   testWidgets('recurring affordability exposes and sends scenario horizon', (tester) async {
     final service = _FakeAffordabilityService();
-
     await tester.pumpWidget(
       MaterialApp(
         home: AffordabilityPage(
@@ -51,19 +50,23 @@ void main() {
       ),
     );
 
-    await tester.enterText(
-      find.byKey(const ValueKey<String>('affordability-amount-input')),
-      '1000.50',
-    );
+    await tester.enterText(find.byKey(const ValueKey<String>('affordability-amount-input')), '1000.50');
     await tester.tap(find.byKey(const ValueKey<String>('affordability-recurring-toggle')));
     await tester.pump();
 
-    expect(find.byKey(const ValueKey<String>('affordability-scenario-months')), findsOneWidget);
+    final scenario = find.byKey(const ValueKey<String>('affordability-scenario-months'));
+    await tester.ensureVisible(scenario);
+    await tester.pump();
+    expect(scenario, findsOneWidget);
 
-    await tester.tap(find.byKey(const ValueKey<String>('affordability-scenario-months')));
+    await tester.tap(scenario);
     await tester.pumpAndSettle();
     await tester.tap(find.text('6 شهور').last);
-    await tester.tap(find.byKey(const ValueKey<String>('affordability-assess-button')));
+
+    final assess = find.byKey(const ValueKey<String>('affordability-assess-button'));
+    await tester.ensureVisible(assess);
+    await tester.pump();
+    await tester.tap(assess);
     await tester.pumpAndSettle();
 
     expect(service.lastRecurring, isTrue);
