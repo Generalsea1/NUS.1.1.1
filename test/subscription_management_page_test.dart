@@ -40,7 +40,7 @@ class _FakeRecurringRepo implements RecurringExpenseRepository {
     items = [
       for (final item in items)
         if (item.id != entity.id) item,
-      if (!items.any((item) => item.id == entity.id)) entity,
+      entity,
     ];
   }
 
