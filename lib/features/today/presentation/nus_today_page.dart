@@ -8,6 +8,7 @@ import '../../expenses/application/expense_management_service.dart';
 import '../../onboarding/domain/household_profile.dart';
 import '../../settings/presentation/about_nus_page.dart';
 import '../../settings/presentation/notification_settings_page.dart';
+import '../../shopping/application/shopping_lifecycle_service.dart';
 import '../data/speech_to_text_nus_voice_input.dart';
 import '../domain/nus_daily_intelligence.dart';
 import 'nus_quick_add_page.dart';
@@ -18,6 +19,7 @@ class NusTodayPage extends StatefulWidget {
     required this.profile,
     this.scheduleStore,
     this.expenseManagementService,
+    this.shoppingService,
     this.onOpenAppointments,
     this.onOpenFinance,
     this.onCreateReminder,
@@ -26,6 +28,7 @@ class NusTodayPage extends StatefulWidget {
   final HouseholdProfile profile;
   final legacy.ScheduleStore? scheduleStore;
   final ExpenseManagementService? expenseManagementService;
+  final ShoppingLifecycleService? shoppingService;
   final VoidCallback? onOpenAppointments;
   final VoidCallback? onOpenFinance;
   final Future<void> Function(String title, DateTime dateTime)? onCreateReminder;
@@ -135,11 +138,16 @@ class _NusTodayPageState extends State<NusTodayPage> {
         builder: (_) => NusQuickAddPage(
           onCreateReminder: createReminder,
           voiceInput: SpeechToTextNusVoiceInput(),
+          shoppingService: widget.shoppingService,
+          expenseManagementService: widget.expenseManagementService,
+          userId: widget.profile.userId,
+          defaultCurrency: widget.profile.currencyCode,
         ),
       ),
     );
     if (mounted) {
       await _loadAppointments();
+      await _loadSpending();
       setState(() {});
     }
   }
