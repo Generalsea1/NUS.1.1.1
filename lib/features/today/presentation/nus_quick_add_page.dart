@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/supabase_service.dart';
+import '../../appointments/application/appointment_lifecycle_service.dart';
+import '../../appointments/data/local_appointment_repository.dart';
+import '../../appointments/domain/appointment.dart';
 import '../../expenses/application/expense_management_service.dart';
 import '../../expenses/data/supabase_expense_repository.dart';
 import '../../expenses/data/supabase_recurring_expense_repository.dart';
@@ -23,6 +26,7 @@ class NusQuickAddPage extends StatefulWidget {
     this.voiceInput,
     this.shoppingService,
     this.expenseManagementService,
+    this.appointmentService,
     this.userId,
     this.defaultCurrency = 'EGP',
   });
@@ -31,6 +35,7 @@ class NusQuickAddPage extends StatefulWidget {
   final NusVoiceInput? voiceInput;
   final ShoppingLifecycleService? shoppingService;
   final ExpenseManagementService? expenseManagementService;
+  final AppointmentLifecycleService? appointmentService;
   final String? userId;
   final String defaultCurrency;
 
@@ -168,6 +173,9 @@ class _NusQuickAddPageState extends State<NusQuickAddPage> {
       case NusQuickAddKind.reminder:
         await _saveReminder(raw);
         break;
+      case NusQuickAddKind.appointment:
+        await _saveAppointment(raw, intent);
+        break;
       case NusQuickAddKind.shopping:
         await _saveShopping(raw);
         break;
@@ -191,6 +199,45 @@ class _NusQuickAddPageState extends State<NusQuickAddPage> {
       if (mounted) setState(() => _saving = false);
     }
   }
+
+  Future<void> _saveAppointment(String raw, NusQuickAddIntent intent) async {
+    final service = widget.appointmentService ??
+        AppointmentLifecycleService(repository: LocalAppointmentRepository());
+    final parsed = NusQuickAddParser.parse(raw, now: DateTime.now());
+    final title = parsed.title.trim();
+    final dateTime = _timeWasExplicitlySelected ? _dateTime : parsed.dateTime;
+    if (title.isEmpty || dateTime.isBefore(DateTime.now())) {
+      _showMessage('محتاج عنوان وموعد صحيحين قبل حفظ الموعد.');
+      return;
+    }
+
+    setState(() => _saving = true);
+    try {
+      await service.create(
+        title: title,
+        startsAt: dateTime,
+        type: _appointmentType(intent.normalizedText),
+      );
+      if (!mounted) return;
+      Navigator.of(context).pop(true);
+    } catch (_) {
+      if (mounted) _showMessage('تعذر حفظ الموعد. لم يتم اعتبار العملية ناجحة.');
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  AppointmentType _appointmentType(String text) {
+    if (_hasAny(text, const ['دكتور', 'طبيب', 'عياده', 'كشف'])) return AppointmentType.doctor;
+    if (_hasAny(text, const ['مكالمة', 'اتصال', 'فون'])) return AppointmentType.phoneCall;
+    if (_hasAny(text, const ['اجتماع', 'ميتنج'])) return AppointmentType.work;
+    if (_hasAny(text, const ['مقابله'])) return AppointmentType.work;
+    if (_hasAny(text, const ['سفر', 'رحله'])) return AppointmentType.travel;
+    if (_hasAny(text, const ['مدرسه', 'درس', 'جامعه'])) return AppointmentType.study;
+    return AppointmentType.personal;
+  }
+
+  bool _hasAny(String text, List<String> needles) => needles.any(text.contains);
 
   Future<void> _saveShopping(String raw) async {
     final service = widget.shoppingService ??
@@ -323,6 +370,8 @@ class _NusQuickAddPageState extends State<NusQuickAddPage> {
     switch (intent.kind) {
       case NusQuickAddKind.reminder:
         return 'تذكير / مهمة';
+      case NusQuickAddKind.appointment:
+        return 'موعد';
       case NusQuickAddKind.shopping:
         return 'مشتريات';
       case NusQuickAddKind.expense:
@@ -334,6 +383,8 @@ class _NusQuickAddPageState extends State<NusQuickAddPage> {
     switch (kind) {
       case NusQuickAddKind.reminder:
         return Icons.check_circle_outline_rounded;
+      case NusQuickAddKind.appointment:
+        return Icons.event_available_rounded;
       case NusQuickAddKind.shopping:
         return Icons.shopping_cart_outlined;
       case NusQuickAddKind.expense:
@@ -344,10 +395,13 @@ class _NusQuickAddPageState extends State<NusQuickAddPage> {
   @override
   Widget build(BuildContext context) {
     final intent = _intent;
-    final isReminder = intent == null || intent.kind == NusQuickAddKind.reminder;
+    final isReminderLike = intent == null ||
+        intent.kind == NusQuickAddKind.reminder ||
+        intent.kind == NusQuickAddKind.appointment;
     final actionLabel = switch (intent?.kind) {
       NusQuickAddKind.shopping => 'إضافة للمشتريات',
       NusQuickAddKind.expense => 'تسجيل المصروف',
+      NusQuickAddKind.appointment => 'حفظ الموعد',
       _ => 'حفظ التذكير',
     };
 
@@ -372,7 +426,7 @@ class _NusQuickAddPageState extends State<NusQuickAddPage> {
               onSubmitted: (_) => _saving ? null : _save(),
               decoration: InputDecoration(
                 labelText: 'إيه اللي عايز NUS يعمله؟',
-                hintText: 'مثال: أدفع الكهرباء يوم 15 الساعة 10 صباحًا',
+                hintText: 'مثال: عندي كشف دكتور يوم 15 الساعة 10 صباحًا',
                 prefixIcon: const Icon(Icons.edit_note_rounded),
                 suffixIcon: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -411,7 +465,9 @@ class _NusQuickAddPageState extends State<NusQuickAddPage> {
             if (_scheduleDetected) ...[
               const SizedBox(height: 8),
               Text(
-                'NUS فهم الموعد تلقائيًا وسيحفظ التذكير في الوقت المحدد.',
+                intent?.kind == NusQuickAddKind.appointment
+                    ? 'NUS فهم الموعد تلقائيًا وسيحفظه في الوقت المحدد.'
+                    : 'NUS فهم الموعد تلقائيًا وسيحفظ التذكير في الوقت المحدد.',
                 style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.w700),
               ),
             ],
@@ -419,7 +475,7 @@ class _NusQuickAddPageState extends State<NusQuickAddPage> {
               const SizedBox(height: 8),
               Text(_voiceError!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
             ],
-            if (isReminder) ...[
+            if (isReminderLike) ...[
               const SizedBox(height: 12),
               const Text('وقت سريع', style: TextStyle(fontWeight: FontWeight.w900)),
               const SizedBox(height: 8),
@@ -435,8 +491,8 @@ class _NusQuickAddPageState extends State<NusQuickAddPage> {
               const SizedBox(height: 14),
               Card(
                 child: ListTile(
-                  leading: const CircleAvatar(child: Icon(Icons.event_rounded)),
-                  title: const Text('موعد التذكير', style: TextStyle(fontWeight: FontWeight.w900)),
+                  leading: Icon(intent?.kind == NusQuickAddKind.appointment ? Icons.event_available_rounded : Icons.event_rounded),
+                  title: Text(intent?.kind == NusQuickAddKind.appointment ? 'موعد الحدث' : 'موعد التذكير', style: const TextStyle(fontWeight: FontWeight.w900)),
                   subtitle: Text(_dateTimeLabel(context)),
                   trailing: const Icon(Icons.chevron_right_rounded),
                   onTap: _pickDateTime,
@@ -457,6 +513,13 @@ class _NusQuickAddPageState extends State<NusQuickAddPage> {
                 style: TextStyle(color: Theme.of(context).colorScheme.secondary),
               ),
             ],
+            if (intent?.kind == NusQuickAddKind.appointment) ...[
+              const SizedBox(height: 12),
+              Text(
+                'سيتم حفظ الموعد كعنصر Appointment مستقل مع حماية من التكرار.',
+                style: TextStyle(color: Theme.of(context).colorScheme.secondary),
+              ),
+            ],
             const SizedBox(height: 18),
             FilledButton.icon(
               key: const ValueKey<String>('quick-add-save'),
@@ -467,7 +530,9 @@ class _NusQuickAddPageState extends State<NusQuickAddPage> {
                       ? Icons.shopping_cart_checkout_rounded
                       : intent?.kind == NusQuickAddKind.expense
                           ? Icons.account_balance_wallet_rounded
-                          : Icons.add_task_rounded),
+                          : intent?.kind == NusQuickAddKind.appointment
+                              ? Icons.event_available_rounded
+                              : Icons.add_task_rounded),
               label: Text(_saving ? 'جاري التنفيذ…' : actionLabel, style: const TextStyle(fontWeight: FontWeight.w900)),
             ),
           ],
