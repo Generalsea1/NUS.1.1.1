@@ -149,6 +149,7 @@ class _Nus2AppState extends State<Nus2App> {
       darkTheme: _theme(Brightness.dark),
       themeMode: _themeMode,
       home: AuthGate(
+        scheduleStore: widget.store,
         expenseService: widget.expenseService,
         expenseManagementService: widget.expenseManagementService,
         onCreateReminder: (title, dateTime) => widget.store.add(title, dateTime),
