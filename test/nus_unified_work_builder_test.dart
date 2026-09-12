@@ -4,7 +4,6 @@ import 'package:nus/features/appointments/domain/appointment.dart';
 import 'package:nus/features/household/domain/household_task.dart';
 import 'package:nus/features/obligations/domain/obligation.dart';
 import 'package:nus/features/today/application/nus_unified_work_builder.dart';
-import 'package:nus/features/today/domain/nus_work_item.dart';
 
 void main() {
   test('combines reminders, appointments, household tasks and enabled obligations', () {
