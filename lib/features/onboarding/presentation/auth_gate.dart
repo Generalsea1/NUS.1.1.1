@@ -14,14 +14,19 @@ import '../../../legacy_main.dart' as legacy;
 import '../../shopping/application/shopping_lifecycle_service.dart';
 import '../../shopping/data/supabase_household_shopping_repository.dart';
 import '../../household/application/household_service.dart';
+import '../../household/application/household_task_service.dart';
 import '../../household/data/supabase_household_repository.dart';
+import '../../household/data/supabase_household_task_repository.dart';
 import '../../household/presentation/household_page.dart';
 import '../../household/domain/household.dart';
+import '../../obligations/application/obligation_service.dart';
+import '../../obligations/data/supabase_obligation_repository.dart';
 import '../application/household_profile_repository.dart';
 import '../application/household_profile_validator.dart';
 import '../data/supabase_household_profile_repository.dart';
 import '../domain/household_profile.dart';
 import '../../today/presentation/nus_today_page.dart';
+import '../../today/presentation/nus_unified_work_page.dart';
 import 'auth_page.dart';
 import 'financial_dashboard_page.dart';
 import 'household_onboarding_page.dart';
@@ -38,6 +43,8 @@ class AuthGate extends StatefulWidget {
     this.onOpenGeneralHome,
     this.onCreateReminder,
     this.scheduleStore,
+    this.taskService,
+    this.obligationService,
   });
 
   final AuthRepository? authRepository;
@@ -49,6 +56,8 @@ class AuthGate extends StatefulWidget {
   final void Function(BuildContext context)? onOpenGeneralHome;
   final Future<void> Function(String title, DateTime dateTime)? onCreateReminder;
   final legacy.ScheduleStore? scheduleStore;
+  final HouseholdTaskService? taskService;
+  final ObligationService? obligationService;
 
   @override
   State<AuthGate> createState() => _AuthGateState();
@@ -58,6 +67,8 @@ class _AuthGateState extends State<AuthGate> {
   late final AuthRepository _authRepository = widget.authRepository ?? SupabaseAuthRepository();
   late final HouseholdProfileRepository _profileRepository = widget.profileRepository ?? const SupabaseHouseholdProfileRepository();
   late final IncomeSourceRepository _incomeRepository = widget.incomeRepository ?? const SupabaseIncomeSourceRepository();
+  late final HouseholdTaskService _taskService = widget.taskService ?? HouseholdTaskService(repository: const SupabaseHouseholdTaskRepository());
+  late final ObligationService _obligationService = widget.obligationService ?? const ObligationService(repository: SupabaseObligationRepository());
   late final bool _ownsAuthRepository = widget.authRepository == null;
   late final StreamSubscription<AuthState> _authSubscription;
 
@@ -209,6 +220,20 @@ class _AuthGateState extends State<AuthGate> {
     );
   }
 
+  void _openUnifiedWork(BuildContext context, String userId) {
+    Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => NusUnifiedWorkPage(
+          userId: userId,
+          householdId: _household?.id,
+          scheduleStore: widget.scheduleStore ?? legacy.ScheduleStore(),
+          taskService: _taskService,
+          obligationService: _obligationService,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_initializing || _loadingProfile) {
@@ -241,18 +266,29 @@ class _AuthGateState extends State<AuthGate> {
     }
 
     final shoppingService = _householdShoppingService ?? widget.shoppingService;
+    final scheduleStore = widget.scheduleStore;
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Stack(
         children: [
           NusTodayPage(
             profile: profile,
-            scheduleStore: widget.scheduleStore,
+            scheduleStore: scheduleStore,
             expenseManagementService: widget.expenseManagementService,
             shoppingService: shoppingService,
             onOpenFinance: () => _openFinance(context, profile),
             onOpenAppointments: widget.onOpenGeneralHome == null ? null : () => widget.onOpenGeneralHome!(context),
             onCreateReminder: widget.onCreateReminder,
+          ),
+          PositionedDirectional(
+            end: 20,
+            bottom: 92,
+            child: FloatingActionButton.extended(
+              key: const ValueKey<String>('open-unified-work'),
+              onPressed: scheduleStore == null ? null : () => _openUnifiedWork(context, userId),
+              icon: const Icon(Icons.view_timeline_rounded),
+              label: const Text('العمل الموحد'),
+            ),
           ),
           PositionedDirectional(
             end: 20,
