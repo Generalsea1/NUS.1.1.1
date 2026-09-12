@@ -11,7 +11,7 @@ void main() {
     final now = DateTime.now();
     final items = NusUnifiedWorkBuilder.build(
       reminders: [
-        legacyWorkReminder(
+        NusWorkReminderInput(
           id: 'r1',
           title: 'Call school',
           dueAt: now.add(const Duration(hours: 1)),
@@ -79,7 +79,7 @@ void main() {
     final now = DateTime.now();
     final items = NusUnifiedWorkBuilder.build(
       reminders: [
-        legacyWorkReminder(
+        NusWorkReminderInput(
           id: 'done',
           title: 'Done',
           dueAt: now.subtract(const Duration(minutes: 5)),
