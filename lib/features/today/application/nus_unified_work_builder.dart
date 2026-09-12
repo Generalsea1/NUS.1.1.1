@@ -1,7 +1,7 @@
 import '../../appointments/domain/appointment.dart';
 import '../../household/domain/household_task.dart';
 import '../../obligations/domain/obligation.dart';
-import '../domain/nus_work_item.dart';
+import '../../../core/domain/nus_work_item.dart';
 
 class NusUnifiedWorkBuilder {
   const NusUnifiedWorkBuilder._();
