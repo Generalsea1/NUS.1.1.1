@@ -7,7 +7,7 @@ class NusUnifiedWorkBuilder {
   const NusUnifiedWorkBuilder._();
 
   static List<NusWorkItem> build({
-    required List<legacyWorkReminder> reminders,
+    required List<NusWorkReminderInput> reminders,
     required List<Appointment> appointments,
     required List<HouseholdTask> householdTasks,
     required List<Obligation> obligations,
@@ -71,8 +71,8 @@ class NusUnifiedWorkBuilder {
   }
 }
 
-class legacyWorkReminder {
-  const legacyWorkReminder({
+class NusWorkReminderInput {
+  const NusWorkReminderInput({
     required this.id,
     required this.title,
     required this.dueAt,
