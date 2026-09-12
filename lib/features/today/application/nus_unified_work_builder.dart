@@ -61,8 +61,6 @@ class NusUnifiedWorkBuilder {
           kind: NusWorkItemKind.obligation,
           completed: false,
           priority: NusWorkItemPriority.high,
-          amountMinorUnits: obligation.amount,
-          currencyCode: obligation.currencyCode,
         ),
       );
     }
