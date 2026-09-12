@@ -65,12 +65,12 @@ void main() {
       ],
     );
 
-    expect(items.map((item) => item.id), containsAllInOrder([
+    expect(items.map((item) => item.id), [
       'reminder:r1',
       'appointment:a1',
       'household_task:t1',
       'obligation:o1',
-    ]));
+    ]);
     expect(items.where((item) => item.id == 'obligation:o2'), isEmpty);
   });
 
