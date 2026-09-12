@@ -5,7 +5,7 @@
 **Authority:** Single Source of Truth for product and engineering execution  
 **Repository:** `Generalsea1/NUS.1.1.1`  
 **Default branch:** `main`  
-**Current audited branch HEAD:** `a484d35d18c3af0b32d420ab93555988bdc3a55f`  
+**Current audited branch HEAD:** `c15b96dbe462d8375ad182d9dd516697dc280908`  
 **Last audit date:** 2026-09-12  
 
 > This document governs future work. Historical plans and feature notes are subordinate to the verified current repository state and this contract.
@@ -14,15 +14,17 @@
 
 ## 1. PRODUCT VISION
 
-NUS is an **AI Household Operating System**: a personal and household system that connects daily life, money, obligations, tasks, shopping, and future plans so the user can understand what matters now and decide what to do next.
+NUS is an **AI Household Operating System**: a personal and household system connecting daily life, money, obligations, tasks, shopping, and future plans so the user can understand what matters now and decide what to do next.
 
-The product is not a generic social network, generic marketplace, generic expense tracker, or chatbot. Its strategic core is the **NUS Financial Brain / Household CFO**.
+The strategic core is the **NUS Financial Brain / Household CFO**.
+
+NUS is not a generic social network, generic marketplace, generic expense tracker, or chatbot.
 
 Core promise:
 
 > **"قل لي ماذا يحدث الآن، وماذا يجب أن أفعل بعد ذلك بحياتي ومالي وأسرتي."**
 
-Product loop:
+Core loop:
 
 ```text
 USER
@@ -45,23 +47,23 @@ ACTION / PERSISTENCE
   ↓
 PROACTIVE REMINDER
   ↓
-RETURN / RETAIN
+RETURN
 ```
 
 ---
 
 ## 2. PRODUCT PRINCIPLES
 
-1. **Product value before visual polish.**
-2. **Real functionality before apparent completeness.**
-3. **User-entered facts are authoritative.**
-4. **AI is an intelligence layer, not the source of truth.**
-5. **Local-first where practical.**
-6. **Provider-neutral AI architecture.**
-7. **Preserve working behavior.**
-8. **Prefer additive and reversible changes.**
-9. **No fake production behavior.**
-10. **No feature is complete because its UI exists; integration and verification are required.**
+1. Product value before visual polish.
+2. Real functionality before apparent completeness.
+3. User-entered facts are authoritative.
+4. AI is an intelligence layer, not the source of truth.
+5. Local-first where practical.
+6. Provider-neutral AI architecture.
+7. Preserve working behavior.
+8. Prefer additive and reversible changes.
+9. No fake production behavior.
+10. A feature is not complete because its UI exists; integration and verification are required.
 
 ---
 
@@ -103,10 +105,10 @@ NUS
 
 ## 4. SCREEN / PAGE MAP
 
-### Entry and identity
-- App bootstrap / startup
+### Entry / Identity
+- Bootstrap / startup
 - Authentication gate
-- Sign in / registration flows as currently implemented
+- Sign in / registration
 - Session recovery / logout boundary
 
 ### Onboarding
@@ -115,29 +117,29 @@ NUS
 - Household size
 - Adults / children
 - Housing
-- Income frequency / income snapshot
+- Income snapshot
 - Debt / recurring obligations
 - Emergency target
 - Budget snapshot
 
 ### Today
 - Daily dashboard
-- Daily financial snapshot
+- Financial snapshot
 - Appointments / reminders
 - Next action
 - Proactive recommendations
-- Quick Add / action entry where implemented
+- Quick Add where implemented
 
 ### Finance
 - Finance overview
 - Income sources
-- Expense capture / ledger
+- Expense ledger
 - Recurring expenses
 - Obligations / bills
-- Installment plans
+- Installments
 - Financial goals
 - Future cashflow / forecast
-- Affordability / scenario analysis (target)
+- Affordability / scenarios (target)
 
 ### Household
 - Household profile
@@ -147,68 +149,52 @@ NUS
 - Shared tasks
 
 ### AI
-- AI hub / Copilot entry point
+- AI hub / Copilot
 - Financial Advisor
-- Provider connection boundary where applicable
-- Diagnostics must expose truthful controlled failure information, never fake success
+- Provider connection boundary
+- Controlled diagnostics / truthful error states
 
-### Supporting life domains
+### Supporting domains
 - Appointments
 - Medications / reminders
 - Notes
 - Settings
 
-**Rule:** This is an architectural map, not permission to create every listed screen immediately. Only approved roadmap tasks may add UI.
+This map does not authorize implementation of every screen immediately.
 
 ---
 
-## 5. FEATURE MAP AND TARGET CAPABILITY
+## 5. FEATURE MAP
 
 ### TODAY
-Target: answer what matters today and what action should happen next.
+Answer what matters today and what action should happen next.
 
 ### QUICK ADD
-Target: accept natural-language / voice intent, show a confirmation preview when ambiguity exists, then persist through the existing approved lifecycle.
+Natural-language / voice intent → preview when ambiguous → confirmed persistence through existing lifecycle.
 
 ### FINANCIAL BRAIN
-Target:
-- understand income and obligations
-- compute actual spending
-- identify pressure points
-- produce safe-spend guidance
-- forecast near-term cashflow
-- compare actual vs plan
+Income + expenses + obligations + installments + budget + cashflow → safe-spend, pressure, forecast and actual-vs-plan guidance.
 
 ### HOUSEHOLD CFO
-Target:
-- affordability decisions
-- debt strategy
-- emergency planning
-- what-if scenarios
-- explainable financial recommendations
+Affordability, debt strategy, emergency planning, what-if scenarios, explainable financial recommendations.
 
 ### HOUSEHOLD OS
-Target:
-- members and roles
-- shared/private boundaries
-- shared tasks
-- shared shopping
-- household coordination
+Members, roles, privacy boundaries, shared tasks and shared shopping.
 
 ### SMART SHOPPING
-Shopping is a household decision layer, not a generic marketplace in the current product phase.
+Household decision layer, not a generic marketplace.
 
 ### PROACTIVE INTELLIGENCE
-NUS should proactively surface meaningful upcoming or risky events across money, tasks, shopping, appointments and life.
+Meaningful upcoming or risky events across money, tasks, shopping, appointments and life.
 
 ### LIFE OS
-Later expansion: medication, health routines, documents, warranties, vehicle, recipes, maintenance and connected household workflows.
+Later expansion: medication, health routines, documents, warranties, vehicle, recipes and maintenance.
 
 ---
 
 ## 6. FLUTTER ARCHITECTURE
 
-Current repository structure contains:
+Current structure:
 
 ```text
 lib/
@@ -238,7 +224,7 @@ shopping
 today
 ```
 
-Layering rule:
+Layering:
 
 ```text
 Presentation
@@ -250,23 +236,21 @@ Repository contracts
 Data sources / adapters
 ```
 
-Domain contracts must not be coupled directly to Flutter widgets, vendor SDKs, notification implementation details, or Supabase types unless the boundary explicitly requires an adapter.
+Domain contracts must not depend directly on vendor SDKs or UI framework details unless an adapter boundary explicitly requires it.
 
 ---
 
-## 7. CURRENT COMPOSITION ROOT
+## 7. PROTECTED COMPOSITION ROOTS
 
-`lib/main.dart` is the current application composition root. It initializes Supabase, notifications, the legacy ScheduleStore, appointment synchronization, medication services, shopping lifecycle, expense lifecycle and expense management, then injects them into the authenticated app shell.
+`lib/main.dart`, `lib/legacy_main.dart`, and `lib/notification_service.dart` are protected integration points.
 
-This makes `lib/main.dart`, `legacy_main.dart`, and `notification_service.dart` protected integration points.
+`main.dart` currently initializes Supabase, notifications, the legacy ScheduleStore, appointments, medications, shopping, expenses and expense management before creating the authenticated application shell.
 
-Do not rewrite the composition root merely for style.
+No broad rewrite merely for style.
 
 ---
 
-## 8. LOCAL-FIRST AND STATE
-
-Approved principle:
+## 8. LOCAL-FIRST / STATE
 
 ```text
 UI
@@ -278,15 +262,15 @@ Repository
 Local or remote implementation
 ```
 
-Existing reminder behavior uses the local ScheduleStore / SharedPreferences path and NotificationService. It must not be broken by changes to authentication, finance, AI, or household features.
+Reminder behavior remains based on the existing ScheduleStore / SharedPreferences and NotificationService path.
 
-SharedPreferences may be used for lightweight local state. Complex financial authoritative records remain behind their domain/repository contracts and approved persistence layer.
+SharedPreferences is for lightweight local state; authoritative complex financial records remain behind the approved domain/repository persistence layer.
 
 ---
 
 ## 9. DATABASE — VERIFIED CURRENT SHAPE
 
-The current Supabase database contains the following major tables:
+Current major tables:
 
 ```text
 user_ai_connections
@@ -307,7 +291,7 @@ installment_plans
 household_tasks
 ```
 
-Key relationships:
+Relationships:
 
 ```text
 auth.users
@@ -333,16 +317,15 @@ household_shopping_lists
   └── household_shopping_items
 
 obligations
-  └── expense_records (optional obligation link)
+  └── expense_records
 
 recurring_expense_definitions
-  └── expense_records (optional recurring link)
+  └── expense_records
 ```
 
-All currently inspected public tables have RLS enabled.
+All inspected public tables have RLS enabled.
 
-### Financial data authority
-
+Financial authority:
 - `household_profiles`: household financial snapshot/configuration.
 - `income_sources`: recurring income facts.
 - `obligations`: future commitments.
@@ -350,15 +333,15 @@ All currently inspected public tables have RLS enabled.
 - `recurring_expense_definitions`: recurring expense definitions.
 - `installment_plans`: installment structures.
 
-AI output must not overwrite the authoritative financial ledger merely because the model produced a recommendation.
+AI output never becomes the authoritative ledger merely because a model produced it.
 
 ---
 
 ## 10. DATABASE CHANGE CONTROL
 
-No destructive schema change is permitted without explicit approval.
+No destructive schema change without explicit approval.
 
-Any schema change requires:
+Every schema change requires:
 
 ```text
 Reason
@@ -371,29 +354,25 @@ Reason
 → Verification
 ```
 
-Never edit production schema ad hoc when a migration is the proper mechanism.
-
 ---
 
-## 11. AUTHENTICATION AND AUTHORIZATION
+## 11. AUTHENTICATION / AUTHORIZATION
 
-Application identity and AI/provider authorization are separate contracts.
+Identity and AI/provider authorization are separate contracts.
 
-Authentication is handled through Supabase Auth boundaries.
-
-Household access must be constrained by:
+Household access requires:
 
 ```text
 Authenticated identity
 +
-household membership
+Household membership
 +
-role
+Role
 +
 RLS
 ```
 
-Current household roles:
+Roles:
 
 ```text
 owner
@@ -401,13 +380,13 @@ admin
 member
 ```
 
-No provider credential must be placed in the Flutter application.
+Provider credentials never belong in Flutter source.
 
 ---
 
 ## 12. BACKEND / EDGE FUNCTIONS
 
-Current Supabase Edge Functions verified:
+Verified current functions:
 
 ```text
 household-budget-ai    ACTIVE v8   verify_jwt=true
@@ -416,119 +395,80 @@ financial-advisor-ai   ACTIVE v11  verify_jwt=true
 nus-copilot-ai         ACTIVE v1   verify_jwt=true
 ```
 
-Backend boundaries must remain authenticated unless a documented, justified exception exists.
+Backend endpoints remain authenticated unless a documented exception is approved.
 
 ---
 
-## 13. AI ARCHITECTURE
-
-AI must remain provider-neutral at the app/domain boundary.
+## 13. AI CONTRACT
 
 ```text
 Flutter / Application
         ↓
-AI contract / provider abstraction
+AI Contract / Provider Abstraction
         ↓
 Authenticated Edge Function
         ↓
 Provider
         ↓
-Structured response
+Structured Response
         ↓
-Server validation
+Server Validation
         ↓
-Client rendering
+Client
 ```
 
-Current financial advisor behavior includes:
-- JWT authentication
-- daily quota reservation / release / finalization
-- server-side Gemini API key
-- bounded context input
-- structured JSON contract
-- provider error diagnostics
-- timeout handling
-- response shape validation
+Current financial advisor includes JWT authentication, quota reservation/release/finalization, server-side Gemini key, bounded context, structured JSON output, provider diagnostics, timeout handling and response validation.
 
-AI must not:
-- invent user financial facts
-- change authoritative financial data without explicit user confirmation
-- execute destructive actions by inference
-- expose provider keys or tokens
+AI must not invent financial facts, overwrite authoritative data without explicit user confirmation, execute destructive actions by inference, or expose provider secrets.
 
 ---
 
-## 14. SECURITY CONTRACT
+## 14. SECURITY
 
 Never:
 - commit secrets
-- put provider API keys in mobile source
-- log access/refresh/provider secrets
-- trust client-provided authorization claims without server validation
-- weaken RLS to simplify UI development
-- bypass authentication for convenience
+- place provider API keys in mobile source
+- log provider tokens
+- weaken RLS for UI convenience
+- bypass authentication
 
-Current security audit found warnings requiring follow-up:
+### Security findings and disposition — 2026-09-12
 
-1. `public.can_manage_household(target_household_id uuid)` is exposed as an executable SECURITY DEFINER function to `anon` and `authenticated` roles.
-2. `public.accept_household_invitation(invite_token text)` is executable by the `authenticated` role as SECURITY DEFINER.
-3. Supabase Auth leaked-password protection is disabled.
+1. **FIXED:** anonymous execute access to `public.can_manage_household(uuid)` was removed.
+2. **FIXED:** `can_manage_household` was moved to private schema `private.can_manage_household(uuid)`, its public function was removed, and the `household_member_update_admin` RLS policy now calls the private helper.
+3. **REMAINING / INTENTIONAL:** `public.accept_household_invitation(text)` remains `SECURITY DEFINER` and callable by `authenticated` because the Flutter household invitation repository invokes this RPC directly. Replacing this with a private function would require a separate backend/API migration and is not to be done opportunistically during Phase 1.
+4. **REMAINING EXTERNAL CONFIGURATION:** Supabase Auth leaked-password protection is disabled. This is a hosted Auth configuration item, not a database function setting. It must be enabled in the Supabase Auth password-security settings before the Phase 1 security gate can be green. Supabase documents this control in Auth password security. 
 
-These are **Phase 1 security blockers/follow-up items**, not reasons to silently bypass security.
+The current remaining security warnings are therefore explicit, known and not hidden.
 
 ---
 
-## 15. PERFORMANCE CONTRACT
+## 15. PERFORMANCE
 
-Current Supabase performance audit identified:
-
+Current advisory baseline identified:
 - 8 foreign keys without covering indexes.
-- 16 RLS policies with per-row `auth`/`current_setting()` evaluation patterns flagged for optimization.
-- 13 indexes reported as unused at the current observed scale.
+- 16 RLS policies with per-row auth/current_setting evaluation patterns flagged for optimization.
+- 13 indexes reported as unused at current observed scale.
 
-These findings must be triaged before release hardening. Unused-index findings must not trigger blind deletion because the dataset is currently small.
-
-Preferred rule:
-
-```text
-measure → understand workload → change → verify
-```
+These are recorded for the dedicated performance/schema hardening phases. No blind index deletion is permitted.
 
 ---
 
-## 16. UI / UX CONTRACT
+## 16. UI / UX
 
-NUS must be:
+NUS must be clear, fast, calm, professional, trustworthy, consistent and correct for RTL/LTR.
 
-```text
-Clear
-Fast
-Calm
-Professional
-Trustworthy
-Consistent
-RTL/LTR correct
-Arabic/English first-class
-```
+No decorative metrics, fake states, AI theater, meaningless cards or placeholder production actions.
 
-Rules:
-- no UI element exists merely for decoration
-- no fake metrics
-- no placeholder production actions
-- no meaningless dashboard cards
-- no AI theater
-- important financial decisions must be understandable
-- errors must tell the truth
-- loading states must not imply success
-- empty states must reflect real absence of data
+Important financial decisions must be understandable.
+
+Errors must tell the truth.
 
 ---
 
 ## 17. PRODUCTION INTEGRITY
 
-The system must never pretend something succeeded when it did not.
-
-Forbidden fake production behavior includes:
+Forbidden in production:
 
 ```text
 fake users
@@ -543,42 +483,13 @@ fake API responses
 fake success states
 ```
 
-Test doubles are permitted in automated tests only when they are explicitly scoped as test infrastructure and cannot leak into production execution.
+Test doubles are allowed only inside test infrastructure and must not leak into production paths.
 
 ---
 
-## 18. TESTING STRATEGY
+## 18. TESTING / QUALITY GATE
 
-A completed feature may require, as applicable:
-
-```text
-Unit tests
-Domain tests
-Repository/integration tests
-Widget/UI tests
-Regression tests
-Analyzer
-CI
-Android APK build + verification
-```
-
-Existing repository verification workflow runs:
-
-```text
-flutter pub get
-flutter analyze
-flutter test
-```
-
-on the relevant push/PR paths.
-
-A passing UI test is not sufficient evidence for a backend-backed feature.
-
----
-
-## 19. QUALITY GATE
-
-No task is DONE until:
+Completed work follows:
 
 ```text
 IMPLEMENT
@@ -589,7 +500,7 @@ IMPLEMENT
 → REPORT
 ```
 
-For Android-facing work:
+For Android-facing changes:
 
 ```text
 IMPLEMENT
@@ -600,85 +511,67 @@ IMPLEMENT
 → REPORT
 ```
 
-Phase completion requires all critical checks to pass.
+The repository verification workflow currently runs `flutter pub get`, `flutter analyze`, and `flutter test`.
 
 ---
 
-## 20. PHASE ROADMAP
+## 19. PHASE ROADMAP
 
-### PHASE 1 — PROJECT AUDIT
-Goal: establish factual baseline and blockers.
+1. Project Audit
+2. Master Architecture
+3. Real Database
+4. Authentication & Security
+5. Backend & APIs
+6. Mock Data Elimination
+7. Core Product Features
+8. AI Systems
+9. Social / Creator Systems (only where product-approved)
+10. UX / UI Polish
+11. Testing / QA
+12. Performance / Scalability
+13. Production Hardening
+14. Final Release Audit
 
-### PHASE 2 — MASTER ARCHITECTURE
-Goal: align feature boundaries, contracts and dependencies with the product North Star.
-
-### PHASE 3 — REAL DATABASE
-Goal: harden schema, RLS, indexes and authoritative data model.
-
-### PHASE 4 — AUTHENTICATION & SECURITY
-Goal: production-grade identity, authorization and credential handling.
-
-### PHASE 5 — BACKEND & APIs
-Goal: coherent, validated, observable service contracts.
-
-### PHASE 6 — MOCK DATA ELIMINATION
-Goal: prove all production paths use real persistence/services.
-
-### PHASE 7 — CORE PRODUCT FEATURES
-Goal: Today + Financial Brain + Household workflows provide real daily value.
-
-### PHASE 8 — AI SYSTEMS
-Goal: harden Advisor/Copilot/proactive/scenario intelligence with explicit boundaries.
-
-### PHASE 9 — SOCIAL / CREATOR SYSTEMS
-Only approved niche social/creator functionality that strengthens household/product value; never a generic social network by default.
-
-### PHASE 10 — UX / UI POLISH
-Only after functionality and stability gates pass.
-
-### PHASE 11 — TESTING / QA
-Full regression, integration, release candidate validation.
-
-### PHASE 12 — PERFORMANCE / SCALABILITY
-Query/index/RLS/API/UI performance under realistic workloads.
-
-### PHASE 13 — PRODUCTION HARDENING
-Security, monitoring, failure recovery, backup/recovery, release controls.
-
-### PHASE 14 — FINAL RELEASE AUDIT
-Independent verification that product claims match actual behavior.
+No phase advances while its critical gate is red.
 
 ---
 
-## 21. PHASE 1 — CURRENT AUDIT STATE
+## 20. PHASE 1 CURRENT STATE — 2026-09-12
 
-### Verified
-- Repository exists and is active.
-- `main` currently points to `a484d35d18c3af0b32d420ab93555988bdc3a55f`.
-- Flutter package version is `2.0.0+2`.
-- Current app has `main.dart` plus `legacy_main.dart` composition boundaries.
-- Core and feature architecture exists.
-- Supabase database and Edge Functions are active.
-- Current database tables have RLS enabled.
-- Verification workflow includes analyze + test.
+### VERIFIED
+- Repository active.
+- `main` advanced from the original audit HEAD through the master-contract and security migrations.
+- Flutter package version `2.0.0+2`.
+- Core/feature architecture present.
+- Supabase database active and healthy.
+- Inspected public tables use RLS.
+- Four current Edge Functions verified active with JWT enforcement.
+- GitHub `Verify NUS PR` workflow run **34688183994** for the master-contract commit completed **successfully**. Its `Analyze` and `Test` steps both passed.
+- Supabase security advisory no longer reports anonymous execution of `can_manage_household`.
 
-### Observed / requires follow-up
-- README still describes the application as `NUS v1.0.0` while `pubspec.yaml` is `2.0.0+2`.
-- Historical master-plan documents exist and are not themselves authoritative.
-- No current combined GitHub commit status was returned for the current `main` HEAD; status evidence must be obtained from an actual workflow run before declaring the Phase 1 gate green.
-- Security advisor reports 3 classes of warnings described above.
-- Performance advisor reports index/RLS optimization findings described above.
-- Repository search finds test doubles such as `SharedPreferences.setMockInitialValues`; these are test-scoped findings and must not be treated as production mocks without path/runtime verification.
+### FIXED DURING PHASE 1
+- Removed anonymous access to the household-management helper.
+- Isolated `can_manage_household` into the private schema so it is no longer a public RPC surface.
+- Preserved the existing RLS authorization behavior.
+- Added the matching migration to the repository.
 
-### Phase 1 status
+### REMAINING BLOCKER
+**Supabase Auth leaked-password protection is still disabled.** This cannot be changed through the current database/Edge Function tooling because it is a hosted Auth configuration control.
 
-**BLOCKED / IN PROGRESS**
+Phase 1 therefore remains:
 
-Reason: the factual audit has identified verification and security follow-up work that must be resolved or explicitly dispositioned before Phase 1 can pass.
+**BLOCKED — SECURITY CONFIGURATION PENDING**
+
+No Phase 2 entry is authorized until this setting is enabled and the security advisor is re-run with evidence.
+
+### NON-BLOCKING AUDIT ITEMS
+- README version text is historical and should be aligned later under documentation cleanup.
+- Performance advisor findings remain recorded for the appropriate database/performance phase.
+- Test doubles discovered by repository search are confined to test files and are not evidence of production mocks by themselves.
 
 ---
 
-## 22. PROTECTED AREAS
+## 21. PROTECTED AREAS
 
 No unapproved broad rewrite of:
 
@@ -687,66 +580,46 @@ lib/main.dart
 lib/legacy_main.dart
 lib/notification_service.dart
 lib/core/**
-financial domain contracts / calculations
+financial contracts / calculations
 expense lifecycle / ledger
 installment logic
 household authorization / RLS
 Supabase migrations
-Edge Function authentication and quota boundaries
+Edge Function auth and quota boundaries
 ```
 
-Protected does not mean immutable; it means **change only with evidence and explicit task scope**.
+Protected means change only with evidence and explicit task scope.
 
 ---
 
-## 23. CHANGE CONTROL
+## 22. CHANGE CONTROL
 
-For any change affecting Architecture, Database, API contracts, Authentication, Security, Navigation, or Major UX, record:
+For changes affecting Architecture, Database, API contracts, Authentication, Security, Navigation, or Major UX, record:
 
 ```text
-1. Reason
-2. Files / tables / functions affected
-3. Dependencies
-4. Alternatives considered
-5. Risks
-6. Rollback path
-7. Verification plan
-8. Documentation impact
+Reason
+Files / tables / functions affected
+Dependencies
+Alternatives
+Risks
+Rollback path
+Verification plan
+Documentation impact
 ```
 
-Then implement only the minimum necessary change.
+Then implement only the minimum required change.
 
 ---
 
-## 24. NON-DESTRUCTIVE RULE
+## 23. NO-GUESSING RULE
 
-```text
-PRESERVE
-→ VERIFY
-→ MODIFY ONLY WHAT IS NECESSARY
-→ TEST
-→ VERIFY AGAIN
-```
+Unknown fact → inspect first.
 
-No rewrite merely because code can be cleaner.
+Never guess files, APIs, schemas, dependencies, credentials, runtime behavior or completion state.
 
 ---
 
-## 25. NO-GUESSING RULE
-
-If a fact is unknown:
-
-```text
-INSPECT FIRST.
-```
-
-Never guess files, APIs, schemas, dependencies, credentials, runtime behavior, or completion status.
-
----
-
-## 26. AGENT EXECUTION CONTRACT
-
-Every Agent working on NUS must:
+## 24. AGENT EXECUTION CONTRACT
 
 ```text
 READ CONTRACT
@@ -760,15 +633,13 @@ READ CONTRACT
 → REPORT
 ```
 
-The Agent may not silently redefine the product or advance to the next phase when the current gate is red.
+One task at a time. A task may touch multiple related files when required.
 
-Work one task at a time, but a task may legitimately touch multiple related files.
+Never silently redefine the product.
 
 ---
 
-## 27. REQUIRED TASK REPORT
-
-Every completed task must report:
+## 25. REQUIRED REPORT
 
 ```text
 TASK:
@@ -781,11 +652,11 @@ RISKS:
 NEXT TASK:
 ```
 
-Use facts only. Never claim runtime, CI, build, or integration success without evidence.
+Facts only. No runtime, CI, build or integration success may be claimed without evidence.
 
 ---
 
-## 28. DEFINITION OF DONE
+## 26. DEFINITION OF DONE
 
 ```text
 DESIGNED
@@ -809,50 +680,17 @@ DONE
 
 ---
 
-## 29. PRODUCT PRIORITY
+## 27. CHANGE LOG
 
-When choosing the next approved capability, prefer the one with the highest combination of:
+### 2026-09-12 — v1
+- Created the governing NUS Project Master Contract.
+- Established the product direction around the AI Household Operating System / Household CFO.
+- Audited repository, Flutter architecture, Supabase schema, migrations, Edge Functions, CI and advisories.
 
-```text
-User Value
-Daily Frequency
-Financial / Practical Impact
-Retention Potential
-Differentiation
-```
-
-Do not optimize roadmap order for ease of coding.
-
----
-
-## 30. RELEASE STANDARD
-
-Release quality is measured by:
-
-```text
-CORRECTNESS
-SECURITY
-REAL FUNCTIONALITY
-USER VALUE
-RELIABILITY
-SCALABILITY
-MAINTAINABILITY
-PERFORMANCE
-UX QUALITY
-DIFFERENTIATION
-```
-
-"Looks finished" is not a release criterion.
-
----
-
-## 31. CHANGE LOG
-
-### 2026-09-12 — v1 of PROJECT MASTER CONTRACT
-- Established this document as the governing source of truth.
-- Audited current repository HEAD.
-- Audited current Flutter structure and composition root.
-- Audited current Supabase tables, migrations, Edge Functions and security/performance advisories.
-- Recorded current blockers instead of marking Phase 1 complete.
-
-Future changes to architecture, schema, API, authentication, security, navigation or major UX must append a dated entry here.
+### 2026-09-12 — Phase 1 security hardening
+- Removed anonymous execution of `can_manage_household`.
+- Moved household-management authorization helper to private schema.
+- Updated the household-member RLS policy to use the private helper.
+- Added repository migration `20260912102910_isolate_household_management_helper_from_api.sql`.
+- Recorded the remaining hosted Auth leaked-password-protection setting as an explicit Phase 1 blocker.
+- Recorded successful CI evidence for the master-contract commit.
