@@ -5,7 +5,7 @@
 **Authority:** Single Source of Truth for product and engineering execution  
 **Repository:** `Generalsea1/NUS.1.1.1`  
 **Default branch:** `main`  
-**Current audited branch HEAD:** `68c0e7be902e192cca6ebcabbdbbeb9514958237`  
+**Current audited branch HEAD:** `21f0752081db22257208efcae5ef482aef8ae01e`  
 **Last audit date:** 2026-09-12  
 
 > This document governs future work. Historical plans and feature notes are subordinate to the verified current repository state and this contract.
@@ -654,7 +654,7 @@ Independent verification that product claims match actual behavior.
 
 ### Verified
 - Repository exists and is active.
-- `main` currently points to `68c0e7be902e192cca6ebcabbdbbeb9514958237`.
+- `main` currently points to `21f0752081db22257208efcae5ef482aef8ae01e`.
 - Flutter package version is `2.0.0+2`.
 - Current app has `main.dart` plus `legacy_main.dart` composition boundaries.
 - Core and feature architecture exists.
@@ -666,7 +666,7 @@ Independent verification that product claims match actual behavior.
 ### Observed / requires follow-up
 - README still describes the application as `NUS v1.0.0` while `pubspec.yaml` is `2.0.0+2`.
 - Historical master-plan documents exist and are not themselves authoritative.
-- Current Android build run `34688895856` is still in progress; Analyze has not yet completed, so APK success is not claimed.
+- Android CI must reach Analyze, Test, Build debug APK, Verify APK and Upload APK successfully before the Phase 1 Android gate is green.
 - Security advisor currently reports one warning: Supabase Auth leaked-password protection is disabled.
 - Performance advisor reports index/RLS optimization findings described above.
 - Repository search finds test doubles such as `SharedPreferences.setMockInitialValues`; these are test-scoped findings and must not be treated as production mocks without path/runtime verification.
@@ -861,7 +861,7 @@ DIFFERENTIATION
 - Moved household authorization helper execution behind the private schema boundary.
 - Hardened household invitation RPC execution so the public function is invoker-scoped while authenticated access remains available through the private helper.
 - Recorded the remaining Auth leaked-password protection finding as an external configuration blocker.
-- Recorded that Android CI run `34688895856` must reach APK verification before the Phase 1 gate can close.
+- Recorded that Android CI must reach APK verification before the Phase 1 gate can close.
 - Synchronized this contract with the actual current repository HEAD.
 
 Future changes to architecture, schema, API, authentication, security, navigation or major UX must append a dated entry here.
