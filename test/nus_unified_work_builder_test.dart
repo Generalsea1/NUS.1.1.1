@@ -8,7 +8,7 @@ import 'package:nus/features/today/domain/nus_work_item.dart';
 
 void main() {
   test('combines reminders, appointments, household tasks and enabled obligations', () {
-    final now = DateTime(2026, 9, 12, 10, 0);
+    final now = DateTime.now();
     final items = NusUnifiedWorkBuilder.build(
       reminders: [
         legacyWorkReminder(
@@ -66,17 +66,17 @@ void main() {
       ],
     );
 
-    expect(items.map((item) => item.kind), containsAllInOrder([
-      NusWorkItemKind.reminder,
-      NusWorkItemKind.appointment,
-      NusWorkItemKind.householdTask,
-      NusWorkItemKind.obligation,
+    expect(items.map((item) => item.id), containsAllInOrder([
+      'reminder:r1',
+      'appointment:a1',
+      'household_task:t1',
+      'obligation:o1',
     ]));
     expect(items.where((item) => item.id == 'obligation:o2'), isEmpty);
   });
 
   test('keeps completed sources out of the active queue', () {
-    final now = DateTime(2026, 9, 12, 10, 0);
+    final now = DateTime.now();
     final items = NusUnifiedWorkBuilder.build(
       reminders: [
         legacyWorkReminder(
