@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:nus_2_0/core/domain/nus_work_item.dart';
+import 'package:nus/core/domain/nus_work_item.dart';
 
 void main() {
   group('NusWorkQueue', () {
