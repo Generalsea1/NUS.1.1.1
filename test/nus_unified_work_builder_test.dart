@@ -66,8 +66,8 @@ void main() {
     );
 
     expect(items.map((item) => item.id), [
-      'reminder:r1',
       'appointment:a1',
+      'reminder:r1',
       'household_task:t1',
       'obligation:o1',
     ]);
