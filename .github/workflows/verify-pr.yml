@@ -7,6 +7,7 @@ on:
     branches:
       - main
       - feature/user-ai-connections
+      - feature/nus-unified-work-live-integration
   workflow_dispatch:
 
 concurrency:
