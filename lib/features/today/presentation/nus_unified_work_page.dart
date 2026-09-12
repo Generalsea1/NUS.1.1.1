@@ -7,6 +7,7 @@ import '../../household/application/household_task_service.dart';
 import '../../household/domain/household_task.dart';
 import '../../obligations/application/obligation_service.dart';
 import '../../obligations/domain/obligation.dart';
+import '../application/nus_unified_work_builder.dart';
 import '../domain/nus_work_item.dart';
 
 class NusUnifiedWorkPage extends StatefulWidget {
@@ -104,69 +105,29 @@ class _NusUnifiedWorkPageState extends State<NusUnifiedWorkPage> {
     }
   }
 
-  List<NusWorkItem> _buildItems(DateTime now) {
-    final items = <NusWorkItem>[];
+  List<NusWorkItem> _buildItems() {
+    final reminders = widget.scheduleStore.items
+        .map(
+          (reminder) => NusWorkReminderInput(
+            id: reminder.id,
+            title: reminder.title,
+            dueAt: reminder.dateTime,
+            completed: reminder.completed,
+          ),
+        )
+        .toList(growable: false);
 
-    for (final reminder in widget.scheduleStore.items) {
-      items.add(
-        NusWorkItem(
-          id: 'reminder:${reminder.id}',
-          title: reminder.title,
-          kind: NusWorkItemKind.reminder,
-          completed: reminder.completed,
-          priority: NusWorkItemPriority.normal,
-          dueAt: reminder.dateTime,
-        ),
-      );
-    }
-
-    for (final appointment in _appointments) {
-      items.add(
-        NusWorkItem(
-          id: 'appointment:${appointment.id}',
-          title: appointment.title,
-          kind: NusWorkItemKind.appointment,
-          completed: appointment.status != AppointmentStatus.upcoming,
-          priority: NusWorkItemPriority.high,
-          dueAt: appointment.startsAt,
-        ),
-      );
-    }
-
-    for (final task in _tasks) {
-      items.add(
-        NusWorkItem(
-          id: 'household_task:${task.id}',
-          title: task.title,
-          kind: NusWorkItemKind.householdTask,
-          completed: task.completed,
-          priority: NusWorkItemPriority.normal,
-          dueAt: task.dueAt,
-        ),
-      );
-    }
-
-    for (final obligation in _obligations.where((item) => item.enabled)) {
-      items.add(
-        NusWorkItem(
-          id: 'obligation:${obligation.id}',
-          title: obligation.name,
-          kind: NusWorkItemKind.obligation,
-          completed: false,
-          priority: NusWorkItemPriority.high,
-          amountMinorUnits: obligation.amount,
-          currencyCode: obligation.currencyCode,
-        ),
-      );
-    }
-
-    return NusWorkQueue.active(items);
+    return NusUnifiedWorkBuilder.build(
+      reminders: reminders,
+      appointments: _appointments,
+      householdTasks: _tasks,
+      obligations: _obligations,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final now = DateTime.now();
-    final items = _buildItems(now);
+    final items = _buildItems();
     final next = items.isEmpty ? null : items.first;
 
     return Directionality(
