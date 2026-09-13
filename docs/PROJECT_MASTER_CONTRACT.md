@@ -5,8 +5,8 @@
 **Authority:** Single Source of Truth for product and engineering execution  
 **Repository:** `Generalsea1/NUS.1.1.1`  
 **Default branch:** `main`  
-**Current audited branch HEAD:** `21f0752081db22257208efcae5ef482aef8ae01e`  
-**Last audit date:** 2026-09-12  
+**Current audited branch HEAD:** `3a279fbbdf2b7c630f3586ee41127ecf9552b8fb`  
+**Last audit date:** 2026-09-13  
 
 > This document governs future work. Historical plans and feature notes are subordinate to the verified current repository state and this contract.
 
@@ -468,13 +468,13 @@ Never:
 - weaken RLS to simplify UI development
 - bypass authentication for convenience
 
-Current security audit found warnings requiring follow-up:
+Current security audit state:
 
 1. `public.can_manage_household(target_household_id uuid)` has been moved behind a private helper and is no longer exposed as an anonymous executable SECURITY DEFINER API surface.
 2. `public.accept_household_invitation(invite_token text)` now delegates to a private helper; the public RPC is invoker-scoped and anonymous execution is revoked.
 3. Supabase Auth leaked-password protection is disabled.
 
-The first two issues were remediated and re-verified. The leaked-password protection finding remains an external Auth configuration blocker.
+The first two issues were remediated and re-verified. The leaked-password protection finding remains an external Auth configuration blocker for release hardening.
 
 ---
 
@@ -484,7 +484,7 @@ Current Supabase performance audit identified:
 
 - 8 foreign keys without covering indexes.
 - 16 RLS policies with per-row `auth`/`current_setting()` evaluation patterns flagged for optimization.
-- 13 indexes reported as unused at the current observed scale.
+- 11 indexes reported as unused at the current observed scale.
 
 These findings must be triaged before release hardening. Unused-index findings must not trigger blind deletion because the dataset is currently small.
 
@@ -654,29 +654,31 @@ Independent verification that product claims match actual behavior.
 
 ### Verified
 - Repository exists and is active.
-- `main` currently points to `21f0752081db22257208efcae5ef482aef8ae01e`.
+- `main` currently points to `3a279fbbdf2b7c630f3586ee41127ecf9552b8fb`.
 - Flutter package version is `2.0.0+2`.
 - Current app has `main.dart` plus `legacy_main.dart` composition boundaries.
 - Core and feature architecture exists.
 - Supabase database and Edge Functions are active.
-- Current database tables have RLS enabled.
+- Current inspected public database tables have RLS enabled.
 - Verification workflow includes analyze + test.
 - Household invitation authorization hardening is applied and verified.
+- Household role management UI is integrated through the existing repository/service boundary and existing RLS authorization.
+- Unified Work live integration connects reminders, appointments, household tasks and enabled obligations into the Today workflow.
+- Post-merge Android CI completed Analyze, Test, Build debug APK, Verify APK and Upload APK successfully for `3a279fbbdf2b7c630f3586ee41127ecf9552b8fb`.
 
 ### Observed / requires follow-up
 - README still describes the application as `NUS v1.0.0` while `pubspec.yaml` is `2.0.0+2`.
 - Historical master-plan documents exist and are not themselves authoritative.
-- Android CI must reach Analyze, Test, Build debug APK, Verify APK and Upload APK successfully before the Phase 1 Android gate is green.
 - Security advisor currently reports one warning: Supabase Auth leaked-password protection is disabled.
-- Performance advisor reports index/RLS optimization findings described above.
+- Performance advisor reports 8 unindexed foreign keys, 16 RLS/auth initialization-plan findings and 11 currently unused indexes.
 - Repository search finds test doubles such as `SharedPreferences.setMockInitialValues`; these are test-scoped findings and must not be treated as production mocks without path/runtime verification.
-- `main` remains unprotected with no required status checks; this is a governance/release-control follow-up, not a reason to alter branch policy blindly during Phase 1.
+- `main` remains unprotected with no required status checks; this is a governance/release-control follow-up, not a reason to alter branch policy blindly during feature work.
 
 ### Phase 1 status
 
-**BLOCKED / IN PROGRESS**
+**BLOCKED FOR RELEASE HARDENING / OPEN FOR CONTROLLED PRODUCT DEVELOPMENT**
 
-Reason: the Auth leaked-password protection finding remains unresolved and the current Android CI gate has not yet produced verified APK evidence.
+Reason: the Auth leaked-password protection finding remains unresolved as an external Supabase Auth configuration item. Android build/verification and current code CI are green on the audited main commit, so this security configuration finding is the remaining Phase 1 release-hardening blocker.
 
 ---
 
@@ -863,5 +865,14 @@ DIFFERENTIATION
 - Recorded the remaining Auth leaked-password protection finding as an external configuration blocker.
 - Recorded that Android CI must reach APK verification before the Phase 1 gate can close.
 - Synchronized this contract with the actual current repository HEAD.
+
+### 2026-09-13 — verified product continuation
+- Reconciled the audited repository HEAD to `3a279fbbdf2b7c630f3586ee41127ecf9552b8fb` after verified post-merge work.
+- Recorded Unified Work live integration for reminders, appointments, household tasks and enabled obligations.
+- Recorded household member role-management UI integration using the existing RLS-secured authorization path.
+- Verified post-merge repository Analyze + Test success on the audited main commit.
+- Verified post-merge Android Build, APK verification and artifact upload success on the audited main commit.
+- Corrected the performance audit count to the currently observed 11 unused indexes.
+- Kept the Supabase Auth leaked-password protection finding explicitly open as an external release-hardening blocker.
 
 Future changes to architecture, schema, API, authentication, security, navigation or major UX must append a dated entry here.
