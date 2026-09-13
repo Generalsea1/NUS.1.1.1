@@ -25,6 +25,18 @@ class _FakeRepository implements HouseholdRepository {
 
   @override
   Future<HouseholdMember> addMembership(HouseholdMember member) async => member;
+
+  @override
+  Future<HouseholdMember> updateMemberRole({
+    required String householdId,
+    required String userId,
+    required String role,
+  }) async => HouseholdMember(
+        householdId: householdId,
+        userId: userId,
+        role: role,
+        status: 'active',
+      );
 }
 
 void main() {
