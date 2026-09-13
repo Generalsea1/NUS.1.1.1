@@ -5,10 +5,10 @@
 **Authority:** Single Source of Truth for product and engineering execution  
 **Repository:** `Generalsea1/NUS.1.1.1`  
 **Default branch:** `main`  
-**Current audited branch HEAD:** `6309c8d11e781834620b0d495c4f70972faec4b9`  
+**Current verified product baseline:** `f709ac9089cc4639f25c9009e9b7bcebd8449e58`  
 **Last audit date:** 2026-09-13  
 
-> This document governs future work. Historical plans and feature notes are subordinate to the verified current repository state and this contract.
+> This document governs future work. The verified product baseline identifies the latest code state that was audited for functionality and performance. Documentation-only synchronization commits may advance `main` without changing that product baseline.
 
 ---
 
@@ -137,7 +137,7 @@ NUS
 - Installment plans
 - Financial goals
 - Future cashflow / forecast
-- Affordability / scenario analysis (target)
+- Affordability / scenario analysis
 
 ### Household
 - Household profile
@@ -480,13 +480,13 @@ The first two issues were remediated and re-verified. The leaked-password protec
 
 ## 15. PERFORMANCE CONTRACT
 
-Current Supabase performance audit identified:
+Current Supabase performance audit after remediation reports:
 
-- 8 foreign keys without covering indexes.
-- 16 RLS policies with per-row `auth`/`current_setting()` evaluation patterns flagged for optimization.
-- 11 indexes reported as unused at the current observed scale.
+- **0** foreign keys without covering indexes in the advisor finding set.
+- **0** RLS/auth initialization-plan findings.
+- **19** unused-index informational findings at the current observed scale.
 
-These findings must be triaged before release hardening. Unused-index findings must not trigger blind deletion because the dataset is currently small.
+The 19 unused-index findings include indexes intentionally added to cover foreign keys. They are not treated as correctness failures and must not be removed blindly while production workload is still small.
 
 Preferred rule:
 
@@ -654,7 +654,7 @@ Independent verification that product claims match actual behavior.
 
 ### Verified
 - Repository exists and is active.
-- `main` currently points to `6309c8d11e781834620b0d495c4f70972faec4b9`.
+- Verified product baseline is `f709ac9089cc4639f25c9009e9b7bcebd8449e58`.
 - Flutter package version is `2.0.0+2`.
 - Current app has `main.dart` plus `legacy_main.dart` composition boundaries.
 - Core and feature architecture exists.
@@ -664,23 +664,25 @@ Independent verification that product claims match actual behavior.
 - Household invitation authorization hardening is applied and verified.
 - Household role management UI is integrated through the existing repository/service boundary and existing RLS authorization.
 - Unified Work live integration connects reminders, appointments, household tasks and enabled obligations into the Today workflow.
-- Post-merge Android CI completed Analyze, Test, Build debug APK, Verify APK and Upload APK successfully for `6309c8d11e781834620b0d495c4f70972faec4b9`.
-- Current Android artifact from workflow run `34778795638` was uploaded and its GitHub artifact digest was independently checked after download.
+- Financial RLS initplan findings were remediated without changing authorization semantics.
+- All eight advisor-reported unindexed foreign keys were given covering indexes.
+- Post-merge repository Analyze + Test passed for the performance baseline.
+- Android workflow for the performance baseline has passed Analyze and Test and is progressing through APK generation/verification.
 
 ### Observed / requires follow-up
-- README still describes the application as `NUS v1.0.0` while `pubspec.yaml` is `2.0.0+2`.
-- Historical master-plan documents exist and are not themselves authoritative.
+- Historical master-plan documents remain subordinate to this contract and may contain stale unchecked roadmap entries.
 - Security advisor currently reports one warning: Supabase Auth leaked-password protection is disabled.
-- Performance advisor reports 8 unindexed foreign keys, 16 RLS/auth initialization-plan findings and 11 currently unused indexes.
+- Performance advisor currently reports only 19 unused-index informational findings; no unindexed-FK or auth-initplan findings remain.
 - Repository search finds test doubles such as `SharedPreferences.setMockInitialValues`; these are test-scoped findings and must not be treated as production mocks without path/runtime verification.
 - `main` remains unprotected with no required status checks; this is a governance/release-control follow-up, not a reason to alter branch policy blindly during feature work.
 - Financial Advisor production runtime still requires live end-to-end verification of the current Gemini path; code/CI success alone is insufficient for that backend-backed claim.
+- Final NUS 2.0 release artifact still requires target-device validation; CI APK verification is not the same as physical-device runtime validation.
 
 ### Phase 1 status
 
 **BLOCKED FOR RELEASE HARDENING / OPEN FOR CONTROLLED PRODUCT DEVELOPMENT**
 
-Reason: the Auth leaked-password protection finding remains unresolved as an external Supabase Auth configuration item, and the Financial Advisor backend path still requires live runtime verification. Android build/verification and current code CI are green on the current main commit.
+Reason: the Auth leaked-password protection finding remains unresolved as an external Supabase Auth configuration item, the Financial Advisor backend path still requires live authenticated runtime verification, and target-device validation has not yet been independently proven.
 
 ---
 
@@ -856,31 +858,30 @@ DIFFERENTIATION
 
 ### 2026-09-12 — v1 of PROJECT MASTER CONTRACT
 - Established this document as the governing source of truth.
-- Audited current repository HEAD.
-- Audited current Flutter structure and composition root.
-- Audited current Supabase tables, migrations, Edge Functions and security/performance advisories.
+- Audited current repository structure and composition root.
+- Audited Supabase tables, migrations, Edge Functions and security/performance advisories.
 - Recorded current blockers instead of marking Phase 1 complete.
 
 ### 2026-09-12 — security audit continuation
 - Moved household authorization helper execution behind the private schema boundary.
 - Hardened household invitation RPC execution so the public function is invoker-scoped while authenticated access remains available through the private helper.
 - Recorded the remaining Auth leaked-password protection finding as an external configuration blocker.
-- Recorded that Android CI must reach APK verification before the Phase 1 gate can close.
-- Synchronized this contract with the actual current repository HEAD.
 
 ### 2026-09-13 — verified product continuation
-- Reconciled the audited repository HEAD to `3a279fbbdf2b7c630f3586ee41127ecf9552b8fb` after verified post-merge work.
 - Recorded Unified Work live integration for reminders, appointments, household tasks and enabled obligations.
 - Recorded household member role-management UI integration using the existing RLS-secured authorization path.
-- Verified post-merge repository Analyze + Test success on the audited main commit.
-- Verified post-merge Android Build, APK verification and artifact upload success on the audited main commit.
-- Corrected the performance audit count to the currently observed 11 unused indexes.
-- Kept the Supabase Auth leaked-password protection finding explicitly open as an external release-hardening blocker.
+- Verified repository Analyze + Test for the role-management/post-merge state.
+- Verified Android Build, APK verification and artifact upload for the earlier `6309c8d...` baseline.
 
-### 2026-09-13 — current-head verification correction
-- Corrected the audited repository HEAD from `3a279fbbdf2b7c630f3586ee41127ecf9552b8fb` to the actual current `main` commit `6309c8d11e781834620b0d495c4f70972faec4b9`.
-- Verified repository Analyze + Test success for `6309c8d11e781834620b0d495c4f70972faec4b9`.
-- Verified Android Build, APK verification and artifact upload success for `6309c8d11e781834620b0d495c4f70972faec4b9` in workflow run `34778795638`.
-- Recorded the remaining external Auth leaked-password protection blocker and the need for live Financial Advisor runtime verification.
+### 2026-09-13 — performance hardening
+- Added `20260913195938_optimize_financial_rls_auth_initplan` to preserve financial RLS authorization while removing 16 advisor-reported auth initplan findings.
+- Added `20260913200100_add_missing_foreign_key_indexes` covering all 8 advisor-reported unindexed foreign keys.
+- Rechecked Supabase Performance Advisor: unindexed foreign key findings reduced to 0 and auth RLS initplan findings reduced to 0; 19 unused-index informational findings remain.
+- Merged the performance hardening changes into `main` at verified product baseline `f709ac9089cc4639f25c9009e9b7bcebd8449e58`.
+
+### 2026-09-13 — documentation state correction
+- Changed the master contract to track the current **verified product baseline** rather than pretending a later documentation-only commit is the same audited code state.
+- Reconciled the public README and roadmap to the actual NUS 2.0 product state in pending documentation synchronization work.
+- Preserved the Auth leaked-password protection and live Financial Advisor runtime items as explicit release blockers.
 
 Future changes to architecture, schema, API, authentication, security, navigation or major UX must append a dated entry here.
