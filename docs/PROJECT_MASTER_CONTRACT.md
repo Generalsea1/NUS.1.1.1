@@ -3,7 +3,7 @@
 **Document ID:** NUS-MASTER-CONTRACT-001  
 **Status:** MASTER / GOVERNING DOCUMENT  
 **Authority:** Single Source of Truth for product and engineering execution  
-**Repository:** `NUS.1.1.1`  
+**Repository:** `Generalsea1/NUS.1.1.1`  
 **Default branch:** `main`  
 **Current audited branch HEAD:** `3a279fbbdf2b7c630f3586ee41127ecf9552b8fb`  
 **Last audit date:** 2026-09-13  
