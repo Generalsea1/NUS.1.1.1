@@ -416,16 +416,17 @@ class _HouseholdMembersPageState extends State<HouseholdMembersPage> {
       return Text(_roleLabel(member.role), style: const TextStyle(fontWeight: FontWeight.w900));
     }
 
-    return Column(
+    return Row(
       mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         Text(_roleLabel(member.role), style: const TextStyle(fontWeight: FontWeight.w900)),
-        const SizedBox(height: 4),
-        OutlinedButton(
+        const SizedBox(width: 4),
+        IconButton(
           key: ValueKey<String>('household-change-role-${member.userId}'),
+          tooltip: 'تغيير الدور',
           onPressed: _saving ? null : () => _changeRole(member),
-          child: const Text('تغيير الدور'),
+          icon: const Icon(Icons.manage_accounts_outlined),
+          visualDensity: VisualDensity.compact,
         ),
       ],
     );
