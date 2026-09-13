@@ -228,6 +228,65 @@ class _HouseholdMembersPageState extends State<HouseholdMembersPage> {
     }
   }
 
+  Future<void> _changeRole(HouseholdMember member) async {
+    if (!_canManage || _saving) return;
+    if (member.userId == widget.household.ownerUserId) return;
+    if (member.userId == widget.currentMembership.userId) return;
+
+    final newRole = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('تغيير دور العضو'),
+        content: Text(
+          member.role == 'admin'
+              ? 'اختر ما إذا كان هذا العضو سيظل مديرًا أو يعود إلى عضو.'
+              : 'اختر ما إذا كان هذا العضو سيصبح مديرًا أو يظل عضوًا.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('إلغاء'),
+          ),
+          OutlinedButton(
+            onPressed: member.role == 'admin'
+                ? null
+                : () => Navigator.of(dialogContext).pop('admin'),
+            child: const Text('جعله مديرًا'),
+          ),
+          FilledButton(
+            onPressed: member.role == 'member'
+                ? null
+                : () => Navigator.of(dialogContext).pop('member'),
+            child: const Text('إعادته عضوًا'),
+          ),
+        ],
+      ),
+    );
+
+    if (!mounted || newRole == null || newRole == member.role) return;
+    setState(() => _saving = true);
+    try {
+      await _householdService.updateMemberRole(
+        householdId: widget.household.id,
+        userId: member.userId,
+        role: newRole,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(newRole == 'admin' ? 'تمت ترقية العضو إلى مدير.' : 'تمت إعادة العضو إلى دور عضو.')),
+      );
+      await _load();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('تعذر تغيير دور العضو. ربما لم تعد لديك الصلاحية.')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
   String _roleLabel(String role) {
     switch (role) {
       case 'owner':
@@ -282,11 +341,19 @@ class _HouseholdMembersPageState extends State<HouseholdMembersPage> {
                         const SizedBox(height: 12),
                         for (final member in _members)
                           Card(
-                            child: ListTile(
-                              leading: CircleAvatar(child: Icon(member.role == 'owner' ? Icons.star_outline_rounded : Icons.person_outline_rounded)),
-                              title: Text(member.userId == widget.currentMembership.userId ? 'أنت' : 'عضو البيت'),
-                              subtitle: const Text('عضو نشط'),
-                              trailing: Text(_roleLabel(member.role), style: const TextStyle(fontWeight: FontWeight.w900)),
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+                              child: ListTile(
+                                contentPadding: EdgeInsets.zero,
+                                leading: CircleAvatar(
+                                  child: Icon(
+                                    member.role == 'owner' ? Icons.star_outline_rounded : Icons.person_outline_rounded,
+                                  ),
+                                ),
+                                title: Text(member.userId == widget.currentMembership.userId ? 'أنت' : 'عضو البيت'),
+                                subtitle: Text(member.userId == widget.household.ownerUserId ? 'المسؤول الأساسي عن البيت' : 'عضو نشط'),
+                                trailing: _memberRoleActions(member),
+                              ),
                             ),
                           ),
                         if (_canManage) ...[
@@ -337,6 +404,30 @@ class _HouseholdMembersPageState extends State<HouseholdMembersPage> {
                 ),
         ),
       ),
+    );
+  }
+
+  Widget _memberRoleActions(HouseholdMember member) {
+    final canEdit = _canManage &&
+        member.userId != widget.household.ownerUserId &&
+        member.userId != widget.currentMembership.userId;
+
+    if (!canEdit) {
+      return Text(_roleLabel(member.role), style: const TextStyle(fontWeight: FontWeight.w900));
+    }
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Text(_roleLabel(member.role), style: const TextStyle(fontWeight: FontWeight.w900)),
+        const SizedBox(height: 4),
+        OutlinedButton(
+          key: ValueKey<String>('household-change-role-${member.userId}'),
+          onPressed: _saving ? null : () => _changeRole(member),
+          child: const Text('تغيير الدور'),
+        ),
+      ],
     );
   }
 }
