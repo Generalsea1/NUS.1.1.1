@@ -133,6 +133,39 @@ class SupabaseHouseholdRepository implements HouseholdRepository {
     });
   }
 
+  @override
+  Future<HouseholdMember> updateMemberRole({
+    required String householdId,
+    required String userId,
+    required String role,
+  }) async {
+    final cleanHouseholdId = householdId.trim();
+    final cleanUserId = userId.trim();
+    final cleanRole = role.trim();
+    if (cleanHouseholdId.isEmpty || cleanUserId.isEmpty) {
+      throw ArgumentError('Household member role update requires householdId and userId.');
+    }
+    if (cleanRole != 'admin' && cleanRole != 'member') {
+      throw ArgumentError.value(role, 'role', 'Only admin or member roles can be assigned.');
+    }
+
+    final row = await _client()
+        .from('household_members')
+        .update(<String, dynamic>{'role': cleanRole})
+        .eq('household_id', cleanHouseholdId)
+        .eq('user_id', cleanUserId)
+        .eq('status', 'active')
+        .select('household_id,user_id,role,status')
+        .single();
+
+    return HouseholdMember.fromJson(<String, dynamic>{
+      'householdId': row['household_id'],
+      'userId': row['user_id'],
+      'role': row['role'],
+      'status': row['status'],
+    });
+  }
+
   void _requireCurrentUser(String userId) {
     final current = SupabaseService.client?.auth.currentUser?.id.trim();
     if (current == null || current.isEmpty || current != userId) {

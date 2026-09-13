@@ -35,6 +35,24 @@ class _FakeHouseholdRepository implements HouseholdRepository {
     memberships = [...memberships, member];
     return member;
   }
+
+  @override
+  Future<HouseholdMember> updateMemberRole({
+    required String householdId,
+    required String userId,
+    required String role,
+  }) async {
+    final updated = HouseholdMember(
+      householdId: householdId,
+      userId: userId,
+      role: role,
+      status: 'active',
+    );
+    memberships = memberships
+        .map((member) => member.userId == userId && member.householdId == householdId ? updated : member)
+        .toList(growable: false);
+    return updated;
+  }
 }
 
 void main() {
@@ -121,6 +139,41 @@ void main() {
     await HouseholdService(repository: repository).getOrCreateForUser(userId: 'u1');
 
     expect(repository.createCount, 1);
+  });
+
+  test('updates a member role through the service contract', () async {
+    final repository = _FakeHouseholdRepository(
+      memberships: [
+        const HouseholdMember(
+          householdId: 'h1',
+          userId: 'u2',
+          role: 'member',
+          status: 'active',
+        ),
+      ],
+    );
+
+    final result = await HouseholdService(repository: repository).updateMemberRole(
+      householdId: 'h1',
+      userId: 'u2',
+      role: 'admin',
+    );
+
+    expect(result.role, 'admin');
+    expect(repository.memberships.single.role, 'admin');
+  });
+
+  test('rejects unsupported member roles before repository call', () {
+    final repository = _FakeHouseholdRepository();
+
+    expect(
+      () => HouseholdService(repository: repository).updateMemberRole(
+        householdId: 'h1',
+        userId: 'u2',
+        role: 'owner',
+      ),
+      throwsArgumentError,
+    );
   });
 
   test('rejects empty user IDs before persistence', () {

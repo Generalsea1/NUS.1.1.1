@@ -10,6 +10,14 @@ import 'package:nus/features/household/domain/household_invitation.dart';
 import 'package:nus/features/household/presentation/household_members_page.dart';
 
 class _FakeHouseholdRepository implements HouseholdRepository {
+  List<HouseholdMember> members = [
+    const HouseholdMember(householdId: 'h1', userId: 'u1', role: 'owner', status: 'active'),
+    const HouseholdMember(householdId: 'h1', userId: 'u2', role: 'member', status: 'active'),
+  ];
+
+  String? updatedUserId;
+  String? updatedRole;
+
   @override
   Future<Household> create({required String ownerUserId, required String name}) async =>
       Household(id: 'h1', ownerUserId: ownerUserId, name: name);
@@ -23,19 +31,34 @@ class _FakeHouseholdRepository implements HouseholdRepository {
         HouseholdMember(
           householdId: 'h1',
           userId: userId,
-          role: 'member',
+          role: userId == 'u1' ? 'owner' : 'member',
           status: 'active',
         ),
       ];
 
   @override
-  Future<List<HouseholdMember>> listHouseholdMembers(String householdId) async => const [
-        HouseholdMember(householdId: 'h1', userId: 'u1', role: 'owner', status: 'active'),
-        HouseholdMember(householdId: 'h1', userId: 'u2', role: 'member', status: 'active'),
-      ];
+  Future<List<HouseholdMember>> listHouseholdMembers(String householdId) async => members;
 
   @override
   Future<HouseholdMember> addMembership(HouseholdMember member) async => member;
+
+  @override
+  Future<HouseholdMember> updateMemberRole({
+    required String householdId,
+    required String userId,
+    required String role,
+  }) async {
+    updatedUserId = userId;
+    updatedRole = role;
+    final updated = HouseholdMember(
+      householdId: householdId,
+      userId: userId,
+      role: role,
+      status: 'active',
+    );
+    members = members.map((member) => member.userId == userId ? updated : member).toList();
+    return updated;
+  }
 }
 
 class _FakeInvitationRepository implements HouseholdInvitationRepository {
@@ -61,7 +84,9 @@ class _FakeInvitationRepository implements HouseholdInvitationRepository {
 }
 
 void main() {
-  testWidgets('renders household roster without requiring admin data', (tester) async {
+  testWidgets('member cannot manage roles', (tester) async {
+    final repository = _FakeHouseholdRepository();
+
     await tester.pumpWidget(
       MaterialApp(
         home: HouseholdMembersPage(
@@ -72,7 +97,7 @@ void main() {
             role: 'member',
             status: 'active',
           ),
-          householdService: HouseholdService(repository: _FakeHouseholdRepository()),
+          householdService: HouseholdService(repository: repository),
           invitationService: HouseholdInvitationService(repository: _FakeInvitationRepository()),
         ),
       ),
@@ -85,5 +110,71 @@ void main() {
     expect(find.text('مالك'), findsOneWidget);
     expect(find.text('عضو'), findsOneWidget);
     expect(find.byKey(const ValueKey<String>('household-invite-member')), findsNothing);
+    expect(find.byKey(const ValueKey<String>('household-change-role-u2')), findsNothing);
+  });
+
+  testWidgets('manager can open role actions for another non-owner member', (tester) async {
+    final repository = _FakeHouseholdRepository()
+      ..members = [
+        const HouseholdMember(householdId: 'h1', userId: 'u1', role: 'owner', status: 'active'),
+        const HouseholdMember(householdId: 'h1', userId: 'u2', role: 'member', status: 'active'),
+      ];
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: HouseholdMembersPage(
+          household: const Household(id: 'h1', ownerUserId: 'u1', name: 'بيت العيلة'),
+          currentMembership: const HouseholdMember(
+            householdId: 'h1',
+            userId: 'u1',
+            role: 'owner',
+            status: 'active',
+          ),
+          householdService: HouseholdService(repository: repository),
+          invitationService: HouseholdInvitationService(repository: _FakeInvitationRepository()),
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    final changeRole = find.byKey(const ValueKey<String>('household-change-role-u2'));
+    expect(changeRole, findsOneWidget);
+
+    await tester.tap(changeRole);
+    await tester.pumpAndSettle();
+    expect(find.text('جعله مديرًا'), findsOneWidget);
+
+    await tester.tap(find.text('جعله مديرًا'));
+    await tester.pumpAndSettle();
+
+    expect(repository.updatedUserId, 'u2');
+    expect(repository.updatedRole, 'admin');
+  });
+
+  testWidgets('owner cannot be edited by role controls', (tester) async {
+    final repository = _FakeHouseholdRepository();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: HouseholdMembersPage(
+          household: const Household(id: 'h1', ownerUserId: 'u1', name: 'بيت العيلة'),
+          currentMembership: const HouseholdMember(
+            householdId: 'h1',
+            userId: 'u3',
+            role: 'admin',
+            status: 'active',
+          ),
+          householdService: HouseholdService(repository: repository),
+          invitationService: HouseholdInvitationService(repository: _FakeInvitationRepository()),
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(find.text('مالك'), findsOneWidget);
+    expect(find.byKey(const ValueKey<String>('household-change-role-u1')), findsNothing);
+    expect(find.byKey(const ValueKey<String>('household-change-role-u2')), findsOneWidget);
   });
 }
