@@ -5,7 +5,7 @@
 **Authority:** Single Source of Truth for product and engineering execution  
 **Repository:** `Generalsea1/NUS.1.1.1`  
 **Default branch:** `main`  
-**Current audited branch HEAD:** `3a279fbbdf2b7c630f3586ee41127ecf9552b8fb`  
+**Current audited branch HEAD:** `6309c8d11e781834620b0d495c4f70972faec4b9`  
 **Last audit date:** 2026-09-13  
 
 > This document governs future work. Historical plans and feature notes are subordinate to the verified current repository state and this contract.
@@ -654,7 +654,7 @@ Independent verification that product claims match actual behavior.
 
 ### Verified
 - Repository exists and is active.
-- `main` currently points to `3a279fbbdf2b7c630f3586ee41127ecf9552b8fb`.
+- `main` currently points to `6309c8d11e781834620b0d495c4f70972faec4b9`.
 - Flutter package version is `2.0.0+2`.
 - Current app has `main.dart` plus `legacy_main.dart` composition boundaries.
 - Core and feature architecture exists.
@@ -664,7 +664,8 @@ Independent verification that product claims match actual behavior.
 - Household invitation authorization hardening is applied and verified.
 - Household role management UI is integrated through the existing repository/service boundary and existing RLS authorization.
 - Unified Work live integration connects reminders, appointments, household tasks and enabled obligations into the Today workflow.
-- Post-merge Android CI completed Analyze, Test, Build debug APK, Verify APK and Upload APK successfully for `3a279fbbdf2b7c630f3586ee41127ecf9552b8fb`.
+- Post-merge Android CI completed Analyze, Test, Build debug APK, Verify APK and Upload APK successfully for `6309c8d11e781834620b0d495c4f70972faec4b9`.
+- Current Android artifact from workflow run `34778795638` was uploaded and its GitHub artifact digest was independently checked after download.
 
 ### Observed / requires follow-up
 - README still describes the application as `NUS v1.0.0` while `pubspec.yaml` is `2.0.0+2`.
@@ -673,12 +674,13 @@ Independent verification that product claims match actual behavior.
 - Performance advisor reports 8 unindexed foreign keys, 16 RLS/auth initialization-plan findings and 11 currently unused indexes.
 - Repository search finds test doubles such as `SharedPreferences.setMockInitialValues`; these are test-scoped findings and must not be treated as production mocks without path/runtime verification.
 - `main` remains unprotected with no required status checks; this is a governance/release-control follow-up, not a reason to alter branch policy blindly during feature work.
+- Financial Advisor production runtime still requires live end-to-end verification of the current Gemini path; code/CI success alone is insufficient for that backend-backed claim.
 
 ### Phase 1 status
 
 **BLOCKED FOR RELEASE HARDENING / OPEN FOR CONTROLLED PRODUCT DEVELOPMENT**
 
-Reason: the Auth leaked-password protection finding remains unresolved as an external Supabase Auth configuration item. Android build/verification and current code CI are green on the audited main commit, so this security configuration finding is the remaining Phase 1 release-hardening blocker.
+Reason: the Auth leaked-password protection finding remains unresolved as an external Supabase Auth configuration item, and the Financial Advisor backend path still requires live runtime verification. Android build/verification and current code CI are green on the current main commit.
 
 ---
 
@@ -874,5 +876,11 @@ DIFFERENTIATION
 - Verified post-merge Android Build, APK verification and artifact upload success on the audited main commit.
 - Corrected the performance audit count to the currently observed 11 unused indexes.
 - Kept the Supabase Auth leaked-password protection finding explicitly open as an external release-hardening blocker.
+
+### 2026-09-13 — current-head verification correction
+- Corrected the audited repository HEAD from `3a279fbbdf2b7c630f3586ee41127ecf9552b8fb` to the actual current `main` commit `6309c8d11e781834620b0d495c4f70972faec4b9`.
+- Verified repository Analyze + Test success for `6309c8d11e781834620b0d495c4f70972faec4b9`.
+- Verified Android Build, APK verification and artifact upload success for `6309c8d11e781834620b0d495c4f70972faec4b9` in workflow run `34778795638`.
+- Recorded the remaining external Auth leaked-password protection blocker and the need for live Financial Advisor runtime verification.
 
 Future changes to architecture, schema, API, authentication, security, navigation or major UX must append a dated entry here.
