@@ -46,6 +46,7 @@ NUS is evolving from a collection of personal organizer tools into a personal + 
 - [x] Subscription management
 - [x] Affordability scenarios (“Can I afford this?”)
 - [x] Anomaly and budget-pressure alerts
+- [x] Household budget planning and AI-assisted budget management
 
 ## Phase 3 — Smart Shopping
 - [x] Shopping lists
@@ -53,7 +54,7 @@ NUS is evolving from a collection of personal organizer tools into a personal + 
 - [x] Local lifecycle service
 - [x] Quick Add integration
 - [ ] Budget-aware shopping mode
-- [ ] Household sharing
+- [x] Household sharing
 - [ ] Recipe-to-shopping-list automation
 - [x] Tests + CI gate for cross-domain flows
 
@@ -66,10 +67,10 @@ NUS is evolving from a collection of personal organizer tools into a personal + 
 - [ ] Warranty reminders
 
 ## Phase 5 — Household
-- [ ] Household members
-- [ ] Roles and permissions
+- [x] Household members
+- [x] Roles and permissions
 - [x] Shared tasks foundation
-- [ ] Shared shopping lists
+- [x] Shared shopping lists
 - [ ] Shared calendar / appointments
 - [ ] Household notification preferences
 - [x] Secure invitation/join flow foundation
@@ -89,8 +90,11 @@ NUS is evolving from a collection of personal organizer tools into a personal + 
 - [x] AI quota / reservation foundations
 - [x] Context-aware Copilot across Today + Money + Shopping + Household
 - [x] Action proposals with explicit user confirmation for authoritative writes
-- [ ] Proactive but user-controlled notifications
+- [x] Proactive appointment notifications
+- [ ] Unified proactive notifications across reminders, money, shopping and health
+- [ ] Quiet hours / frequency controls
 - [ ] Explainable AI decisions with source data references
+- [ ] Live production verification of Financial Advisor Gemini path
 
 ## Phase 8 — Globalization & Trust
 - [x] Arabic RTL foundation
@@ -101,6 +105,14 @@ NUS is evolving from a collection of personal organizer tools into a personal + 
 - [ ] Privacy center
 - [ ] Data export / deletion controls
 - [ ] Production security review
+- [ ] Supabase Auth leaked-password protection enabled
 
 ## Release discipline
 Semantic intent remains the release rule: feature releases increase the minor version, fixes increase the patch version, and Android build numbers increase for every distributable build. NUS 2.0 work must preserve the existing local-first and secure server-side AI boundaries.
+
+## Current verified release gate
+- Repository CI: green on the verified performance merge (`main` baseline `f709ac9089cc4639f25c9009e9b7bcebd8449e58`).
+- Supabase Performance Advisor: foreign-key and auth-initplan findings remediated; 19 unused-index informational findings remain and are intentionally workload-gated.
+- Supabase Security Advisor: one external warning remains — leaked-password protection is disabled.
+- Financial Advisor: implementation and CI are present, but a live authenticated Gemini request still requires end-to-end device/session verification.
+- Android: the `6309c8d...` release baseline has a verified artifact; the newer `f709ac...` build is currently running through APK generation/verification.

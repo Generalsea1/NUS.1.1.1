@@ -1,27 +1,51 @@
-# NUS v1.0.0
+# NUS 2.0
 
-A bilingual (Arabic / English) personal life organizer, designed to grow from a lightweight free MVP into a global platform.
+NUS is a bilingual (Arabic / English) **Personal + Household Life Operating System** focused on connecting daily life, household coordination, and financial decision support.
 
-## Product roadmap
-1. Smart Schedule — current foundation: clean home screen, bilingual RTL/LTR experience, quick reminder entry.
-2. Expenses — fast monthly expense capture, categories and summaries.
-3. Shopping — lists connected to everyday spending.
-4. Recipes — quantities, grams, timings, servings and shopping-list generation.
-5. Invoices & debts — personal bills, customer/people balances and due-date reminders.
-6. AI layer — optional assistant for natural-language and voice commands; core features must remain useful without AI.
+## Current product state
 
-## Engineering principles
-- Start local-first and keep the first MVP inexpensive.
-- Do not require users to own a ChatGPT/Gemini account.
-- Keep AI behind a server-side abstraction so providers can change later.
-- Supabase is reserved for authenticated sync, backup and future multi-device features; secrets are never committed to Git.
-- Arabic and English are first-class from day one, including RTL/LTR layout.
+The authenticated product currently includes:
+
+- Supabase authentication and household identity.
+- Onboarding with household and financial baseline data.
+- NUS Today with unified work across reminders, appointments, household tasks, and enabled obligations.
+- Quick Add for reminders, appointments, shopping, and confirmed expense capture, with Arabic/Egyptian voice input where available.
+- Finance foundations for income, expenses, recurring expenses, obligations, installments, budget planning, debt payoff planning, affordability analysis, and anomaly/budget-pressure insights where implemented.
+- Household members, roles, invitations, shared tasks, and shared shopping.
+- Financial Advisor and NUS Copilot entry points behind authenticated server-side AI boundaries.
+- Deterministic proactive appointment notifications and notification controls.
+
+## Product direction
+
+NUS is being built around one core promise:
+
+> **"قل لي ماذا يحدث الآن، وماذا يجب أن أفعل بعد ذلك بحياتي ومالي وأسرتي."**
+
+The product is not a generic chatbot, marketplace, social network, or expense tracker. Its strategic core is the **NUS Financial Brain / Household CFO**.
+
+## Engineering standards
+
+- Real functionality before visual polish.
+- User-entered facts remain authoritative.
+- No fake production behavior.
+- AI is an intelligence layer, not the source of truth.
+- Provider credentials remain server-side.
+- Financial writes require explicit user intent/confirmation where applicable.
+- Preserve working behavior and prefer additive, reversible changes.
+- Every meaningful feature must be implemented, integrated, tested, analyzed, CI-verified, and APK-verified when Android-facing.
 
 ## Repository
+
 `Generalsea1/NUS.1.1.1`
 
 ## Version
-`1.0.0+1`
+
+`2.0.0+2`
 
 ## Build
-The repository includes a GitHub Actions workflow that generates the Android project, runs analysis, builds a debug APK and uploads it as an artifact.
+
+GitHub Actions verifies Flutter analysis/tests and the Android workflow generates, verifies, and uploads a debug APK artifact.
+
+## Release note
+
+The repository is under controlled product development. Release hardening remains blocked until the external Supabase Auth leaked-password protection setting is enabled and the Financial Advisor is live-tested end-to-end against the production Gemini path.
