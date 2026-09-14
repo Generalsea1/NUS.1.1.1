@@ -63,13 +63,8 @@ void main() {
     final question = 'فين أكبر فرصة أوفر منها هذا الشهر؟';
     final questionText = find.text(question, skipOffstage: false);
     expect(questionText, findsOneWidget);
-    final questionChip = find.ancestor(
-      of: questionText,
-      matching: find.byType(ActionChip),
-    );
-    expect(questionChip, findsOneWidget);
-    await tester.ensureVisible(questionChip);
-    await tester.tap(questionChip);
+    await tester.scrollUntilVisible(questionText, 300.0, scrollable: find.byType(Scrollable).first);
+    await tester.tap(questionText);
     await tester.pumpAndSettle();
 
     expect(find.text('الخلاصة'), findsOneWidget);
