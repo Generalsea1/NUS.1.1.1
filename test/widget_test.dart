@@ -47,7 +47,7 @@ class _FakeReminderScheduler implements ReminderScheduler {
 
 Nus2App _buildApp({required ScheduleStore store}) {
   final expenseService = ExpenseLifecycleService(
-    repository: const LocalExpenseRepository(),
+    repository: LocalExpenseRepository(),
   );
   final medicationService = MedicationLifecycleService(
     repository: LocalMedicationRepository(),
