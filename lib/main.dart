@@ -167,25 +167,6 @@ class _Nus2AppState extends State<Nus2App> {
         expenseManagementService: widget.expenseManagementService,
         shoppingService: widget.shoppingService,
         onCreateReminder: (title, dateTime) => widget.store.add(title, dateTime),
-        onOpenGeneralHome: (context) {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => Directionality(
-                textDirection: TextDirection.rtl,
-                child: legacy.HomePage(
-                  store: widget.store,
-                  medicationService: widget.medicationService,
-                  shoppingService: widget.shoppingService,
-                  expenseService: widget.expenseService,
-                  isArabic: true,
-                  onToggleLanguage: () {},
-                  themeMode: _themeMode,
-                  onToggleTheme: _toggleTheme,
-                ),
-              ),
-            ),
-          );
-        },
       ),
     );
   }
