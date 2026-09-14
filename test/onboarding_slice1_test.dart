@@ -66,7 +66,7 @@ void main() {
 
     expect(find.text('NUS'), findsOneWidget);
     expect(find.text('اقتصاد البيت تحت السيطرة'), findsOneWidget);
-    expect(find.text('اسأل NUS', skipOffstage: false), findsAtLeastNWidgets(1));
+    expect(find.byTooltip('اسأل NUS'), findsOneWidget);
     expect(find.text('NUS Copilot', skipOffstage: false), findsNothing);
     expect(find.text('إعداد بيتك', skipOffstage: false), findsNothing);
     expect(find.byType(HouseholdOnboardingPage), findsNothing);
@@ -127,15 +127,12 @@ void main() {
         final before = position.pixels;
         final remaining = position.maxScrollExtent - before;
         if (remaining <= 0.1) break;
-
         final delta = remaining < viewport ? remaining : viewport;
         await tester.drag(listViewFinder, Offset(0, -delta));
         await tester.pump();
-
         expect(position.pixels, greaterThan(before));
         expect(position.pixels, lessThanOrEqualTo(position.maxScrollExtent));
       }
-
       expect(position.pixels, closeTo(position.maxScrollExtent, 0.1));
     }
 
@@ -143,21 +140,18 @@ void main() {
       final renderView = RendererBinding.instance.renderViews.singleWhere(
         (view) => identical(view.flutterView, tester.view),
       );
-
       for (var attempt = 0; attempt < maxScrolls; attempt++) {
         expect(target, findsOneWidget);
         final rect = tester.getRect(target);
         final viewport = renderView.size;
         const margin = 8.0;
         if (rect.top >= margin && rect.bottom <= viewport.height - margin) return;
-
         final delta = rect.bottom > viewport.height - margin
             ? rect.bottom - (viewport.height - margin)
             : rect.top - margin;
         await tester.drag(listViewFinder, Offset(0, -delta));
         await tester.pump();
       }
-
       expect(target, findsOneWidget);
       final rect = tester.getRect(target);
       final viewport = renderView.size;
