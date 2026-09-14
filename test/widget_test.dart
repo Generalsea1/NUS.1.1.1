@@ -1,17 +1,33 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nus/features/expenses/application/expense_lifecycle_service.dart';
 import 'package:nus/features/expenses/application/expense_management_service.dart';
-import 'package:nus/features/expenses/data/local_expense_repository.dart';
 import 'package:nus/features/expenses/data/supabase_expense_repository.dart';
 import 'package:nus/features/expenses/data/supabase_recurring_expense_repository.dart';
 import 'package:nus/features/medications/application/medication_lifecycle_service.dart';
 import 'package:nus/features/medications/application/medication_reminder_coordinator.dart';
 import 'package:nus/features/medications/data/local_medication_repository.dart';
+import 'package:nus/features/medications/domain/medication_reminder_port.dart';
 import 'package:nus/features/shopping/application/shopping_lifecycle_service.dart';
 import 'package:nus/features/shopping/data/local_shopping_repository.dart';
 import 'package:nus/main.dart';
 import 'package:nus/notification_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+class _FakeMedicationReminderPort implements MedicationReminderPort {
+  int scheduledCount = 0;
+
+  @override
+  Future<void> schedule({
+    required String id,
+    required String title,
+    required DateTime dateTime,
+  }) async {
+    scheduledCount += 1;
+  }
+
+  @override
+  Future<void> cancel(String id) async {}
+}
 
 class _FakeReminderScheduler implements ReminderScheduler {
   int scheduledCount = 0;
@@ -31,11 +47,11 @@ class _FakeReminderScheduler implements ReminderScheduler {
 
 Nus2App _buildApp({required ScheduleStore store}) {
   final expenseService = ExpenseLifecycleService(
-    repository: LocalExpenseRepository(),
+    repository: const LocalExpenseRepository(),
   );
   final medicationService = MedicationLifecycleService(
     repository: LocalMedicationRepository(),
-    reminders: MedicationReminderCoordinator(_FakeReminderScheduler()),
+    reminders: MedicationReminderCoordinator(_FakeMedicationReminderPort()),
   );
   final shoppingService = ShoppingLifecycleService(
     repository: LocalShoppingRepository(),
