@@ -99,7 +99,7 @@ void main() {
     expect(transport.body?['context'].toString(), contains('actualExpensesMinor=180000'));
   });
 
-  test('structured response parses correctly', () async {
+  test('structured response parses into distinct summary, facts, advice, and warnings', () async {
     final provider = FinancialAdvisorProvider(
       transport: _RecordingTransport(
         FinancialAdvisorTransportResponse(statusCode: 200, data: _successResponse()),
@@ -109,9 +109,10 @@ void main() {
 
     final result = await provider.generateInsight(_request());
     expect(result.id, 'advisor-1');
-    expect(result.summary, contains('راجع بند الإنفاق الأعلى أولًا.'));
-    expect(result.summary, contains('الحقائق'));
-    expect(result.summary, contains('النصيحة'));
+    expect(result.summary, 'راجع بند الإنفاق الأعلى أولًا.');
+    expect(result.facts, ['income=10000;obligations=2500']);
+    expect(result.advice, ['ابدأ بمراجعة المصروفات المتغيرة.']);
+    expect(result.warnings, isEmpty);
   });
 
   test('malformed response fails safely', () async {

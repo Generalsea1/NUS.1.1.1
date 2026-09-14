@@ -7,7 +7,6 @@ import '../data/supabase_household_task_repository.dart';
 import '../domain/household.dart';
 import 'household_members_page.dart';
 import 'household_tasks_page.dart';
-import '../../ai/presentation/nus_copilot_page.dart';
 import '../../shopping/application/shopping_lifecycle_service.dart';
 import '../../shopping/data/supabase_household_shopping_repository.dart';
 import '../../shopping/presentation/shopping_page.dart';
@@ -108,12 +107,6 @@ class _HouseholdPageState extends State<HouseholdPage> {
     );
   }
 
-  void _openCopilot() {
-    Navigator.of(context).push<void>(
-      MaterialPageRoute(builder: (_) => const NusCopilotPage()),
-    );
-  }
-
   String _roleLabel(String? role) {
     switch (role) {
       case 'owner':
@@ -197,16 +190,6 @@ class _HouseholdPageState extends State<HouseholdPage> {
                 ),
               ),
               if (household != null && membership?.isActive == true) ...[
-                const SizedBox(height: 12),
-                Card(
-                  child: ListTile(
-                    leading: const CircleAvatar(child: Icon(Icons.auto_awesome_rounded)),
-                    title: const Text('NUS Copilot', style: TextStyle(fontWeight: FontWeight.w900)),
-                    subtitle: const Text('اسأل NUS عن يومك وبيتك باستخدام سياق محدود من المال والمواعيد والمشتريات.'),
-                    trailing: const Icon(Icons.chevron_left_rounded),
-                    onTap: _openCopilot,
-                  ),
-                ),
                 const SizedBox(height: 12),
                 Card(
                   child: ListTile(

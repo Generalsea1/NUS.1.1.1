@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -23,18 +25,10 @@ export 'legacy_main.dart' show HomePage, NosApp, ScheduleItem, ScheduleStore;
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await SupabaseService.initialize();
+
   final notifications = NotificationService();
-  await notifications.initialize();
   final store = legacy.ScheduleStore(notifications: notifications);
   await store.load();
-  await store.reschedulePending();
-
-  final appointmentRepository = LocalAppointmentRepository();
-  final appointments = await appointmentRepository.list();
-  await NusProactiveNotificationCoordinator(scheduler: notifications).syncAppointments(
-    now: DateTime.now(),
-    appointments: appointments,
-  );
 
   final medicationService = MedicationLifecycleService(
     repository: LocalMedicationRepository(),
@@ -62,6 +56,25 @@ Future<void> main() async {
       expenseManagementService: expenseManagementService,
     ),
   );
+
+  unawaited(_warmNotificationServices(notifications, store));
+}
+
+Future<void> _warmNotificationServices(
+  NotificationService notifications,
+  legacy.ScheduleStore store,
+) async {
+  try {
+    await notifications.initialize();
+    await store.reschedulePending();
+    final appointments = await LocalAppointmentRepository().list();
+    await NusProactiveNotificationCoordinator(scheduler: notifications).syncAppointments(
+      now: DateTime.now(),
+      appointments: appointments,
+    );
+  } catch (_) {
+    // Notification preparation is non-critical to first paint and is retried by the service on use.
+  }
 }
 
 class Nus2App extends StatefulWidget {

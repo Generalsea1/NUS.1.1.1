@@ -8,10 +8,12 @@ import 'package:nus/features/household/presentation/household_page.dart';
 
 class _FakeRepository implements HouseholdRepository {
   @override
-  Future<Household> create({required String ownerUserId, required String name}) async => Household(id: 'h1', ownerUserId: ownerUserId, name: name);
+  Future<Household> create({required String ownerUserId, required String name}) async =>
+      Household(id: 'h1', ownerUserId: ownerUserId, name: name);
 
   @override
-  Future<Household?> getById(String householdId) async => const Household(id: 'h1', ownerUserId: 'u1', name: 'بيت العيلة');
+  Future<Household?> getById(String householdId) async =>
+      const Household(id: 'h1', ownerUserId: 'u1', name: 'بيت العيلة');
 
   @override
   Future<List<HouseholdMember>> listMemberships(String userId) async => const [
@@ -54,21 +56,9 @@ void main() {
     expect(find.text('بيت العيلة'), findsOneWidget);
     expect(find.text('مالك البيت'), findsOneWidget);
     expect(find.text('عضو نشط'), findsOneWidget);
-
-    final shopping = find.text('مشتريات البيت المشتركة');
-    await tester.scrollUntilVisible(shopping, 350, scrollable: find.byType(Scrollable).first);
-    expect(shopping, findsOneWidget);
-
-    final members = find.text('أعضاء البيت');
-    await tester.scrollUntilVisible(members, 350, scrollable: find.byType(Scrollable).first);
-    expect(members, findsOneWidget);
-
-    final tasks = find.text('مهام البيت');
-    await tester.scrollUntilVisible(tasks, 350, scrollable: find.byType(Scrollable).first);
-    expect(tasks, findsOneWidget);
-
-    final copilot = find.text('NUS Copilot');
-    await tester.scrollUntilVisible(copilot, 350, scrollable: find.byType(Scrollable).first);
-    expect(copilot, findsOneWidget);
+    expect(find.text('مشتريات البيت المشتركة', skipOffstage: false), findsOneWidget);
+    expect(find.text('أعضاء البيت', skipOffstage: false), findsOneWidget);
+    expect(find.text('مهام البيت', skipOffstage: false), findsOneWidget);
+    expect(find.text('NUS Copilot', skipOffstage: false), findsNothing);
   });
 }

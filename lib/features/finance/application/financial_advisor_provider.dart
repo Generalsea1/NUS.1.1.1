@@ -58,12 +58,10 @@ class SupabaseFinancialAdvisorTransport implements FinancialAdvisorTransport {
     required String accessToken,
     required Map<String, dynamic> body,
   }) async {
-    final hasSession = client.auth.currentSession != null;
-    final hasAccessToken = accessToken.trim().isNotEmpty;
     _faDiag('[FA_DIAG] REQUEST_START');
     _faDiag('[FA_DIAG] FUNCTION=financial-advisor-ai');
-    _faDiag('[FA_DIAG] HAS_SESSION=$hasSession');
-    _faDiag('[FA_DIAG] HAS_ACCESS_TOKEN=$hasAccessToken');
+    _faDiag('[FA_DIAG] HAS_SESSION=${client.auth.currentSession != null}');
+    _faDiag('[FA_DIAG] HAS_ACCESS_TOKEN=${accessToken.trim().isNotEmpty}');
     _faDiag('[FA_DIAG] TOKEN_LENGTH=${accessToken.length}');
     _faDiag('[FA_DIAG] PATH=/functions/v1/financial-advisor-ai');
     try {
@@ -95,9 +93,9 @@ class SupabaseFinancialAdvisorTransport implements FinancialAdvisorTransport {
       _faDiag('[FA_DIAG] INPUT_STATUS=${error.status}');
       _faDiag('[FA_DIAG] FALLBACK_MESSAGE_SELECTED=${_fallbackMessageIdentifier(error.status, error.details)}');
       throw mapped;
-    } catch (error) {
+    } catch (_) {
       _faDiag('[FA_DIAG] NON_FUNCTION_EXCEPTION');
-      _faDiag('[FA_DIAG] TYPE=${error.runtimeType}');
+      _faDiag('[FA_DIAG] TYPE=unknown');
       throw const FinancialAdvisorException(
         kind: FinancialAdvisorFailureKind.backendUnavailable,
         message: 'تعذر الاتصال بخدمة المستشار المالي. حاول مرة أخرى.',
@@ -113,12 +111,6 @@ class SupabaseFinancialAdvisorTransport implements FinancialAdvisorTransport {
           kind: FinancialAdvisorFailureKind.authentication,
           statusCode: error.status,
           message: message ?? 'يجب تسجيل الدخول لاستخدام المستشار المالي.',
-        );
-      case 409:
-        return FinancialAdvisorException(
-          kind: FinancialAdvisorFailureKind.providerUnavailable,
-          statusCode: error.status,
-          message: message ?? 'اربط حساب Gemini أولًا لاستخدام المستشار المالي.',
         );
       case 429:
         return FinancialAdvisorException(
@@ -136,7 +128,7 @@ class SupabaseFinancialAdvisorTransport implements FinancialAdvisorTransport {
         return FinancialAdvisorException(
           kind: FinancialAdvisorFailureKind.providerUnavailable,
           statusCode: error.status,
-          message: message ?? 'خدمة Gemini غير متاحة حاليًا.',
+          message: message ?? 'خدمة التحليل الذكي غير متاحة حاليًا.',
         );
       case 503:
         return FinancialAdvisorException(
@@ -152,9 +144,7 @@ class SupabaseFinancialAdvisorTransport implements FinancialAdvisorTransport {
         );
       default:
         return FinancialAdvisorException(
-          kind: error.status >= 500
-              ? FinancialAdvisorFailureKind.backendUnavailable
-              : FinancialAdvisorFailureKind.providerUnavailable,
+          kind: error.status >= 500 ? FinancialAdvisorFailureKind.backendUnavailable : FinancialAdvisorFailureKind.providerUnavailable,
           statusCode: error.status,
           message: message ?? 'تعذر الحصول على رد من المستشار المالي.',
         );
@@ -189,22 +179,18 @@ class SupabaseFinancialAdvisorTransport implements FinancialAdvisorTransport {
   }
 
   String _fallbackMessageIdentifier(int status, dynamic details) {
-    if (status == 409 && _errorMessage(details) == null) return 'legacy_gemini_connection_409';
-    if (status == 409) return 'server_or_client_409_error';
     if (status == 401) return 'authentication_401';
     if (status == 429) return 'rate_limit_429';
     if (status == 422) return 'malformed_response_422';
-    if (status == 502) return 'gemini_unavailable_502';
+    if (status == 502) return 'provider_unavailable_502';
     if (status == 503) return 'backend_unavailable_503';
     if (status == 504) return 'timeout_504';
-    return 'generic_${status}';
+    return 'generic_$status';
   }
 
   String _truncateDiagnostic(String value) => value.length <= 500 ? value : '${value.substring(0, 500)}…';
 }
 
-/// Real read-only production provider for the Financial Advisor.
-/// The request comes only from the existing Financial Engine snapshot.
 class FinancialAdvisorProvider implements AiInsightProvider {
   const FinancialAdvisorProvider({this.transport, this.accessTokenReader});
 
@@ -225,8 +211,7 @@ class FinancialAdvisorProvider implements AiInsightProvider {
       );
     }
 
-    final effectiveTransport = transport ??
-        (client == null ? null : SupabaseFinancialAdvisorTransport(client));
+    final effectiveTransport = transport ?? (client == null ? null : SupabaseFinancialAdvisorTransport(client));
     if (effectiveTransport == null) {
       _faDiag('[FA_DIAG] LOCAL_PRECONDITION_FAILURE');
       _faDiag('[FA_DIAG] REASON=no_supabase_client');
@@ -262,9 +247,10 @@ class FinancialAdvisorProvider implements AiInsightProvider {
     }
     final payload = Map<String, dynamic>.from(data);
     if (payload['ok'] != true) {
-      throw const FinancialAdvisorException(
+      final serverMessage = payload['error'];
+      throw FinancialAdvisorException(
         kind: FinancialAdvisorFailureKind.providerUnavailable,
-        message: 'خدمة المستشار المالي لم تُرجع نتيجة صالحة.',
+        message: serverMessage is String && serverMessage.trim().isNotEmpty ? serverMessage.trim() : 'خدمة المستشار المالي لم تُرجع نتيجة صالحة.',
       );
     }
 
@@ -275,28 +261,21 @@ class FinancialAdvisorProvider implements AiInsightProvider {
     final advice = _stringList(payload['advice']);
     final warnings = _stringList(payload['warnings']);
 
-    if (id is! String || id.trim().isEmpty ||
-        summary is! String || summary.trim().isEmpty ||
-        generatedAt is! String || DateTime.tryParse(generatedAt) == null ||
-        facts == null || advice == null || warnings == null) {
+    if (id is! String || id.trim().isEmpty || summary is! String || summary.trim().isEmpty || generatedAt is! String || DateTime.tryParse(generatedAt) == null || facts == null || advice == null || warnings == null) {
       throw const FinancialAdvisorException(
         kind: FinancialAdvisorFailureKind.malformedResponse,
         message: 'رد المستشار المالي لا يطابق العقد المقرر.',
       );
     }
 
-    final sections = <String>[
-      summary.trim(),
-      if (facts.isNotEmpty) 'الحقائق\n${facts.map((value) => '• $value').join('\n')}',
-      if (advice.isNotEmpty) 'النصيحة\n${advice.map((value) => '• $value').join('\n')}',
-      if (warnings.isNotEmpty) 'تنبيهات\n${warnings.map((value) => '• $value').join('\n')}',
-    ];
-
     return AiInsight(
       id: id.trim(),
-      summary: sections.join('\n\n'),
+      summary: summary.trim(),
       generatedAt: DateTime.parse(generatedAt).toUtc(),
       sourceDomain: 'financial_advisor',
+      facts: facts,
+      advice: advice,
+      warnings: warnings,
     );
   }
 

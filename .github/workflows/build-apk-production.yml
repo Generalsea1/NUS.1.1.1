@@ -124,14 +124,14 @@ jobs:
       - name: Test
         run: flutter test
 
-      - name: Build debug APK
-        run: flutter build apk --debug --dart-define=SUPABASE_URL="$SUPABASE_URL" --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY"
+      - name: Build release APK
+        run: flutter build apk --release --dart-define=SUPABASE_URL="$SUPABASE_URL" --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY"
 
       - name: Verify APK
         shell: bash
         run: |
           set -euo pipefail
-          APK='build/app/outputs/flutter-apk/app-debug.apk'
+          APK='build/app/outputs/flutter-apk/app-release.apk'
           test -s "$APK"
           AAPT2="$(find "$ANDROID_HOME/build-tools" -type f -name aapt2 -print | sort -V | tail -n 1)"
           test -x "$AAPT2"
@@ -149,5 +149,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: nus-debug-apk
-          path: build/app/outputs/flutter-apk/app-debug.apk
+          name: nus-release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk

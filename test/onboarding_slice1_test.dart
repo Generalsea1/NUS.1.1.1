@@ -58,19 +58,16 @@ void main() {
     expect(find.byType(HouseholdOnboardingPage), findsOneWidget);
   });
 
-  testWidgets('existing valid profile bypasses onboarding and opens NUS Today', (tester) async {
+  testWidgets('existing valid profile bypasses onboarding and opens the finance command center', (tester) async {
     final auth = FakeAuthRepository(_authenticatedState());
     final profiles = FakeProfileRepository()..profile = _profile();
     await tester.pumpWidget(_host(AuthGate(authRepository: auth, profileRepository: profiles)));
     await tester.pumpAndSettle();
 
-    // The Today surface is a scrollable dashboard; assert its complete semantic
-    // surface without depending on whether lower cards are currently in the viewport.
-    expect(find.text('NUS Today'), findsOneWidget);
-    expect(find.text('إضافة سريعة', skipOffstage: false), findsOneWidget);
-    expect(find.text('NUS Copilot', skipOffstage: false), findsAtLeastNWidgets(1));
-    expect(find.text('فلوسي', skipOffstage: false), findsOneWidget);
-    expect(find.text('مواعيدي', skipOffstage: false), findsOneWidget);
+    expect(find.text('NUS'), findsOneWidget);
+    expect(find.text('اقتصاد البيت تحت السيطرة'), findsOneWidget);
+    expect(find.byTooltip('اسأل NUS'), findsOneWidget);
+    expect(find.text('NUS Copilot', skipOffstage: false), findsNothing);
     expect(find.text('إعداد بيتك', skipOffstage: false), findsNothing);
     expect(find.byType(HouseholdOnboardingPage), findsNothing);
   });
@@ -130,15 +127,12 @@ void main() {
         final before = position.pixels;
         final remaining = position.maxScrollExtent - before;
         if (remaining <= 0.1) break;
-
         final delta = remaining < viewport ? remaining : viewport;
         await tester.drag(listViewFinder, Offset(0, -delta));
         await tester.pump();
-
         expect(position.pixels, greaterThan(before));
         expect(position.pixels, lessThanOrEqualTo(position.maxScrollExtent));
       }
-
       expect(position.pixels, closeTo(position.maxScrollExtent, 0.1));
     }
 
@@ -146,21 +140,18 @@ void main() {
       final renderView = RendererBinding.instance.renderViews.singleWhere(
         (view) => identical(view.flutterView, tester.view),
       );
-
       for (var attempt = 0; attempt < maxScrolls; attempt++) {
         expect(target, findsOneWidget);
         final rect = tester.getRect(target);
         final viewport = renderView.size;
         const margin = 8.0;
         if (rect.top >= margin && rect.bottom <= viewport.height - margin) return;
-
         final delta = rect.bottom > viewport.height - margin
             ? rect.bottom - (viewport.height - margin)
             : rect.top - margin;
         await tester.drag(listViewFinder, Offset(0, -delta));
         await tester.pump();
       }
-
       expect(target, findsOneWidget);
       final rect = tester.getRect(target);
       final viewport = renderView.size;

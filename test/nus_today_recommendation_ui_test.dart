@@ -3,8 +3,6 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:nus/features/onboarding/domain/household_profile.dart';
 import 'package:nus/features/today/presentation/nus_today_page.dart';
-import 'package:nus/legacy_main.dart' as legacy;
-import 'package:shared_preferences/shared_preferences.dart';
 
 HouseholdProfile _profile() => const HouseholdProfile(
       userId: 'u1',
@@ -21,29 +19,18 @@ HouseholdProfile _profile() => const HouseholdProfile(
     );
 
 void main() {
-  setUp(() {
-    SharedPreferences.setMockInitialValues(<String, Object>{});
-  });
-
-  testWidgets('Today renders the proactive financial recommendation', (tester) async {
-    final store = legacy.ScheduleStore();
-
+  testWidgets('legacy Today entry point renders the financial command center', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
-        home: NusTodayPage(
-          profile: _profile(),
-          scheduleStore: store,
-        ),
+        home: NusTodayPage(profile: _profile()),
       ),
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('اقتراحات NUS دلوقتي'), findsOneWidget);
-    expect(find.text('راجع فلوس الشهر'), findsOneWidget);
-    expect(
-      find.textContaining('قبل أي التزام جديد'),
-      findsOneWidget,
-    );
+    expect(find.text('NUS'), findsOneWidget);
+    expect(find.text('اقتصاد البيت تحت السيطرة'), findsOneWidget);
+    expect(find.byTooltip('اسأل NUS'), findsOneWidget);
+    expect(find.text('NUS Copilot'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 }
