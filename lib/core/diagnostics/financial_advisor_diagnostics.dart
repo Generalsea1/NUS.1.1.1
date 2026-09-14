@@ -71,10 +71,22 @@ class FinancialAdvisorDiagnostics extends ChangeNotifier {
     var result = value;
     result = result.replaceAll(RegExp(r'Bearer\s+[A-Za-z0-9._~+/=-]+', caseSensitive: false), 'Bearer [REDACTED]');
     result = result.replaceAll(RegExp(r'AIza[0-9A-Za-z_-]{20,}'), '[REDACTED_API_KEY]');
-    result = result.replaceAll(RegExp(r'(api[_-]?key\s*[=:]\s*)[^\s,]+', caseSensitive: false), r'\1[REDACTED]');
-    result = result.replaceAll(RegExp(r'(access[_-]?token\s*[=:]\s*)[^\s,]+', caseSensitive: false), r'\1[REDACTED]');
-    result = result.replaceAll(RegExp(r'(refresh[_-]?token\s*[=:]\s*)[^\s,]+', caseSensitive: false), r'\1[REDACTED]');
-    result = result.replaceAll(RegExp(r'(cookie\s*[=:]\s*)[^\s,]+', caseSensitive: false), r'\1[REDACTED]');
+    result = result.replaceAllMapped(
+      RegExp(r'(api[_-]?key\s*[=:]\s*)[^\s,]+', caseSensitive: false),
+      (match) => '${match.group(1)}[REDACTED]',
+    );
+    result = result.replaceAllMapped(
+      RegExp(r'(access[_-]?token\s*[=:]\s*)[^\s,]+', caseSensitive: false),
+      (match) => '${match.group(1)}[REDACTED]',
+    );
+    result = result.replaceAllMapped(
+      RegExp(r'(refresh[_-]?token\s*[=:]\s*)[^\s,]+', caseSensitive: false),
+      (match) => '${match.group(1)}[REDACTED]',
+    );
+    result = result.replaceAllMapped(
+      RegExp(r'(cookie\s*[=:]\s*)[^\s,]+', caseSensitive: false),
+      (match) => '${match.group(1)}[REDACTED]',
+    );
     return result;
   }
 }
