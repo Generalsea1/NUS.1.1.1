@@ -61,6 +61,10 @@ void main() {
     expect(find.text('ضع مفتاح'), findsNothing);
     expect(find.textContaining('Gemini'), findsNothing);
 
+    final list = find.byType(ListView).first;
+    await tester.fling(list, const Offset(0, -700), 1000);
+    await tester.pumpAndSettle();
+
     final input = find.byType(TextField, skipOffstage: false);
     expect(input, findsOneWidget);
     await tester.ensureVisible(input);
