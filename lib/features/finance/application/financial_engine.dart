@@ -59,36 +59,38 @@ class FinancialEngine {
     final currency = currencyCode.trim().toUpperCase();
     final metadata = CurrencyRegistry.get(currency);
 
-    // Start independent reads together so slow storage/network latency is not
-    // multiplied by sequential awaits. The individual futures retain their
-    // concrete domain types at the application boundary.
-    final incomeFuture = _incomeService.list(userId);
-    final obligationsFuture = _obligationService.list(userId);
-    final incomeSources = await incomeFuture;
-    final obligations = await obligationsFuture;
+    // Independent reads run concurrently, while Future.wait owns every error
+    // so sibling failures cannot escape as unhandled async exceptions.
+    final financialInputs = await Future.wait([
+      _incomeService.list(userId),
+      _obligationService.list(userId),
+    ]);
+    final incomeSources = financialInputs[0] as List;
+    final obligations = financialInputs[1] as List;
 
     final income = _incomeService.totalMonthlyIncome(
-      incomeSources,
+      incomeSources.cast(),
       currencyCode: currency,
     );
     final obligationsTotal = _obligationService.totalMonthlyObligations(
-      obligations,
+      obligations.cast(),
       currencyCode: currency,
     );
 
-    // These reads are independent as well; start both before awaiting either.
-    final actualExpensesFuture = _expenseService.monthlyActualTotal(
-      year: year,
-      month: month,
-      currencyCode: currency,
-    );
-    final expectedRecurringFuture = _expenseService.monthlyExpectedRecurringTotal(
-      year: year,
-      month: month,
-      currencyCode: currency,
-    );
-    final actualExpenses = await actualExpensesFuture;
-    final expectedRecurring = await expectedRecurringFuture;
+    final expenseInputs = await Future.wait<int>([
+      _expenseService.monthlyActualTotal(
+        year: year,
+        month: month,
+        currencyCode: currency,
+      ),
+      _expenseService.monthlyExpectedRecurringTotal(
+        year: year,
+        month: month,
+        currencyCode: currency,
+      ),
+    ]);
+    final actualExpenses = expenseInputs[0];
+    final expectedRecurring = expenseInputs[1];
 
     final incomeMinor = income * metadata.scale;
 
