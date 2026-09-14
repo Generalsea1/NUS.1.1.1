@@ -27,7 +27,6 @@ class AuthGate extends StatefulWidget {
     this.expenseService,
     this.expenseManagementService,
     this.shoppingService,
-    this.onOpenGeneralHome,
     this.onCreateReminder,
     this.scheduleStore,
     this.taskService,
@@ -40,7 +39,6 @@ class AuthGate extends StatefulWidget {
   final ExpenseLifecycleService? expenseService;
   final ExpenseManagementService? expenseManagementService;
   final ShoppingLifecycleService? shoppingService;
-  final void Function(BuildContext context)? onOpenGeneralHome;
   final Future<void> Function(String title, DateTime dateTime)? onCreateReminder;
   final dynamic scheduleStore;
   final dynamic taskService;
