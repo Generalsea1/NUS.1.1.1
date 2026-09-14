@@ -59,12 +59,14 @@ class FinancialEngine {
     final currency = currencyCode.trim().toUpperCase();
     final metadata = CurrencyRegistry.get(currency);
 
-    final List<dynamic> baseResults = await Future.wait<dynamic>(<Future<dynamic>>[
-      _incomeService.list(userId),
-      _obligationService.list(userId),
-    ]);
-    final incomeSources = baseResults[0] as List;
-    final obligations = baseResults[1] as List;
+    // Start independent reads together so slow storage/network latency is not
+    // multiplied by sequential awaits. The individual futures retain their
+    // concrete domain types at the application boundary.
+    final incomeFuture = _incomeService.list(userId);
+    final obligationsFuture = _obligationService.list(userId);
+    final incomeSources = await incomeFuture;
+    final obligations = await obligationsFuture;
+
     final income = _incomeService.totalMonthlyIncome(
       incomeSources,
       currencyCode: currency,
@@ -74,20 +76,19 @@ class FinancialEngine {
       currencyCode: currency,
     );
 
-    final List<int> expenseResults = await Future.wait<int>(<Future<int>>[
-      _expenseService.monthlyActualTotal(
-        year: year,
-        month: month,
-        currencyCode: currency,
-      ),
-      _expenseService.monthlyExpectedRecurringTotal(
-        year: year,
-        month: month,
-        currencyCode: currency,
-      ),
-    ]);
-    final actualExpenses = expenseResults[0];
-    final expectedRecurring = expenseResults[1];
+    // These reads are independent as well; start both before awaiting either.
+    final actualExpensesFuture = _expenseService.monthlyActualTotal(
+      year: year,
+      month: month,
+      currencyCode: currency,
+    );
+    final expectedRecurringFuture = _expenseService.monthlyExpectedRecurringTotal(
+      year: year,
+      month: month,
+      currencyCode: currency,
+    );
+    final actualExpenses = await actualExpensesFuture;
+    final expectedRecurring = await expectedRecurringFuture;
 
     final incomeMinor = income * metadata.scale;
 
