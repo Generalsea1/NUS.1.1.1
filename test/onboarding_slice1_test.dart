@@ -58,19 +58,16 @@ void main() {
     expect(find.byType(HouseholdOnboardingPage), findsOneWidget);
   });
 
-  testWidgets('existing valid profile bypasses onboarding and opens NUS Today', (tester) async {
+  testWidgets('existing valid profile bypasses onboarding and opens the finance command center', (tester) async {
     final auth = FakeAuthRepository(_authenticatedState());
     final profiles = FakeProfileRepository()..profile = _profile();
     await tester.pumpWidget(_host(AuthGate(authRepository: auth, profileRepository: profiles)));
     await tester.pumpAndSettle();
 
-    // The Today surface is a scrollable dashboard; assert its complete semantic
-    // surface without depending on whether lower cards are currently in the viewport.
-    expect(find.text('NUS Today'), findsOneWidget);
-    expect(find.text('إضافة سريعة', skipOffstage: false), findsOneWidget);
-    expect(find.text('NUS Copilot', skipOffstage: false), findsAtLeastNWidgets(1));
-    expect(find.text('فلوسي', skipOffstage: false), findsOneWidget);
-    expect(find.text('مواعيدي', skipOffstage: false), findsOneWidget);
+    expect(find.text('NUS'), findsOneWidget);
+    expect(find.text('اقتصاد البيت تحت السيطرة'), findsOneWidget);
+    expect(find.text('اسأل NUS', skipOffstage: false), findsAtLeastNWidgets(1));
+    expect(find.text('NUS Copilot', skipOffstage: false), findsNothing);
     expect(find.text('إعداد بيتك', skipOffstage: false), findsNothing);
     expect(find.byType(HouseholdOnboardingPage), findsNothing);
   });
