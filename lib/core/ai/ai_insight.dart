@@ -1,16 +1,22 @@
-/// Provider-neutral output from future NUS intelligence features.
+/// Provider-neutral output from NUS intelligence features.
 class AiInsight {
   const AiInsight({
     required this.id,
     required this.summary,
     required this.generatedAt,
     required this.sourceDomain,
+    this.facts = const <String>[],
+    this.advice = const <String>[],
+    this.warnings = const <String>[],
   });
 
   final String id;
   final String summary;
   final DateTime generatedAt;
   final String sourceDomain;
+  final List<String> facts;
+  final List<String> advice;
+  final List<String> warnings;
 }
 
 /// Provider-neutral, read-only context supplied to an AI implementation.
