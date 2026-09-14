@@ -10,7 +10,6 @@ import 'package:nus/features/onboarding/domain/household_profile.dart';
 import 'package:nus/features/onboarding/presentation/auth_gate.dart';
 import 'package:nus/features/onboarding/presentation/auth_page.dart';
 import 'package:nus/features/onboarding/presentation/household_onboarding_page.dart';
-import 'package:nus/features/obligations/data/supabase_obligation_repository.dart';
 import 'package:nus/core/auth/auth_repository.dart';
 import 'package:nus/core/auth/auth_state.dart';
 
@@ -71,11 +70,7 @@ void main() {
     expect(find.text('NUS Copilot', skipOffstage: false), findsNothing);
     expect(find.text('إعداد بيتك', skipOffstage: false), findsNothing);
     expect(find.byType(HouseholdOnboardingPage), findsNothing);
-
-    // The CI widget environment has no Supabase runtime configuration. The
-    // command-center shell is still rendered; only the expected storage-boundary
-    // exception is surfaced by the test harness in that configuration.
-    expect(tester.takeException(), isA<ObligationConfigurationException>());
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('registration flow calls the existing email registration boundary', (tester) async {
