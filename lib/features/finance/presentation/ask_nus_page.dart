@@ -55,7 +55,6 @@ class _AskNusPageState extends State<AskNusPage> {
   Future<void> _ask([String? question]) async {
     final String text = (question ?? _controller.text).trim();
     if (text.isEmpty || _loading) return;
-
     _controller.text = text;
     FocusScope.of(context).unfocus();
     setState(() {
@@ -65,7 +64,7 @@ class _AskNusPageState extends State<AskNusPage> {
     });
 
     try {
-      final AiContextRequestParts request = widget.snapshot.toAiRequest();
+      final AiInsightRequest request = widget.snapshot.toAiRequest();
       final AiInsight insight = await widget.provider.generateInsight(
         AiInsightRequest(
           objective: '${request.objective}\nUser question: $text\n'
@@ -94,9 +93,7 @@ class _AskNusPageState extends State<AskNusPage> {
     final CurrencyMetadata metadata = CurrencyRegistry.get(
       widget.snapshot.financial.currencyCode,
     );
-    if (metadata.exponent == 0) {
-      return '${_format(minorUnits)} ${metadata.code}';
-    }
+    if (metadata.exponent == 0) return '${_format(minorUnits)} ${metadata.code}';
     final int absolute = minorUnits.abs();
     final int whole = absolute ~/ metadata.scale;
     final String fraction = (absolute % metadata.scale)
