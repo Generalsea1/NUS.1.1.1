@@ -67,6 +67,7 @@ void main() {
 
     final request = _request();
     final result = await provider.generateInsight(request);
+
     expect(result.sourceDomain, 'financial_advisor');
     expect(transport.accessToken, 'test-user-token');
     expect(transport.body?['objective'], request.objective);
@@ -87,9 +88,11 @@ void main() {
       transport: transport,
       accessTokenReader: () => 'test-user-token',
     );
+
     final before = _request().context.single.summary;
     await provider.generateInsight(_request());
     final after = _request().context.single.summary;
+
     expect(after, before);
     expect(transport.body?['context'].toString(), contains('income=10000'));
     expect(transport.body?['context'].toString(), contains('obligations=2500'));
@@ -122,29 +125,67 @@ void main() {
       ),
       accessTokenReader: () => 'test-user-token',
     );
+
     await expectLater(
       provider.generateInsight(_request()),
-      throwsA(isA<FinancialAdvisorException>()),
+      throwsA(isA<FinancialAdvisorException>().having(
+        (error) => error.kind,
+        'kind',
+        FinancialAdvisorFailureKind.malformedResponse,
+      )),
     );
   });
 
   test('authentication is required before transport invocation', () async {
-    var invoked = false;
-    final transport = _ThrowingTransport(
-      const FinancialAdvisorException(
-        kind: FinancialAdvisorFailureKind.backendUnavailable,
-        message: 'should not run',
-      ),
+    final transport = _RecordingTransport(
+      FinancialAdvisorTransportResponse(statusCode: 200, data: _successResponse()),
     );
     final provider = FinancialAdvisorProvider(
       transport: transport,
-      accessTokenReader: () => '',
+      accessTokenReader: () => null,
     );
-    try {
-      await provider.generateInsight(_request());
-    } on FinancialAdvisorException catch (error) {
-      expect(error.kind, FinancialAdvisorFailureKind.authentication);
+
+    await expectLater(
+      provider.generateInsight(_request()),
+      throwsA(isA<FinancialAdvisorException>().having(
+        (error) => error.kind,
+        'kind',
+        FinancialAdvisorFailureKind.authentication,
+      )),
+    );
+    expect(transport.accessToken, isNull);
+  });
+
+  test('backend failure kinds remain explicit', () async {
+    final cases = <int, FinancialAdvisorFailureKind>{
+      401: FinancialAdvisorFailureKind.authentication,
+      409: FinancialAdvisorFailureKind.providerUnavailable,
+      429: FinancialAdvisorFailureKind.rateLimited,
+      422: FinancialAdvisorFailureKind.malformedResponse,
+      502: FinancialAdvisorFailureKind.providerUnavailable,
+      503: FinancialAdvisorFailureKind.backendUnavailable,
+      504: FinancialAdvisorFailureKind.timeout,
+    };
+
+    for (final entry in cases.entries) {
+      final provider = FinancialAdvisorProvider(
+        transport: _ThrowingTransport(
+          FinancialAdvisorException(
+            kind: entry.value,
+            statusCode: entry.key,
+            message: 'test failure',
+          ),
+        ),
+        accessTokenReader: () => 'test-user-token',
+      );
+      await expectLater(
+        provider.generateInsight(_request()),
+        throwsA(isA<FinancialAdvisorException>().having(
+          (error) => error.kind,
+          'kind',
+          entry.value,
+        )),
+      );
     }
-    expect(invoked, isFalse);
   });
 }
