@@ -61,10 +61,15 @@ void main() {
     expect(find.textContaining('Gemini'), findsNothing);
 
     final question = 'فين أكبر فرصة أوفر منها هذا الشهر؟';
-    final questionFinder = find.text(question, skipOffstage: false);
-    expect(questionFinder, findsOneWidget);
-    await tester.ensureVisible(questionFinder);
-    await tester.tap(questionFinder);
+    final questionText = find.text(question, skipOffstage: false);
+    expect(questionText, findsOneWidget);
+    final questionChip = find.ancestor(
+      of: questionText,
+      matching: find.byType(ActionChip),
+    );
+    expect(questionChip, findsOneWidget);
+    await tester.ensureVisible(questionChip);
+    await tester.tap(questionChip);
     await tester.pumpAndSettle();
 
     expect(find.text('الخلاصة'), findsOneWidget);
