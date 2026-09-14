@@ -11,6 +11,13 @@ void _faDiag(String line) {
   FinancialAdvisorDiagnostics.instance.record(line);
 }
 
+class FinancialAdvisorUnavailableException implements Exception {
+  const FinancialAdvisorUnavailableException(this.message);
+  final String message;
+  @override
+  String toString() => message;
+}
+
 enum FinancialAdvisorFailureKind {
   authentication,
   backendUnavailable,
@@ -51,12 +58,10 @@ class SupabaseFinancialAdvisorTransport implements FinancialAdvisorTransport {
     required String accessToken,
     required Map<String, dynamic> body,
   }) async {
-    final hasSession = client.auth.currentSession != null;
-    final hasAccessToken = accessToken.trim().isNotEmpty;
     _faDiag('[FA_DIAG] REQUEST_START');
     _faDiag('[FA_DIAG] FUNCTION=financial-advisor-ai');
-    _faDiag('[FA_DIAG] HAS_SESSION=$hasSession');
-    _faDiag('[FA_DIAG] HAS_ACCESS_TOKEN=$hasAccessToken');
+    _faDiag('[FA_DIAG] HAS_SESSION=${client.auth.currentSession != null}');
+    _faDiag('[FA_DIAG] HAS_ACCESS_TOKEN=${accessToken.trim().isNotEmpty}');
     _faDiag('[FA_DIAG] TOKEN_LENGTH=${accessToken.length}');
     _faDiag('[FA_DIAG] PATH=/functions/v1/financial-advisor-ai');
     try {
@@ -139,9 +144,7 @@ class SupabaseFinancialAdvisorTransport implements FinancialAdvisorTransport {
         );
       default:
         return FinancialAdvisorException(
-          kind: error.status >= 500
-              ? FinancialAdvisorFailureKind.backendUnavailable
-              : FinancialAdvisorFailureKind.providerUnavailable,
+          kind: error.status >= 500 ? FinancialAdvisorFailureKind.backendUnavailable : FinancialAdvisorFailureKind.providerUnavailable,
           statusCode: error.status,
           message: message ?? 'تعذر الحصول على رد من المستشار المالي.',
         );
@@ -182,13 +185,12 @@ class SupabaseFinancialAdvisorTransport implements FinancialAdvisorTransport {
     if (status == 502) return 'provider_unavailable_502';
     if (status == 503) return 'backend_unavailable_503';
     if (status == 504) return 'timeout_504';
-    return 'generic_${status}';
+    return 'generic_$status';
   }
 
   String _truncateDiagnostic(String value) => value.length <= 500 ? value : '${value.substring(0, 500)}…';
 }
 
-/// Real read-only production provider for the Financial Advisor.
 class FinancialAdvisorProvider implements AiInsightProvider {
   const FinancialAdvisorProvider({this.transport, this.accessTokenReader});
 
@@ -209,8 +211,7 @@ class FinancialAdvisorProvider implements AiInsightProvider {
       );
     }
 
-    final effectiveTransport = transport ??
-        (client == null ? null : SupabaseFinancialAdvisorTransport(client));
+    final effectiveTransport = transport ?? (client == null ? null : SupabaseFinancialAdvisorTransport(client));
     if (effectiveTransport == null) {
       _faDiag('[FA_DIAG] LOCAL_PRECONDITION_FAILURE');
       _faDiag('[FA_DIAG] REASON=no_supabase_client');
@@ -249,9 +250,7 @@ class FinancialAdvisorProvider implements AiInsightProvider {
       final serverMessage = payload['error'];
       throw FinancialAdvisorException(
         kind: FinancialAdvisorFailureKind.providerUnavailable,
-        message: serverMessage is String && serverMessage.trim().isNotEmpty
-            ? serverMessage.trim()
-            : 'خدمة المستشار المالي لم تُرجع نتيجة صالحة.',
+        message: serverMessage is String && serverMessage.trim().isNotEmpty ? serverMessage.trim() : 'خدمة المستشار المالي لم تُرجع نتيجة صالحة.',
       );
     }
 
@@ -262,10 +261,7 @@ class FinancialAdvisorProvider implements AiInsightProvider {
     final advice = _stringList(payload['advice']);
     final warnings = _stringList(payload['warnings']);
 
-    if (id is! String || id.trim().isEmpty ||
-        summary is! String || summary.trim().isEmpty ||
-        generatedAt is! String || DateTime.tryParse(generatedAt) == null ||
-        facts == null || advice == null || warnings == null) {
+    if (id is! String || id.trim().isEmpty || summary is! String || summary.trim().isEmpty || generatedAt is! String || DateTime.tryParse(generatedAt) == null || facts == null || advice == null || warnings == null) {
       throw const FinancialAdvisorException(
         kind: FinancialAdvisorFailureKind.malformedResponse,
         message: 'رد المستشار المالي لا يطابق العقد المقرر.',
