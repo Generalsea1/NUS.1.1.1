@@ -52,6 +52,7 @@ void main() {
         ),
       ),
     );
+    await tester.pumpAndSettle();
 
     expect(find.text('اسأل NUS'), findsNWidgets(2));
     expect(find.textContaining('المصروف الفعلي'), findsOneWidget);
@@ -60,12 +61,11 @@ void main() {
     expect(find.text('ضع مفتاح'), findsNothing);
     expect(find.textContaining('Gemini'), findsNothing);
 
-    final input = find.byType(TextField);
+    final input = find.byType(TextField, skipOffstage: false);
     expect(input, findsOneWidget);
     await tester.ensureVisible(input);
     await tester.enterText(input, 'فين أكبر فرصة أوفر منها هذا الشهر؟');
     await tester.testTextInput.receiveAction(TextInputAction.send);
-    await tester.pump();
     await tester.pumpAndSettle();
 
     expect(find.text('الخلاصة', skipOffstage: false), findsOneWidget);
