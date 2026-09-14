@@ -137,9 +137,12 @@ jobs:
           test -x "$AAPT2"
           BADGING="$($AAPT2 dump badging "$APK")"
           printf '%s\n' "$BADGING" | grep -F "application-label:'NUS'"
-          printf '%s\n' "$BADGING" | grep -F "application-icon"
-          unzip -Z1 "$APK" | grep -Eq '(^|/)ic_launcher\.png$'
-          unzip -Z1 "$APK" | grep -Eq '(^|/)ic_launcher_round\.png$'
+          icon_paths="$(printf '%s\n' "$BADGING" | sed -n "s/^application-icon-[^:]*:'\([^']*\)'.*/\1/p")"
+          test -n "$icon_paths"
+          while IFS= read -r icon_path; do
+            test -n "$icon_path"
+            unzip -Z1 "$APK" | grep -F -x "$icon_path"
+          done <<< "$icon_paths"
           XML="$($AAPT2 dump xmltree --file AndroidManifest.xml "$APK")"
           printf '%s\n' "$XML" | grep -F 'android.intent.action.VIEW'
           printf '%s\n' "$XML" | grep -F 'android.intent.category.BROWSABLE'
