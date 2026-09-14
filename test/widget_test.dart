@@ -1,8 +1,16 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:nus/features/expenses/application/expense_lifecycle_service.dart';
+import 'package:nus/features/expenses/application/expense_management_service.dart';
+import 'package:nus/features/expenses/data/local_expense_repository.dart';
+import 'package:nus/features/expenses/data/supabase_expense_repository.dart';
+import 'package:nus/features/expenses/data/supabase_recurring_expense_repository.dart';
+import 'package:nus/features/medications/application/medication_lifecycle_service.dart';
+import 'package:nus/features/medications/application/medication_reminder_coordinator.dart';
+import 'package:nus/features/medications/data/local_medication_repository.dart';
+import 'package:nus/features/shopping/application/shopping_lifecycle_service.dart';
+import 'package:nus/features/shopping/data/local_shopping_repository.dart';
 import 'package:nus/main.dart';
 import 'package:nus/notification_service.dart';
-import 'package:nus/features/ai/presentation/ai_hub_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class _FakeReminderScheduler implements ReminderScheduler {
@@ -21,94 +29,80 @@ class _FakeReminderScheduler implements ReminderScheduler {
   Future<void> cancelReminder(String id) async {}
 }
 
+Nus2App _buildApp({required ScheduleStore store}) {
+  final expenseService = ExpenseLifecycleService(
+    repository: LocalExpenseRepository(),
+  );
+  final medicationService = MedicationLifecycleService(
+    repository: LocalMedicationRepository(),
+    reminders: MedicationReminderCoordinator(_FakeReminderScheduler()),
+  );
+  final shoppingService = ShoppingLifecycleService(
+    repository: LocalShoppingRepository(),
+  );
+  final expenseManagementService = ExpenseManagementService(
+    expenseRepository: const SupabaseExpenseRepository(),
+    recurringRepository: const SupabaseRecurringExpenseRepository(),
+  );
+
+  return Nus2App(
+    store: store,
+    medicationService: medicationService,
+    shoppingService: shoppingService,
+    expenseService: expenseService,
+    expenseManagementService: expenseManagementService,
+  );
+}
+
 void main() {
   setUp(() {
     SharedPreferences.setMockInitialValues(<String, Object>{});
   });
 
-  testWidgets('NUS renders the premium home shell', (tester) async {
+  testWidgets('NUS starts on the authenticated financial app boundary',
+      (tester) async {
     final store = ScheduleStore();
 
-    await tester.pumpWidget(NosApp(store: store));
+    await tester.pumpWidget(_buildApp(store: store));
     await tester.pumpAndSettle();
 
-    expect(find.text('NUS'), findsWidgets);
-    expect(find.text('إضافة تذكير'), findsOneWidget);
-    expect(find.text('ملخص يومك'), findsOneWidget);
-  });
-
-  testWidgets('home AI Center opens the current real AI hub', (tester) async {
-    final store = ScheduleStore();
-
-    await tester.pumpWidget(NosApp(store: store));
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.byTooltip('المزيد'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('مركز الذكاء الاصطناعي'));
-    await tester.pumpAndSettle();
-
-    expect(find.byType(AiHubPage), findsOneWidget);
-    expect(find.text('حساب NUS والذكاء الاصطناعي'), findsOneWidget);
-    expect(find.text('ذكاء البيت بتاعك'), findsOneWidget);
-    expect(find.text('NUS AI Center'), findsNothing);
+    expect(find.text('NUS'), findsOneWidget);
+    expect(find.text('مدير الاقتصاد الذكي للمنزل'), findsOneWidget);
+    expect(find.text('البريد الإلكتروني'), findsOneWidget);
+    expect(find.text('إنشاء الحساب'), findsOneWidget);
+    expect(find.text('مركز الذكاء الاصطناعي'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('saving a valid reminder dismisses the sheet before scheduling',
+  testWidgets('unconfigured NUS remains safely at the account boundary',
+      (tester) async {
+    final store = ScheduleStore();
+
+    await tester.pumpWidget(_buildApp(store: store));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('أنشئ حسابك، ثم سنجهّز معك الملف المالي الحقيقي للبيت.'),
+      findsOneWidget,
+    );
+    expect(find.text('Gemini'), findsNothing);
+    expect(find.text('ضع مفتاح'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('ScheduleStore reminder lifecycle remains wired after app migration',
       (tester) async {
     final scheduler = _FakeReminderScheduler();
     final store = ScheduleStore(notifications: scheduler);
 
-    await tester.pumpWidget(NosApp(store: store));
-    await tester.pumpAndSettle();
+    await store.add(
+      'مراجعة الميزانية',
+      DateTime.now().add(const Duration(hours: 1)),
+    );
 
-    await tester.tap(find.text('إضافة تذكير'));
-    await tester.pumpAndSettle();
-    expect(find.text('تذكير جديد'), findsOneWidget);
-
-    await tester.enterText(find.byType(TextField), 'موعد اختبار');
-    await tester.tap(find.text('احفظ التذكير'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('تذكير جديد'), findsNothing);
     expect(store.items, hasLength(1));
-    expect(store.items.single.title, 'موعد اختبار');
+    expect(store.items.single.title, 'مراجعة الميزانية');
     expect(scheduler.scheduledCount, 1);
-    expect(tester.takeException(), isNull);
-  });
-
-  testWidgets('invalid reminder input stays rejected without closing the sheet',
-      (tester) async {
-    final store = ScheduleStore();
-
-    await tester.pumpWidget(NosApp(store: store));
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.text('إضافة تذكير'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('احفظ التذكير'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('تذكير جديد'), findsOneWidget);
-    expect(store.items, isEmpty);
-    expect(tester.takeException(), isNull);
-  });
-
-  testWidgets('cancelling reminder creation closes the sheet without saving',
-      (tester) async {
-    final store = ScheduleStore();
-
-    await tester.pumpWidget(NosApp(store: store));
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.text('إضافة تذكير'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('إلغاء'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('تذكير جديد'), findsNothing);
-    expect(store.items, isEmpty);
     expect(tester.takeException(), isNull);
   });
 }
