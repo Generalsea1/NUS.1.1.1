@@ -62,10 +62,17 @@ void main() {
     expect(find.text('اختار السؤال الأسرع', skipOffstage: false), findsOneWidget);
     expect(find.text('ضع مفتاح'), findsNothing);
     expect(find.textContaining('Gemini'), findsNothing);
-    expect(find.text('الخلاصة'), findsOneWidget);
-    expect(find.text('الحقائق المستخدمة'), findsOneWidget);
-    expect(find.text('أولويات التنفيذ'), findsOneWidget);
-    expect(find.text('ملاحظات مهمة'), findsOneWidget);
-    expect(find.textContaining('وضع البيت يحتاج الحفاظ على السيولة'), findsOneWidget);
+
+    final responseState = find.text('الخلاصة', skipOffstage: false);
+    await tester.scrollUntilVisible(
+      responseState,
+      500,
+      scrollable: find.byType(ListView).first,
+    );
+    expect(responseState, findsOneWidget);
+    expect(find.text('الحقائق المستخدمة', skipOffstage: false), findsOneWidget);
+    expect(find.text('أولويات التنفيذ', skipOffstage: false), findsOneWidget);
+    expect(find.text('ملاحظات مهمة', skipOffstage: false), findsOneWidget);
+    expect(find.textContaining('وضع البيت يحتاج الحفاظ على السيولة', skipOffstage: false), findsOneWidget);
   });
 }
