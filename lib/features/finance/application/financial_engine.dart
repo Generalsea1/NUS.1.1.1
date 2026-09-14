@@ -59,8 +59,12 @@ class FinancialEngine {
     final currency = currencyCode.trim().toUpperCase();
     final metadata = CurrencyRegistry.get(currency);
 
-    final incomeSources = await _incomeService.list(userId);
-    final obligations = await _obligationService.list(userId);
+    final List<dynamic> baseResults = await Future.wait<dynamic>(<Future<dynamic>>[
+      _incomeService.list(userId),
+      _obligationService.list(userId),
+    ]);
+    final incomeSources = baseResults[0] as List;
+    final obligations = baseResults[1] as List;
     final income = _incomeService.totalMonthlyIncome(
       incomeSources,
       currencyCode: currency,
@@ -70,16 +74,20 @@ class FinancialEngine {
       currencyCode: currency,
     );
 
-    final actualExpenses = await _expenseService.monthlyActualTotal(
-      year: year,
-      month: month,
-      currencyCode: currency,
-    );
-    final expectedRecurring = await _expenseService.monthlyExpectedRecurringTotal(
-      year: year,
-      month: month,
-      currencyCode: currency,
-    );
+    final List<int> expenseResults = await Future.wait<int>(<Future<int>>[
+      _expenseService.monthlyActualTotal(
+        year: year,
+        month: month,
+        currencyCode: currency,
+      ),
+      _expenseService.monthlyExpectedRecurringTotal(
+        year: year,
+        month: month,
+        currencyCode: currency,
+      ),
+    ]);
+    final actualExpenses = expenseResults[0];
+    final expectedRecurring = expenseResults[1];
 
     final incomeMinor = income * metadata.scale;
 
