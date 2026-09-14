@@ -224,11 +224,10 @@ class _HouseholdIntelligencePageState extends State<HouseholdIntelligencePage> {
   }
 
   Widget _kpiGrid(BuildContext context, HouseholdInsight? highest, HouseholdInsight? obligation, HouseholdInsight? recurring) {
-    final scheme = Theme.of(context).colorScheme;
     final income = obligation?.comparisonValueMinorUnits ?? 0;
     final obligationValue = obligation?.valueMinorUnits ?? 0;
     final recurringValue = recurring?.comparisonValueMinorUnits ?? 0;
-    final pressure = income <= 0 ? 0 : (obligationValue.abs() / income.abs()).clamp(0.0, 1.0);
+    final pressure = income <= 0 ? 0.0 : (obligationValue.abs() / income.abs()).clamp(0.0, 1.0);
     final category = highest?.categoryCode == null ? '—' : ExpenseCategories.labelsAr[highest!.categoryCode!] ?? highest.categoryCode!;
     final categoryAmount = highest?.valueMinorUnits == null ? '—' : _money(highest!.valueMinorUnits!);
 
@@ -334,8 +333,8 @@ class _PerspectiveChartPainter extends CustomPainter {
     if (maxValue <= 0) return;
     final baseline = size.height - 28;
     final chartHeight = size.height - 52;
-    final gap = 9.0;
-    final depth = 8.0;
+    const gap = 9.0;
+    const depth = 8.0;
     final barWidth = math.max(18.0, (size.width - gap * (values.length + 1)) / values.length);
 
     canvas.drawLine(Offset(0, baseline), Offset(size.width, baseline), Paint()..color = Colors.grey.withValues(alpha: .25));
