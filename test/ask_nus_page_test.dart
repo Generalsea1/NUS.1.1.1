@@ -55,7 +55,7 @@ void main() {
 
     expect(find.text('اسأل NUS'), findsNWidgets(2));
     expect(find.textContaining('المصروف الفعلي'), findsOneWidget);
-    expect(find.textContaining('الالتزامات'), findsOneWidget);
+    expect(find.text('الالتزامات', skipOffstage: false), findsOneWidget);
     expect(find.text('أسئلة جاهزة'), findsOneWidget);
     expect(find.text('ضع مفتاح'), findsNothing);
     expect(find.textContaining('Gemini'), findsNothing);
