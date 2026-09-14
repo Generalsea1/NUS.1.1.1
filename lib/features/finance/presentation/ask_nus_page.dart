@@ -328,7 +328,7 @@ class _AskNusPageState extends State<AskNusPage> {
           ),
         ),
       ]),
-    );
+    ]);
   }
 
   Widget _answerHero(BuildContext context, AiInsight answer) {
