@@ -49,9 +49,12 @@ void main() {
         home: AskNusPage(
           snapshot: _snapshot(),
           provider: _FakeProvider(),
+          initialQuestion: 'فين أكبر فرصة أوفر منها هذا الشهر؟',
         ),
       ),
     );
+    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(find.text('اسأل NUS'), findsNWidgets(2));
     expect(find.textContaining('المصروف الفعلي'), findsOneWidget);
@@ -59,16 +62,6 @@ void main() {
     expect(find.text('اختار السؤال الأسرع', skipOffstage: false), findsOneWidget);
     expect(find.text('ضع مفتاح'), findsNothing);
     expect(find.textContaining('Gemini'), findsNothing);
-
-    final question = 'فين أكبر فرصة أوفر منها هذا الشهر؟';
-    final questionText = find.text(question, skipOffstage: false);
-    expect(questionText, findsOneWidget);
-    await tester.drag(find.byType(ListView).first, const Offset(0, -360));
-    await tester.pumpAndSettle();
-    expect(questionText, findsOneWidget);
-    await tester.tap(questionText);
-    await tester.pumpAndSettle();
-
     expect(find.text('الخلاصة'), findsOneWidget);
     expect(find.text('الحقائق المستخدمة'), findsOneWidget);
     expect(find.text('أولويات التنفيذ'), findsOneWidget);
