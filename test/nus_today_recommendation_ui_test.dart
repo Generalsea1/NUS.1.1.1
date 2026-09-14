@@ -29,7 +29,7 @@ void main() {
 
     expect(find.text('NUS'), findsOneWidget);
     expect(find.text('اقتصاد البيت تحت السيطرة'), findsOneWidget);
-    expect(find.text('اسأل NUS'), findsWidgets);
+    expect(find.byTooltip('اسأل NUS'), findsOneWidget);
     expect(find.text('NUS Copilot'), findsNothing);
     expect(tester.takeException(), isNull);
   });
