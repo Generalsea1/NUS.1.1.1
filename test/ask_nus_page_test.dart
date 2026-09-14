@@ -76,10 +76,15 @@ void main() {
     await tester.tap(submit);
     await tester.pumpAndSettle();
 
-    expect(find.text('الخلاصة', skipOffstage: false), findsOneWidget);
+    final summary = find.text('الخلاصة', skipOffstage: false);
+    await tester.ensureVisible(summary);
+    expect(summary, findsOneWidget);
     expect(find.text('الحقائق المستخدمة', skipOffstage: false), findsOneWidget);
     expect(find.text('أولويات التنفيذ', skipOffstage: false), findsOneWidget);
-    expect(find.text('ملاحظات مهمة', skipOffstage: false), findsOneWidget);
-    expect(find.textContaining('وضع البيت يحتاج الحفاظ على السيولة', skipOffstage: false), findsOneWidget);
+
+    final warnings = find.text('ملاحظات مهمة', skipOffstage: false);
+    await tester.ensureVisible(warnings);
+    expect(warnings, findsOneWidget);
+    expect(find.textContaining('لا تعتمد على دخل غير مؤكد', skipOffstage: false), findsOneWidget);
   });
 }
