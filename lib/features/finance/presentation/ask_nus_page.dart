@@ -4,7 +4,6 @@ import '../../../core/ai/ai_insight.dart';
 import '../../../core/ai/ai_insight_provider.dart';
 import '../../expenses/domain/currency_registry.dart';
 import '../../finance/application/financial_advisor.dart';
-import '../../finance/application/financial_advisor_provider.dart';
 import '../../finance/application/financial_engine.dart';
 
 class AskNusPage extends StatefulWidget {
@@ -24,11 +23,6 @@ class AskNusPage extends StatefulWidget {
 }
 
 class _AskNusPageState extends State<AskNusPage> {
-  final TextEditingController _controller = TextEditingController();
-  AiInsight? _answer;
-  bool _loading = false;
-  String? _error;
-
   static const List<String> _suggestedQuestions = <String>[
     'أين يذهب معظم إنفاقي هذا الشهر؟',
     'ما أول شيء أحتاج أن أعمله لتحسين وضعي المالي؟',
@@ -36,11 +30,16 @@ class _AskNusPageState extends State<AskNusPage> {
     'كيف أتعامل مع الالتزامات قبل باقي المصروفات؟',
   ];
 
+  final TextEditingController _controller = TextEditingController();
+  AiInsight? _answer;
+  bool _loading = false;
+  String? _error;
+
   @override
   void initState() {
     super.initState();
-    final String? initial = widget.initialQuestion?.trim();
-    if (initial != null && initial.isNotEmpty) {
+    final String initial = widget.initialQuestion?.trim() ?? '';
+    if (initial.isNotEmpty) {
       _controller.text = initial;
       WidgetsBinding.instance.addPostFrameCallback((_) => _ask());
     }
@@ -55,8 +54,9 @@ class _AskNusPageState extends State<AskNusPage> {
   Future<void> _ask([String? question]) async {
     final String text = (question ?? _controller.text).trim();
     if (text.isEmpty || _loading) return;
-    _controller.text = text;
+
     FocusScope.of(context).unfocus();
+    _controller.text = text;
     setState(() {
       _loading = true;
       _error = null;
@@ -64,13 +64,14 @@ class _AskNusPageState extends State<AskNusPage> {
     });
 
     try {
-      final AiInsightRequest request = widget.snapshot.toAiRequest();
+      final AiInsightRequest base = widget.snapshot.toAiRequest();
       final AiInsight insight = await widget.provider.generateInsight(
         AiInsightRequest(
-          objective: '${request.objective}\nUser question: $text\n'
-              'Answer in clear Egyptian Arabic. Give a concise prioritized recommendation. '
-              'Use only supplied facts.',
-          context: request.context,
+          objective: '${base.objective}\n'
+              'سؤال المستخدم: $text\n'
+              'أجب بالعربية المصرية بوضوح وبترتيب عملي. استخدم الحقائق المرسلة فقط. '
+              'لا تخترع أرقامًا أو اتجاهات أو وعودًا.',
+          context: base.context,
         ),
       );
       if (!mounted) return;
@@ -87,27 +88,28 @@ class _AskNusPageState extends State<AskNusPage> {
     }
   }
 
-  String _money(int value) => '${_format(value)} ${widget.snapshot.financial.currencyCode}';
+  String _moneyMajor(int value) => '${_format(value)} ${widget.snapshot.financial.currencyCode}';
 
-  String _minorMoney(int minorUnits) {
+  String _moneyMinor(int value) {
     final CurrencyMetadata metadata = CurrencyRegistry.get(
       widget.snapshot.financial.currencyCode,
     );
-    if (metadata.exponent == 0) return '${_format(minorUnits)} ${metadata.code}';
-    final int absolute = minorUnits.abs();
+    if (metadata.exponent == 0) return '${_format(value)} ${metadata.code}';
+    final int absolute = value.abs();
     final int whole = absolute ~/ metadata.scale;
     final String fraction = (absolute % metadata.scale)
         .toString()
         .padLeft(metadata.exponent, '0');
-    return '${minorUnits < 0 ? '-' : ''}${_format(whole)}.$fraction ${metadata.code}';
+    final String sign = value < 0 ? '-' : '';
+    return '$sign${_format(whole)}.$fraction ${metadata.code}';
   }
 
   String _format(int value) {
     final String raw = value.abs().toString();
     final List<String> chunks = <String>[];
-    for (int index = raw.length; index > 0; index -= 3) {
-      final int start = index > 3 ? index - 3 : 0;
-      chunks.insert(0, raw.substring(start, index));
+    for (int i = raw.length; i > 0; i -= 3) {
+      final int start = i > 3 ? i - 3 : 0;
+      chunks.insert(0, raw.substring(start, i));
     }
     return '${value < 0 ? '-' : ''}${chunks.join(',')}';
   }
@@ -116,24 +118,81 @@ class _AskNusPageState extends State<AskNusPage> {
   Widget build(BuildContext context) {
     final ColorScheme scheme = Theme.of(context).colorScheme;
     final FinancialSnapshot financial = widget.snapshot.financial;
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('اسأل NUS', style: TextStyle(fontWeight: FontWeight.w900)),
       ),
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 32),
           children: <Widget>[
-            _buildIntro(context),
+            Card(
+              color: scheme.primaryContainer,
+              child: Padding(
+                padding: const EdgeInsets.all(18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Row(
+                      children: <Widget>[
+                        Icon(Icons.auto_awesome_rounded, color: scheme.onPrimaryContainer),
+                        const SizedBox(width: 8),
+                        Text(
+                          'اسأل NUS عن وضع بيتك',
+                          style: TextStyle(
+                            fontSize: 19,
+                            fontWeight: FontWeight.w900,
+                            color: scheme.onPrimaryContainer,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'الرد مبني على البيانات المالية الموجودة فعلًا في NUS، وليس على أرقام افتراضية.',
+                      style: TextStyle(color: scheme.onPrimaryContainer, height: 1.4),
+                    ),
+                  ],
+                ),
+              ),
+            ),
             const SizedBox(height: 14),
-            _buildContext(context, financial),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: <Widget>[
+                    _fact('دخل الشهر', _moneyMajor(financial.monthlyIncome)),
+                    _fact('الالتزامات', _moneyMajor(financial.monthlyObligations)),
+                    _fact('المصروف الفعلي', _moneyMinor(financial.actualExpensesMinorUnits)),
+                  ],
+                ),
+              ),
+            ),
             const SizedBox(height: 14),
+            TextField(
+              controller: _controller,
+              textInputAction: TextInputAction.send,
+              onSubmitted: (_) => _ask(),
+              minLines: 2,
+              maxLines: 4,
+              decoration: InputDecoration(
+                labelText: 'اكتب سؤالك',
+                hintText: 'مثال: ما أول خطوة مالية آمنة أعملها اليوم؟',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(18)),
+                suffixIcon: IconButton(
+                  onPressed: _loading ? null : _ask,
+                  icon: const Icon(Icons.send_rounded),
+                  tooltip: 'إرسال',
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
             Text(
-              'جرّب سؤالًا',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w900,
-                  ),
+              'أسئلة جاهزة',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
             ),
             const SizedBox(height: 8),
             Wrap(
@@ -148,181 +207,104 @@ class _AskNusPageState extends State<AskNusPage> {
                   )
                   .toList(growable: false),
             ),
-            const SizedBox(height: 14),
-            TextField(
-              controller: _controller,
-              minLines: 2,
-              maxLines: 5,
-              textInputAction: TextInputAction.done,
-              onSubmitted: (_) => _ask(),
-              decoration: InputDecoration(
-                labelText: 'اكتب سؤالك',
-                hintText: 'مثال: هل أقدر ألتزم بقسط جديد هذا الشهر؟',
-                prefixIcon: const Icon(Icons.chat_bubble_outline_rounded),
-                suffixIcon: IconButton(
-                  onPressed: _loading ? null : _controller.clear,
-                  icon: const Icon(Icons.clear_rounded),
+            if (_loading) ...<Widget>[
+              const SizedBox(height: 16),
+              const Card(
+                child: Padding(
+                  padding: EdgeInsets.all(18),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text('NUS يراجع بياناتك الآن', style: TextStyle(fontWeight: FontWeight.w900)),
+                      SizedBox(height: 10),
+                      LinearProgressIndicator(),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 10),
-            FilledButton.icon(
-              onPressed: _loading ? null : _ask,
-              icon: _loading
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.auto_awesome_rounded),
-              label: Text(_loading ? 'NUS بيحلل الأرقام…' : 'اسأل NUS'),
-            ),
-            const SizedBox(height: 16),
-            if (_error != null) _buildError(context),
-            if (_answer != null) _buildAnswer(context, _answer!),
+            ],
+            if (_error != null) ...<Widget>[
+              const SizedBox(height: 16),
+              Card(
+                color: scheme.errorContainer,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text('تعذر الحصول على رد الآن', style: TextStyle(fontWeight: FontWeight.w900, color: scheme.onErrorContainer)),
+                      const SizedBox(height: 6),
+                      Text(_error!, style: TextStyle(color: scheme.onErrorContainer)),
+                      const SizedBox(height: 8),
+                      OutlinedButton.icon(
+                        onPressed: _loading ? null : _ask,
+                        icon: const Icon(Icons.refresh_rounded),
+                        label: const Text('إعادة المحاولة'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+            if (_answer != null) ...<Widget>[
+              const SizedBox(height: 16),
+              _sectionCard(context, 'الخلاصة', _answer!.summary, Icons.flag_rounded),
+              if (_answer!.facts.isNotEmpty) ...<Widget>[
+                const SizedBox(height: 10),
+                _listCard(context, 'البيانات التي بُني عليها الرد', _answer!.facts, Icons.dataset_rounded),
+              ],
+              if (_answer!.advice.isNotEmpty) ...<Widget>[
+                const SizedBox(height: 10),
+                _listCard(context, 'ماذا تفعل الآن؟', _answer!.advice, Icons.task_alt_rounded),
+              ],
+              if (_answer!.warnings.isNotEmpty) ...<Widget>[
+                const SizedBox(height: 10),
+                _listCard(context, 'انتبه', _answer!.warnings, Icons.warning_amber_rounded),
+              ],
+            ],
           ],
         ),
       ),
     );
   }
 
-  Widget _buildIntro(BuildContext context) {
-    final ColorScheme scheme = Theme.of(context).colorScheme;
+  Widget _fact(String label, String value) {
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: <Color>[scheme.primaryContainer, scheme.secondaryContainer],
-          begin: Alignment.topRight,
-          end: Alignment.bottomLeft,
-        ),
-        borderRadius: BorderRadius.circular(26),
+        borderRadius: BorderRadius.circular(14),
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
       ),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          CircleAvatar(
-            radius: 27,
-            backgroundColor: scheme.primary,
-            foregroundColor: scheme.onPrimary,
-            child: const Icon(Icons.auto_awesome_rounded),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  'اسأل NUS',
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w900,
-                      ),
-                ),
-                const SizedBox(height: 5),
-                const Text(
-                  'إجابة مالية عملية مبنية على أرقام بيتك الحالية، مع ترتيب الأولويات بدل الكلام العام.',
-                ),
-              ],
-            ),
-          ),
+          Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 2),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.w900)),
         ],
       ),
     );
   }
 
-  Widget _buildContext(BuildContext context, FinancialSnapshot financial) {
+  Widget _sectionCard(BuildContext context, String title, String body, IconData icon) {
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Wrap(
-          spacing: 18,
-          runSpacing: 10,
-          children: <Widget>[
-            _contextMetric('الدخل', _money(financial.monthlyIncome), Icons.arrow_downward_rounded),
-            _contextMetric('التزامات', _money(financial.monthlyObligations), Icons.lock_outline_rounded),
-            _contextMetric('المصروف الفعلي', _minorMoney(financial.actualExpensesMinorUnits), Icons.payments_outlined),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _contextMetric(String title, String value, IconData icon) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: <Widget>[
-        Icon(icon, size: 18),
-        const SizedBox(width: 6),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Text(title, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
-            Text(value, style: const TextStyle(fontWeight: FontWeight.w900)),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildError(BuildContext context) {
-    return Card(
-      color: Theme.of(context).colorScheme.errorContainer,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            const Icon(Icons.error_outline_rounded),
+            Icon(icon),
             const SizedBox(width: 10),
             Expanded(
-              child: Text(
-                'لم نقدرش نجيب الإجابة دلوقتي. جرّب نفس السؤال بعد لحظات.\n\n$_error',
-                style: const TextStyle(fontWeight: FontWeight.w700, height: 1.45),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(title, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+                  const SizedBox(height: 6),
+                  Text(body, style: const TextStyle(height: 1.5)),
+                ],
               ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAnswer(BuildContext context, AiInsight answer) {
-    return Column(
-      children: <Widget>[
-        _responseCard(context, 'الخلاصة', answer.summary, Icons.insights_rounded),
-        if (answer.facts.isNotEmpty) ...<Widget>[
-          const SizedBox(height: 10),
-          _listCard(context, 'البيانات التي بُني عليها الرد', answer.facts, Icons.fact_check_outlined),
-        ],
-        if (answer.advice.isNotEmpty) ...<Widget>[
-          const SizedBox(height: 10),
-          _listCard(context, 'ماذا تفعل الآن؟', answer.advice, Icons.flag_rounded),
-        ],
-        if (answer.warnings.isNotEmpty) ...<Widget>[
-          const SizedBox(height: 10),
-          _listCard(context, 'انتبه', answer.warnings, Icons.warning_amber_rounded),
-        ],
-      ],
-    );
-  }
-
-  Widget _responseCard(BuildContext context, String title, String text, IconData icon) {
-    return Card(
-      color: Theme.of(context).colorScheme.primaryContainer,
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Row(
-              children: <Widget>[
-                Icon(icon),
-                const SizedBox(width: 8),
-                Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Text(text, style: const TextStyle(fontSize: 17, height: 1.55, fontWeight: FontWeight.w700)),
           ],
         ),
       ),
@@ -332,38 +314,16 @@ class _AskNusPageState extends State<AskNusPage> {
   Widget _listCard(BuildContext context, String title, List<String> items, IconData icon) {
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Row(
-              children: <Widget>[
-                Icon(icon),
-                const SizedBox(width: 8),
-                Expanded(child: Text(title, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 17))),
-              ],
-            ),
-            const SizedBox(height: 10),
-            for (int index = 0; index < items.length; index++) ...<Widget>[
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Container(
-                    width: 26,
-                    height: 26,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primaryContainer,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Text('${index + 1}', style: const TextStyle(fontWeight: FontWeight.w900)),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(child: Text(items[index], style: const TextStyle(height: 1.45, fontWeight: FontWeight.w600))),
-                ],
-              ),
-              if (index != items.length - 1) const Divider(height: 20),
-            ],
+            Row(children: <Widget>[Icon(icon), const SizedBox(width: 8), Text(title, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16))]),
+            const SizedBox(height: 6),
+            ...items.map((String item) => Padding(
+              padding: const EdgeInsets.symmetric(vertical: 5),
+              child: Text('• $item', style: const TextStyle(height: 1.45)),
+            )),
           ],
         ),
       ),
