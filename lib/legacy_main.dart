@@ -8,7 +8,6 @@ import 'notification_service.dart';
 import 'features/appointments/presentation/appointments_page.dart';
 import 'features/appointments/data/local_appointment_repository.dart';
 import 'features/appointments/domain/appointment.dart';
-import 'features/ai/presentation/ai_hub_page.dart';
 import 'features/expenses/application/expense_lifecycle_service.dart';
 import 'features/expenses/presentation/household_expense_manager_page.dart';
 import 'features/medications/application/medication_lifecycle_service.dart';
@@ -472,20 +471,11 @@ class _HomePageState extends State<HomePage> {
             tooltip: t('More', 'المزيد'),
             onSelected: (value) {
               if (value == 'language') widget.onToggleLanguage();
-              if (value == 'ai') {
-                Navigator.of(context).push(MaterialPageRoute(
-                  builder: (_) => const AiHubPage(),
-                ));
-              }
             },
             itemBuilder: (_) => [
               PopupMenuItem(
                 value: 'language',
                 child: Text(t('العربية', 'English')),
-              ),
-              PopupMenuItem(
-                value: 'ai',
-                child: Text(t('AI Center', 'مركز الذكاء الاصطناعي')),
               ),
             ],
           ),
@@ -521,32 +511,23 @@ class _HomePageState extends State<HomePage> {
               const SizedBox(height: 8),
               ...todayAppointments.map(_buildAppointmentCard),
             ],
-            const SizedBox(height: 22),
-            _sectionHeader(t('Upcoming', 'القادم'), upcoming.length),
-            const SizedBox(height: 10),
-            if (upcoming.isEmpty)
-              _emptyCard(
-                context,
-                t('No upcoming reminders', 'مفيش تذكيرات جاية'),
-                t(
-                  'Your next plans will appear here.',
-                  'مواعيدك الجاية هتظهر هنا.',
-                ),
-              )
-            else
+            if (upcoming.isNotEmpty || upcomingAppointments.isNotEmpty) ...[
+              const SizedBox(height: 24),
+              _sectionHeader(t('Upcoming', 'اللي جاي'), upcoming.length + upcomingAppointments.length),
+              const SizedBox(height: 10),
               ...upcoming.map(_buildItemCard),
-            if (upcomingAppointments.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Text(t('Upcoming appointments', 'المواعيد الجاية'), style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900)),
-              const SizedBox(height: 8),
               ...upcomingAppointments.map(_buildAppointmentCard),
             ],
             if (completedAppointments.isNotEmpty) ...[
-              const SizedBox(height: 22),
-              _sectionHeader(t('Completed', 'المكتملة'), completedAppointments.length),
+              const SizedBox(height: 24),
+              _sectionHeader(t('Completed appointments', 'مواعيد خلصت'), completedAppointments.length),
               const SizedBox(height: 10),
               ...completedAppointments.map(_buildAppointmentCard),
             ],
+            const SizedBox(height: 24),
+            Text(t('Your home tools', 'أدوات البيت'), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
+            const SizedBox(height: 12),
+            _toolGrid(context),
           ],
         ),
       ),
@@ -555,169 +536,180 @@ class _HomePageState extends State<HomePage> {
 
   Widget _heroCard(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [scheme.primary, scheme.primaryContainer],
-          ),
+    return Container(
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(28),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [scheme.primary, scheme.tertiary],
         ),
-        padding: const EdgeInsets.fromLTRB(22, 24, 22, 22),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: scheme.onPrimary.withValues(alpha: .12),
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                  child: Text(
-                    t('SMART LIFE MANAGER', 'مدير حياتك الذكي'),
-                    style: TextStyle(
-                      color: scheme.onPrimary,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: .5,
-                    ),
-                  ),
-                ),
-                const Spacer(),
-                Icon(Icons.auto_awesome_rounded, color: scheme.onPrimary),
-              ],
-            ),
-            const SizedBox(height: 18),
-            Text(
-              t('Take control of your day.', 'خلّي يومك تحت السيطرة.'),
-              style: TextStyle(
-                color: scheme.onPrimary,
-                fontSize: 30,
-                fontWeight: FontWeight.w900,
-                height: 1.05,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              t(
-                'NUS brings reminders, family life, shopping and household spending into one intelligent home base.',
-                'NUS بيجمع التذكيرات والبيت والمشتريات ومصروفات مدير المنزل في مكان واحد ذكي.',
-              ),
-              style: TextStyle(
-                color: scheme.onPrimary.withValues(alpha: .82),
-                height: 1.4,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 18),
-            FilledButton.icon(
-              style: FilledButton.styleFrom(
-                backgroundColor: scheme.onPrimary,
-                foregroundColor: scheme.primary,
-                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
-              ),
-              onPressed: () => _showAddSheet(context),
-              icon: const Icon(Icons.add_rounded),
-              label: Text(
-                t('Add reminder', 'إضافة تذكير'),
-                style: const TextStyle(fontWeight: FontWeight.w900),
-              ),
-            ),
-          ],
-        ),
+        boxShadow: const [
+          BoxShadow(blurRadius: 28, offset: Offset(0, 12), color: Color(0x22000000)),
+        ],
       ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Icon(Icons.auto_awesome_rounded, color: scheme.onPrimary, size: 30),
+          const SizedBox(width: 10),
+          Expanded(child: Text(
+            t('A calmer day starts with NUS', 'يوم أهدى يبدأ مع NUS'),
+            style: TextStyle(color: scheme.onPrimary, fontSize: 25, fontWeight: FontWeight.w900),
+          )),
+        ]),
+        const SizedBox(height: 12),
+        Text(
+          t(
+            'Keep reminders, appointments, shopping, and household tasks in one place.',
+            'خلي التذكيرات والمواعيد والمشتريات ومهام البيت في مكان واحد.',
+          ),
+          style: TextStyle(color: scheme.onPrimary.withOpacity(.9), height: 1.5),
+        ),
+        const SizedBox(height: 18),
+        Row(children: [
+          Expanded(child: _heroMetric(t('Today', 'النهارده'), '${widget.store.items.where((item) => DateUtils.isSameDay(item.dateTime, DateTime.now())).length}')),
+          const SizedBox(width: 10),
+          Expanded(child: _heroMetric(t('Upcoming', 'اللي جاي'), '${widget.store.items.where((item) => item.dateTime.isAfter(DateTime.now())).length}')),
+        ]),
+      ]),
     );
   }
 
-  Widget _quickActions(BuildContext context) {
-    final actions = [
-      (
-        Icons.account_balance_wallet_rounded,
-        t('Household Budget', 'ميزانية البيت'),
-        () => widget.expenseService == null
-            ? null
-            : Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => HouseholdExpenseManagerPage(
-                  service: widget.expenseService!,
-                  isArabic: widget.isArabic,
-                ),
-              )),
-      ),
-      (
-        Icons.shopping_bag_outlined,
-        t('Shopping', 'المشتريات'),
-        () => widget.shoppingService == null
-            ? null
-            : Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => ShoppingPage(
-                  service: widget.shoppingService!,
-                  isArabic: widget.isArabic,
-                ),
-              )),
-      ),
-      (
-        Icons.medication_outlined,
-        t('Medications', 'الأدوية'),
-        () => widget.medicationService == null
-            ? null
-            : Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => MedicationsPage(
-                  service: widget.medicationService!,
-                  isArabic: widget.isArabic,
-                ),
-              )),
-      ),
-      (
-        Icons.event_available_outlined,
-        t('Appointments', 'المواعيد'),
-        () => _openAppointments(context),
-      ),
-    ];
+  Widget _heroMetric(String label, String value) => Container(
+    padding: const EdgeInsets.all(12),
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(18),
+      color: Colors.white.withOpacity(.12),
+      border: Border.all(color: Colors.white.withOpacity(.15)),
+    ),
+    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(label, style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w800)),
+      const SizedBox(height: 4),
+      Text(value, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900)),
+    ]),
+  );
 
+  Widget _quickActions(BuildContext context) => Row(children: [
+    Expanded(child: FilledButton.icon(
+      onPressed: () => _openAppointments(context),
+      icon: const Icon(Icons.event_available_rounded),
+      label: Text(t('Appointment', 'ميعاد')),
+    )),
+    const SizedBox(width: 10),
+    Expanded(child: OutlinedButton.icon(
+      onPressed: () => _showAddDialog(context),
+      icon: const Icon(Icons.add_task_rounded),
+      label: Text(t('Reminder', 'تذكير')),
+    )),
+  ]);
+
+  Widget _dailyFocusCard(BuildContext context, int count) => Card(
+    child: Padding(
+      padding: const EdgeInsets.all(18),
+      child: Row(children: [
+        Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.primaryContainer,
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Icon(Icons.center_focus_strong_rounded, color: Theme.of(context).colorScheme.onPrimaryContainer),
+        ),
+        const SizedBox(width: 12),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(t('Daily focus', 'تركيز النهارده'), style: const TextStyle(fontWeight: FontWeight.w900)),
+          const SizedBox(height: 4),
+          Text(
+            count == 0
+                ? t('Nothing urgent is scheduled.', 'مفيش حاجة مستعجلة متسجلة.')
+                : t('$count item(s) need attention.', 'عندك $count حاجة محتاجة انتباه.'),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13),
+          ),
+        ])),
+      ]),
+    ),
+  );
+
+  Widget _sectionHeader(String title, int count) => Row(children: [
+    Expanded(child: Text(title, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w900))),
+    Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(999),
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+      ),
+      child: Text('$count', style: const TextStyle(fontWeight: FontWeight.w900)),
+    ),
+  ]);
+
+  Widget _buildItemCard(ScheduleItem item) => Card(
+    child: ListTile(
+      leading: Checkbox(value: item.completed, onChanged: (_) => widget.store.toggle(item)),
+      title: Text(item.title, style: TextStyle(fontWeight: FontWeight.w800, decoration: item.completed ? TextDecoration.lineThrough : null)),
+      subtitle: Text(MaterialLocalizations.of(context).formatFullDate(item.dateTime)),
+      trailing: IconButton(icon: const Icon(Icons.delete_outline_rounded), onPressed: () => widget.store.remove(item)),
+    ),
+  );
+
+  Widget _buildAppointmentCard(Appointment appointment) => Card(
+    child: ListTile(
+      leading: const Icon(Icons.event_rounded),
+      title: Text(appointment.title, style: const TextStyle(fontWeight: FontWeight.w800)),
+      subtitle: Text(MaterialLocalizations.of(context).formatShortDate(appointment.startsAt)),
+      onTap: () => _openAppointments(context),
+    ),
+  );
+
+  Widget _toolGrid(BuildContext context) {
+    final tools = <_ToolItem>[
+      _ToolItem(Icons.receipt_long_rounded, t('Expenses', 'مصروفات'), () {
+        final service = widget.expenseService;
+        if (service == null) return;
+        Navigator.of(context).push(MaterialPageRoute(
+          builder: (_) => HouseholdExpenseManagerPage(service: service),
+        ));
+      }),
+      _ToolItem(Icons.shopping_cart_checkout_rounded, t('Shopping', 'مشتريات'), () {
+        final service = widget.shoppingService;
+        if (service == null) return;
+        Navigator.of(context).push(MaterialPageRoute(
+          builder: (_) => ShoppingPage(service: service),
+        ));
+      }),
+      _ToolItem(Icons.medical_services_outlined, t('Medications', 'أدوية'), () {
+        final service = widget.medicationService;
+        if (service == null) return;
+        Navigator.of(context).push(MaterialPageRoute(
+          builder: (_) => MedicationsPage(service: service),
+        ));
+      }),
+      _ToolItem(Icons.event_note_rounded, t('Appointments', 'مواعيد'), () => _openAppointments(context)),
+    ];
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
+      itemCount: tools.length,
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        mainAxisExtent: 106,
-        crossAxisSpacing: 10,
-        mainAxisSpacing: 10,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+        childAspectRatio: 1.42,
       ),
-      itemCount: actions.length,
       itemBuilder: (_, index) {
-        final action = actions[index];
+        final tool = tools[index];
         return Card(
           child: InkWell(
             borderRadius: BorderRadius.circular(24),
-            onTap: action.$3,
+            onTap: tool.onTap,
             child: Padding(
               padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 42,
-                    height: 42,
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primaryContainer,
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    alignment: Alignment.center,
-                    child: Icon(action.$1),
-                  ),
-                  const Spacer(),
-                  Text(
-                    action.$2,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontWeight: FontWeight.w900),
-                  ),
-                ],
-              ),
+              child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                Icon(tool.icon, size: 30, color: Theme.of(context).colorScheme.primary),
+                const SizedBox(height: 8),
+                Text(tool.label, style: const TextStyle(fontWeight: FontWeight.w900), textAlign: TextAlign.center),
+              ]),
             ),
           ),
         );
@@ -725,282 +717,70 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildAppointmentCard(Appointment appointment) {
-    final scheme = Theme.of(context).colorScheme;
-    final time = TimeOfDay.fromDateTime(appointment.startsAt).format(context);
-    final date = '${appointment.startsAt.day}/${appointment.startsAt.month}';
-    final isCompleted = appointment.status == AppointmentStatus.completed;
-    final isCancelled = appointment.status == AppointmentStatus.cancelled;
-    final title = appointment.isScheduledCall && (appointment.contactName ?? '').isNotEmpty
-        ? '${appointment.title} — ${appointment.contactName}'
-        : appointment.title;
-    return Card(
-      margin: const EdgeInsets.only(bottom: 10),
-      child: ListTile(
-        leading: Icon(
-          isCompleted ? Icons.check_circle_rounded : appointment.isScheduledCall ? Icons.phone_callback_rounded : Icons.event_rounded,
-          color: isCompleted ? scheme.primary : isCancelled ? scheme.error : null,
-        ),
-        title: Text(
-          title,
-          style: TextStyle(
-            fontWeight: FontWeight.w800,
-            decoration: isCompleted ? TextDecoration.lineThrough : null,
-          ),
-        ),
-        subtitle: Text('${appointment.isScheduledCall ? t('Scheduled call', 'اتصال مجدول') : t('Appointment', 'موعد')} • $date • $time'),
-        trailing: isCompleted
-            ? Icon(Icons.verified_rounded, color: scheme.primary)
-            : IconButton(
-                tooltip: t('Open appointments', 'فتح المواعيد'),
-                onPressed: () => _openAppointments(context),
-                icon: const Icon(Icons.chevron_right_rounded),
-              ),
-      ),
-    );
-  }
+  Widget _emptyCard(BuildContext context, String title, String message) => Card(
+    child: Padding(
+      padding: const EdgeInsets.all(22),
+      child: Column(children: [
+        Icon(Icons.check_circle_outline_rounded, size: 42, color: Theme.of(context).colorScheme.primary),
+        const SizedBox(height: 12),
+        Text(title, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 17)),
+        const SizedBox(height: 5),
+        Text(message, textAlign: TextAlign.center, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+      ]),
+    ),
+  );
 
-  Widget _dailyFocusCard(BuildContext context, int count) {
-    final scheme = Theme.of(context).colorScheme;
-    return Card(
-      color: scheme.secondaryContainer,
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Row(
-          children: [
-            Icon(Icons.track_changes_rounded, color: scheme.onSecondaryContainer),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    t('Today at a glance', 'ملخص يومك'),
-                    style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 17),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    count == 0
-                        ? t('Nothing pending. You are clear.', 'مفيش حاجة متعلقة. يومك هادي.')
-                        : t('$count plan(s) around you.', 'عندك $count مهمة/ميعاد حوالين يومك.'),
-                  ),
-                ],
-              ),
+  Future<void> _showAddDialog(BuildContext context) async {
+    final controller = TextEditingController();
+    DateTime selected = DateTime.now().add(const Duration(hours: 1));
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: Text(t('Add reminder', 'إضافة تذكير')),
+          content: Column(mainAxisSize: MainAxisSize.min, children: [
+            TextField(
+              controller: controller,
+              autofocus: true,
+              decoration: InputDecoration(labelText: t('Title', 'عنوان التذكير')),
             ),
+            const SizedBox(height: 12),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.schedule_rounded),
+              title: Text(MaterialLocalizations.of(context).formatFullDate(selected)),
+              onTap: () async {
+                final date = await showDatePicker(
+                  context: context,
+                  firstDate: DateTime.now(),
+                  lastDate: DateTime.now().add(const Duration(days: 365)),
+                  initialDate: selected,
+                );
+                if (date == null) return;
+                final time = await showTimePicker(context: context, initialTime: TimeOfDay.fromDateTime(selected));
+                if (time == null) return;
+                setState(() => selected = DateTime(date.year, date.month, date.day, time.hour, time.minute));
+              },
+            ),
+          ]),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context, false), child: Text(t('Cancel', 'إلغاء'))),
+            FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(t('Save', 'حفظ'))),
           ],
         ),
       ),
     );
+    if (result == true) {
+      await widget.store.add(controller.text, selected);
+    }
+    controller.dispose();
   }
+}
 
-  Widget _sectionHeader(String title, int count) => Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text('$count', style: const TextStyle(fontWeight: FontWeight.w900)),
-          ),
-        ],
-      );
+class _ToolItem {
+  const _ToolItem(this.icon, this.label, this.onTap);
 
-  Widget _emptyCard(BuildContext context, String title, String subtitle) => Card(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Row(
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                alignment: Alignment.center,
-                child: const Icon(Icons.check_circle_outline_rounded),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title, style: const TextStyle(fontWeight: FontWeight.w900)),
-                    const SizedBox(height: 4),
-                    Text(subtitle, style: const TextStyle(height: 1.35)),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-
-  Widget _buildItemCard(ScheduleItem item) {
-    final time = TimeOfDay.fromDateTime(item.dateTime).format(context);
-    final date = widget.isArabic
-        ? '${item.dateTime.day}/${item.dateTime.month}'
-        : '${item.dateTime.month}/${item.dateTime.day}';
-    final scheme = Theme.of(context).colorScheme;
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 10),
-      child: Dismissible(
-        key: ValueKey(item.id),
-        direction: DismissDirection.endToStart,
-        confirmDismiss: (_) async {
-          await widget.store.remove(item);
-          return true;
-        },
-        background: Container(
-          decoration: BoxDecoration(
-            color: scheme.error,
-            borderRadius: BorderRadius.circular(24),
-          ),
-          alignment: Alignment.centerRight,
-          padding: const EdgeInsets.only(right: 18),
-          child: Icon(Icons.delete_outline, color: scheme.onError),
-        ),
-        child: ListTile(
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          leading: IconButton.filledTonal(
-            onPressed: () => widget.store.toggle(item),
-            icon: Icon(item.completed ? Icons.check_rounded : Icons.event_available_rounded),
-          ),
-          title: Text(
-            item.title,
-            style: TextStyle(
-              fontWeight: FontWeight.w800,
-              decoration: item.completed ? TextDecoration.lineThrough : null,
-            ),
-          ),
-          subtitle: Text('$date  •  $time'),
-          trailing: IconButton(
-            onPressed: () => widget.store.remove(item),
-            icon: const Icon(Icons.delete_outline_rounded),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Future<void> _showAddSheet(BuildContext context) async {
-    var title = '';
-    var selected = DateTime.now().add(const Duration(minutes: 30));
-
-    final reminder = await showModalBottomSheet<({String title, DateTime dateTime})>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setSheetState) => Padding(
-          padding: EdgeInsets.fromLTRB(
-            20,
-            8,
-            20,
-            MediaQuery.of(context).viewInsets.bottom + 24,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                t('New reminder', 'تذكير جديد'),
-                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                autofocus: true,
-                textInputAction: TextInputAction.done,
-                onChanged: (value) => title = value,
-                decoration: InputDecoration(
-                  labelText: t('What do you need to remember?', 'إيه اللي محتاج تفتكره؟'),
-                ),
-              ),
-              const SizedBox(height: 14),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () async {
-                        final picked = await showDatePicker(
-                          context: context,
-                          firstDate: DateUtils.dateOnly(DateTime.now()),
-                          lastDate: DateTime.now().add(const Duration(days: 3650)),
-                          initialDate: selected,
-                        );
-                        if (picked != null) {
-                          setSheetState(() {
-                            selected = DateTime(
-                              picked.year,
-                              picked.month,
-                              picked.day,
-                              selected.hour,
-                              selected.minute,
-                            );
-                          });
-                        }
-                      },
-                      icon: const Icon(Icons.calendar_today_outlined),
-                      label: Text('${selected.day}/${selected.month}/${selected.year}'),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () async {
-                        final picked = await showTimePicker(
-                          context: context,
-                          initialTime: TimeOfDay.fromDateTime(selected),
-                        );
-                        if (picked != null) {
-                          setSheetState(() {
-                            selected = DateTime(
-                              selected.year,
-                              selected.month,
-                              selected.day,
-                              picked.hour,
-                              picked.minute,
-                            );
-                          });
-                        }
-                      },
-                      icon: const Icon(Icons.schedule_outlined),
-                      label: Text(TimeOfDay.fromDateTime(selected).format(context)),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              FilledButton(
-                onPressed: () {
-                  final cleanTitle = title.trim();
-                  final reminderDate = selected;
-                  if (cleanTitle.isEmpty || !reminderDate.isAfter(DateTime.now())) return;
-                  Navigator.of(context).pop((
-                    title: cleanTitle,
-                    dateTime: reminderDate,
-                  ));
-                },
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  child: Text(t('Save reminder', 'احفظ التذكير')),
-                ),
-              ),
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: Text(t('Cancel', 'إلغاء')),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-
-    if (!mounted || reminder == null) return;
-    await widget.store.add(reminder.title, reminder.dateTime);
-  }
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
 }
