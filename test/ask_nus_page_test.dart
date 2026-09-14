@@ -53,7 +53,7 @@ void main() {
       ),
     );
 
-    expect(find.text('اسأل NUS'), findsOneWidget);
+    expect(find.text('اسأل NUS'), findsNWidgets(2));
     expect(find.text('لقطة مالية في ثانية'), findsOneWidget);
     expect(find.text('اختار السؤال الأسرع'), findsOneWidget);
     expect(find.byTooltip('اسأل NUS'), findsOneWidget);
