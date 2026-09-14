@@ -5,23 +5,18 @@ import 'package:flutter/material.dart';
 import '../../../core/auth/auth_repository.dart';
 import '../../../core/auth/auth_state.dart';
 import '../../../core/auth/supabase_auth_repository.dart';
-import '../../../core/supabase_service.dart';
 import '../../expenses/application/expense_lifecycle_service.dart';
 import '../../expenses/application/expense_management_service.dart';
 import '../../expenses/data/supabase_expense_repository.dart';
 import '../../expenses/data/supabase_recurring_expense_repository.dart';
-import '../../income/application/income_source_repository.dart';
-import '../../income/data/supabase_income_source_repository.dart';
-import '../../obligations/application/obligation_service.dart';
-import '../../obligations/data/supabase_obligation_repository.dart';
 import '../../shopping/application/shopping_lifecycle_service.dart';
 import '../application/household_profile_repository.dart';
 import '../application/household_profile_validator.dart';
 import '../data/supabase_household_profile_repository.dart';
 import '../domain/household_profile.dart';
+import '../../finance/presentation/nus_financial_home_page.dart';
 import 'auth_page.dart';
 import 'household_onboarding_page.dart';
-import '../../finance/presentation/nus_financial_home_page.dart';
 
 class AuthGate extends StatefulWidget {
   const AuthGate({
@@ -41,7 +36,7 @@ class AuthGate extends StatefulWidget {
 
   final AuthRepository? authRepository;
   final HouseholdProfileRepository? profileRepository;
-  final IncomeSourceRepository? incomeRepository;
+  final dynamic incomeRepository;
   final ExpenseLifecycleService? expenseService;
   final ExpenseManagementService? expenseManagementService;
   final ShoppingLifecycleService? shoppingService;
@@ -49,23 +44,19 @@ class AuthGate extends StatefulWidget {
   final Future<void> Function(String title, DateTime dateTime)? onCreateReminder;
   final dynamic scheduleStore;
   final dynamic taskService;
-  final ObligationService? obligationService;
+  final dynamic obligationService;
 
   @override
   State<AuthGate> createState() => _AuthGateState();
 }
 
 class _AuthGateState extends State<AuthGate> {
-  late final AuthRepository _authRepository =
-      widget.authRepository ?? SupabaseAuthRepository();
-  late final HouseholdProfileRepository _profileRepository =
-      widget.profileRepository ?? const SupabaseHouseholdProfileRepository();
-  late final ExpenseManagementService _financeExpenseService =
-      widget.expenseManagementService ??
-          ExpenseManagementService(
-            expenseRepository: const SupabaseExpenseRepository(),
-            recurringRepository: const SupabaseRecurringExpenseRepository(),
-          );
+  late final AuthRepository _authRepository = widget.authRepository ?? SupabaseAuthRepository();
+  late final HouseholdProfileRepository _profileRepository = widget.profileRepository ?? const SupabaseHouseholdProfileRepository();
+  late final ExpenseManagementService _expenseService = widget.expenseManagementService ?? const ExpenseManagementService(
+        expenseRepository: SupabaseExpenseRepository(),
+        recurringRepository: SupabaseRecurringExpenseRepository(),
+      );
   late final bool _ownsAuthRepository = widget.authRepository == null;
   late final StreamSubscription<AuthState> _authSubscription;
 
@@ -80,15 +71,13 @@ class _AuthGateState extends State<AuthGate> {
   void initState() {
     super.initState();
     _authSubscription = _authRepository.authStateChanges.listen(_onAuthState);
-    _initialize();
+    unawaited(_initialize());
   }
 
   @override
   void dispose() {
     _authSubscription.cancel();
-    if (_ownsAuthRepository) {
-      unawaited(_authRepository.dispose());
-    }
+    if (_ownsAuthRepository) unawaited(_authRepository.dispose());
     super.dispose();
   }
 
@@ -97,9 +86,7 @@ class _AuthGateState extends State<AuthGate> {
       final AuthState state = await _authRepository.initialize();
       if (!mounted) return;
       setState(() => _authState = state);
-      if (!_receivedAuthEvent) {
-        await _resolveAuthenticatedUser(state);
-      }
+      if (!_receivedAuthEvent) await _resolveAuthenticatedUser(state);
     } catch (_) {
       if (!mounted) return;
       setState(() {
@@ -123,24 +110,22 @@ class _AuthGateState extends State<AuthGate> {
 
   Future<void> _resolveAuthenticatedUser(AuthState state) async {
     if (!state.isAuthenticated) {
-      if (mounted) {
-        setState(() {
-          _loadingProfile = false;
-          _initializing = false;
-        });
-      }
+      if (!mounted) return;
+      setState(() {
+        _loadingProfile = false;
+        _initializing = false;
+      });
       return;
     }
 
     final String? userId = state.session?.user.id;
     if (userId == null || userId.trim().isEmpty) {
-      if (mounted) {
-        setState(() {
-          _loadingProfile = false;
-          _initializing = false;
-          _profileError = 'تعذر تحديد حساب المستخدم الحالي.';
-        });
-      }
+      if (!mounted) return;
+      setState(() {
+        _loadingProfile = false;
+        _initializing = false;
+        _profileError = 'تعذر تحديد حساب المستخدم الحالي.';
+      });
       return;
     }
 
@@ -173,22 +158,15 @@ class _AuthGateState extends State<AuthGate> {
   @override
   Widget build(BuildContext context) {
     if (_initializing || _loadingProfile) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     if (!_authState.isAuthenticated) {
-      return const Directionality(
-        textDirection: TextDirection.rtl,
-        child: AuthPage(),
-      );
+      return const Directionality(textDirection: TextDirection.rtl, child: AuthPage());
     }
 
     final String userId = _authState.session!.user.id;
-    if (_profileError != null) {
-      return _ErrorView(message: _profileError!, onRetry: _retryProfile);
-    }
+    if (_profileError != null) return _ErrorView(message: _profileError!, onRetry: _retryProfile);
 
     final HouseholdProfile? profile = _profile;
     if (profile == null || !const HouseholdProfileValidator().isValid(profile)) {
@@ -209,7 +187,7 @@ class _AuthGateState extends State<AuthGate> {
       textDirection: TextDirection.rtl,
       child: NusFinancialHomePage(
         profile: profile,
-        expenseManagementService: _financeExpenseService,
+        expenseManagementService: _expenseService,
         onSignOut: () => _authRepository.signOut(),
       ),
     );
@@ -224,26 +202,27 @@ class _ErrorView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Card(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: <Widget>[
-                  const Icon(Icons.cloud_off_rounded, size: 48),
-                  const SizedBox(height: 16),
-                  Text(message, textAlign: TextAlign.center),
-                  const SizedBox(height: 16),
-                  FilledButton.icon(
-                    onPressed: onRetry,
-                    icon: const Icon(Icons.refresh_rounded),
-                    label: const Text('إعادة المحاولة'),
-                  ),
-                ],
+    final ColorScheme scheme = Theme.of(context).colorScheme;
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Card(
+              color: scheme.errorContainer,
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    Icon(Icons.error_outline_rounded, color: scheme.onErrorContainer, size: 34),
+                    const SizedBox(height: 10),
+                    Text(message, textAlign: TextAlign.center, style: TextStyle(color: scheme.onErrorContainer, height: 1.45)),
+                    const SizedBox(height: 12),
+                    FilledButton.icon(onPressed: onRetry, icon: const Icon(Icons.refresh_rounded), label: const Text('إعادة المحاولة')),
+                  ],
+                ),
               ),
             ),
           ),
