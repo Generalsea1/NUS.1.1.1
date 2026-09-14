@@ -49,12 +49,9 @@ void main() {
         home: AskNusPage(
           snapshot: _snapshot(),
           provider: _FakeProvider(),
-          initialQuestion: 'فين أكبر فرصة أوفر منها هذا الشهر؟',
         ),
       ),
     );
-    await tester.pump();
-    await tester.pumpAndSettle();
 
     expect(find.text('اسأل NUS'), findsNWidgets(2));
     expect(find.textContaining('المصروف الفعلي'), findsOneWidget);
@@ -63,9 +60,15 @@ void main() {
     expect(find.text('ضع مفتاح'), findsNothing);
     expect(find.textContaining('Gemini'), findsNothing);
 
-    final responseState = find.text('الخلاصة', skipOffstage: false);
-    expect(responseState, findsOneWidget);
-    await tester.ensureVisible(responseState);
+    final input = find.byType(TextField);
+    expect(input, findsOneWidget);
+    await tester.ensureVisible(input);
+    await tester.enterText(input, 'فين أكبر فرصة أوفر منها هذا الشهر؟');
+    await tester.testTextInput.receiveAction(TextInputAction.send);
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    expect(find.text('الخلاصة', skipOffstage: false), findsOneWidget);
     expect(find.text('الحقائق المستخدمة', skipOffstage: false), findsOneWidget);
     expect(find.text('أولويات التنفيذ', skipOffstage: false), findsOneWidget);
     expect(find.text('ملاحظات مهمة', skipOffstage: false), findsOneWidget);
