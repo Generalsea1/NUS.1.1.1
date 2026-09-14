@@ -60,7 +60,11 @@ void main() {
     expect(find.text('ضع مفتاح'), findsNothing);
     expect(find.textContaining('Gemini'), findsNothing);
 
-    await tester.tap(find.widgetWithText(ActionChip, 'فين أكبر فرصة أوفر منها هذا الشهر؟'));
+    final question = 'فين أكبر فرصة أوفر منها هذا الشهر؟';
+    final questionFinder = find.text(question, skipOffstage: false);
+    expect(questionFinder, findsOneWidget);
+    await tester.ensureVisible(questionFinder);
+    await tester.tap(questionFinder);
     await tester.pumpAndSettle();
 
     expect(find.text('الخلاصة'), findsOneWidget);
