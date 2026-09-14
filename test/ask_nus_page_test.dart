@@ -44,6 +44,13 @@ FinancialAdvisorSnapshot _snapshot() {
 
 void main() {
   testWidgets('Ask NUS presents a structured financial command view', (tester) async {
+    tester.view.physicalSize = const Size(800, 1600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
     await tester.pumpWidget(
       MaterialApp(
         home: AskNusPage(
@@ -61,30 +68,19 @@ void main() {
     expect(find.text('ضع مفتاح'), findsNothing);
     expect(find.textContaining('Gemini'), findsNothing);
 
-    final list = find.byType(ListView).first;
-    await tester.fling(list, const Offset(0, -700), 1000);
-    await tester.pumpAndSettle();
-
-    final input = find.byType(TextField, skipOffstage: false);
+    final input = find.byType(TextField);
     expect(input, findsOneWidget);
-    await tester.ensureVisible(input);
     await tester.enterText(input, 'فين أكبر فرصة أوفر منها هذا الشهر؟');
 
-    final submit = find.byTooltip('اسأل NUS', skipOffstage: false);
+    final submit = find.byTooltip('اسأل NUS');
     expect(submit, findsOneWidget);
-    await tester.ensureVisible(submit);
     await tester.tap(submit);
     await tester.pumpAndSettle();
 
-    final summary = find.text('الخلاصة', skipOffstage: false);
-    await tester.ensureVisible(summary);
-    expect(summary, findsOneWidget);
-    expect(find.text('الحقائق المستخدمة', skipOffstage: false), findsOneWidget);
-    expect(find.text('أولويات التنفيذ', skipOffstage: false), findsOneWidget);
-
-    final warnings = find.text('ملاحظات مهمة', skipOffstage: false);
-    await tester.ensureVisible(warnings);
-    expect(warnings, findsOneWidget);
-    expect(find.textContaining('لا تعتمد على دخل غير مؤكد', skipOffstage: false), findsOneWidget);
+    expect(find.text('الخلاصة'), findsOneWidget);
+    expect(find.text('الحقائق المستخدمة'), findsOneWidget);
+    expect(find.text('أولويات التنفيذ'), findsOneWidget);
+    expect(find.text('ملاحظات مهمة'), findsOneWidget);
+    expect(find.textContaining('لا تعتمد على دخل غير مؤكد'), findsOneWidget);
   });
 }
