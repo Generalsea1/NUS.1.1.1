@@ -64,12 +64,8 @@ void main() {
     expect(find.textContaining('Gemini'), findsNothing);
 
     final responseState = find.text('الخلاصة', skipOffstage: false);
-    await tester.scrollUntilVisible(
-      responseState,
-      500,
-      scrollable: find.byType(ListView).first,
-    );
     expect(responseState, findsOneWidget);
+    await tester.ensureVisible(responseState);
     expect(find.text('الحقائق المستخدمة', skipOffstage: false), findsOneWidget);
     expect(find.text('أولويات التنفيذ', skipOffstage: false), findsOneWidget);
     expect(find.text('ملاحظات مهمة', skipOffstage: false), findsOneWidget);
