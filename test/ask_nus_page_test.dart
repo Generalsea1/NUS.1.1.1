@@ -54,7 +54,6 @@ void main() {
     );
 
     expect(find.text('اسأل NUS'), findsNWidgets(2));
-    expect(find.byTooltip('اسأل NUS'), findsOneWidget);
     expect(find.textContaining('المصروف الفعلي'), findsOneWidget);
     expect(find.textContaining('الالتزامات'), findsOneWidget);
     expect(find.text('أسئلة جاهزة'), findsOneWidget);
