@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../../expenses/application/expense_management_service.dart';
@@ -12,7 +14,6 @@ import '../../obligations/data/supabase_obligation_repository.dart';
 import '../application/cashflow_forecast_service.dart';
 import '../application/financial_engine.dart';
 import '../application/household_intelligence_service.dart';
-import '../domain/financial_alert.dart';
 import 'cashflow_forecast_page.dart';
 import 'financial_goals_page.dart';
 
@@ -48,10 +49,7 @@ class _HouseholdIntelligencePageState extends State<HouseholdIntelligencePage> {
   }
 
   Future<void> _load() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
+    if (mounted) setState(() { _loading = true; _error = null; });
     try {
       final snapshot = await widget.service.analyze(
         userId: widget.userId,
@@ -60,494 +58,311 @@ class _HouseholdIntelligencePageState extends State<HouseholdIntelligencePage> {
         currencyCode: widget.currencyCode,
       );
       if (!mounted) return;
-      setState(() {
-        _snapshot = snapshot;
-        _loading = false;
-      });
+      setState(() { _snapshot = snapshot; _loading = false; });
     } catch (error) {
       if (!mounted) return;
-      setState(() {
-        _error = error;
-        _loading = false;
-      });
+      setState(() { _error = error; _loading = false; });
     }
   }
 
   void _openGoals() {
-    Navigator.of(context).push<void>(
-      MaterialPageRoute(
-        builder: (_) => FinancialGoalsPage(
-          userId: widget.userId,
-          householdCurrencyCode: widget.currencyCode,
-        ),
+    Navigator.of(context).push<void>(MaterialPageRoute(
+      builder: (_) => FinancialGoalsPage(
+        userId: widget.userId,
+        householdCurrencyCode: widget.currencyCode,
       ),
-    );
+    ));
   }
 
-  void _openCashflowForecast() {
-    final expenseService = ExpenseManagementService(
+  void _openForecast() {
+    final expenses = ExpenseManagementService(
       expenseRepository: const SupabaseExpenseRepository(),
       recurringRepository: const SupabaseRecurringExpenseRepository(),
     );
-    final financialEngine = FinancialEngine(
-      incomeService: IncomeSourceService(
-        repository: const SupabaseIncomeSourceRepository(),
-      ),
-      obligationService: const ObligationService(
-        repository: SupabaseObligationRepository(),
-      ),
-      expenseService: expenseService,
+    final engine = FinancialEngine(
+      incomeService: IncomeSourceService(repository: const SupabaseIncomeSourceRepository()),
+      obligationService: const ObligationService(repository: SupabaseObligationRepository()),
+      expenseService: expenses,
     );
-    Navigator.of(context).push<void>(
-      MaterialPageRoute(
-        builder: (_) => CashflowForecastPage(
-          userId: widget.userId,
-          year: widget.year,
-          month: widget.month,
-          currencyCode: widget.currencyCode,
-          service: CashflowForecastService(financialEngine: financialEngine),
-        ),
+    Navigator.of(context).push<void>(MaterialPageRoute(
+      builder: (_) => CashflowForecastPage(
+        userId: widget.userId,
+        year: widget.year,
+        month: widget.month,
+        currencyCode: widget.currencyCode,
+        service: CashflowForecastService(financialEngine: engine),
       ),
-    );
+    ));
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('ذكاء البيت')),
-      body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: _load,
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
-            children: [
-              Text(
-                'ذكاء البيت',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w900,
-                    ),
-              ),
-              const SizedBox(height: 6),
-              const Text(
-                'تحليل موثوق لبياناتك المسجلة فقط — بدون توقعات أو تخمينات.',
-              ),
-              const SizedBox(height: 14),
-              Row(
-                children: [
-                  Expanded(
-                    child: FilledButton.icon(
-                      key: const ValueKey<String>('financial-goals-section-entry'),
-                      onPressed: _openGoals,
-                      icon: const Icon(Icons.flag_rounded),
-                      label: const Text('الأهداف المالية'),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: FilledButton.icon(
-                      key: const ValueKey<String>('cashflow-forecast-entry'),
-                      onPressed: _loading ? null : _openCashflowForecast,
-                      icon: const Icon(Icons.trending_up_rounded),
-                      label: const Text('توقع السيولة'),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 18),
-              if (_loading)
-                const Card(
-                  child: Padding(
-                    padding: EdgeInsets.all(24),
-                    child: Center(child: CircularProgressIndicator()),
-                  ),
-                )
-              else if (_error != null)
-                Card(
-                  key: const ValueKey<String>('household-intelligence-error'),
-                  child: Padding(
-                    padding: const EdgeInsets.all(18),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        const Text('تعذر تحميل ذكاء البيت الآن.'),
-                        const SizedBox(height: 10),
-                        TextButton.icon(
-                          onPressed: _load,
-                          icon: const Icon(Icons.refresh_rounded),
-                          label: const Text('إعادة المحاولة'),
-                        ),
-                      ],
-                    ),
-                  ),
-                )
-              else
-                ..._buildInsights(context, _snapshot!),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  List<Widget> _buildInsights(
-    BuildContext context,
-    HouseholdIntelligenceSnapshot snapshot,
-  ) {
-    final widgets = <Widget>[];
-    final sufficient = snapshot.insights
-        .where((i) => i.dataState == HouseholdDataState.sufficient)
-        .toList();
-    final insufficient = snapshot.insights
-        .where((i) => i.dataState == HouseholdDataState.insufficient)
-        .toList();
-
-    final alerts = _buildAlerts(snapshot);
-    if (alerts.isNotEmpty) {
-      widgets.add(
-        _alertsCard(context, alerts),
-      );
-    }
-
-    final highest = _first(snapshot, 'highest_category');
-    widgets.add(
-      _sectionCard(
-        context,
-        key: const ValueKey<String>('highest-spending-card'),
-        title: 'أعلى بنود الإنفاق',
-        icon: Icons.bar_chart_rounded,
-        child: highest == null
-            ? _insufficientText('مفيش بيانات كفاية.')
-            : _insightBody(highest, context),
-      ),
-    );
-
-    final trend = _first(snapshot, 'monthly_trend');
-    widgets.add(
-      _sectionCard(
-        context,
-        key: const ValueKey<String>('spending-trend-card'),
-        title: 'اتجاه المصروفات',
-        icon: Icons.show_chart_rounded,
-        child: trend == null
-            ? _insufficientText('مفيش بيانات كفاية.')
-            : _insightBody(trend, context, showSeries: true),
-      ),
-    );
-
-    final recurring = _first(snapshot, 'recurring_vs_actual');
-    widgets.add(
-      _sectionCard(
-        context,
-        key: const ValueKey<String>('recurring-burden-card'),
-        title: 'المصروفات المتكررة',
-        icon: Icons.repeat_rounded,
-        child: recurring == null
-            ? _insufficientText('مفيش بيانات كفاية.')
-            : _insightBody(recurring, context),
-      ),
-    );
-
-    final obligation = _first(snapshot, 'obligation_burden');
-    widgets.add(
-      _sectionCard(
-        context,
-        key: const ValueKey<String>('obligation-burden-card'),
-        title: 'ضغط الالتزامات',
-        icon: Icons.event_note_rounded,
-        child: obligation == null
-            ? _insufficientText('مفيش بيانات كفاية.')
-            : _insightBody(obligation, context),
-      ),
-    );
-
-    final comparison = _first(snapshot, 'unusual_months');
-    widgets.add(
-      _sectionCard(
-        context,
-        key: const ValueKey<String>('monthly-comparison-card'),
-        title: 'مقارنة الأشهر',
-        icon: Icons.compare_arrows_rounded,
-        child: comparison == null
-            ? _insufficientText('مفيش بيانات كفاية.')
-            : _insightBody(comparison, context, showSeries: true),
-      ),
-    );
-
-    final categoryChanges = sufficient
-        .where(
-          (insight) =>
-              insight.type == 'category_increasing' ||
-              insight.type == 'category_decreasing',
-        )
-        .take(4)
-        .toList(growable: false);
-    if (categoryChanges.isNotEmpty) {
-      widgets.add(
-        _sectionCard(
-          context,
-          key: const ValueKey<String>('category-changes-card'),
-          title: 'بنود بتزيد أو بتقل',
-          icon: Icons.swap_vert_rounded,
-          child: Column(
-            children: [
-              for (final insight in categoryChanges)
-                _insightBody(insight, context, compact: true),
-            ],
-          ),
-        ),
-      );
-    }
-
-    final stability = _first(snapshot, 'income_stability');
-    final messages = insufficient
-        .where(
-          (i) =>
-              i.type == 'income_stability' ||
-              i.dataState == HouseholdDataState.insufficient,
-        )
-        .toList(growable: false);
-    widgets.add(
-      _sectionCard(
-        context,
-        key: const ValueKey<String>('insufficient-data-card'),
-        title: 'بيانات غير كافية',
-        icon: Icons.info_outline_rounded,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (messages.isEmpty && stability != null)
-              _insightBody(stability, context)
-            else
-              for (final insight in messages.take(4))
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: Text('• ${insight.title}: ${insight.explanation}'),
-                ),
-          ],
-        ),
-      ),
-    );
-
-    return [
-      for (var i = 0; i < widgets.length; i++) ...[
-        if (i > 0) const SizedBox(height: 12),
-        widgets[i],
-      ],
-    ];
-  }
-
-  List<FinancialAlert> _buildAlerts(HouseholdIntelligenceSnapshot snapshot) {
-    final obligation = _first(snapshot, 'obligation_burden');
-    final currentActual = snapshot.periods.isEmpty ? 0 : snapshot.periods.last.valueMinorUnits;
-    final historical = _first(snapshot, 'unusual_months')?.valueMinorUnits;
-    final income = obligation?.comparisonValueMinorUnits ?? 0;
-    final obligations = obligation?.valueMinorUnits ?? 0;
-    if (income <= 0) return const [];
-    return FinancialAlertEngine.evaluate(
-      monthlyIncomeMinorUnits: income,
-      monthlyObligationsMinorUnits: obligations,
-      actualExpensesMinorUnits: currentActual,
-      historicalAverageMinorUnits: historical,
-    );
-  }
-
-  Widget _alertsCard(BuildContext context, List<FinancialAlert> alerts) {
-    return Card(
-      key: const ValueKey<String>('financial-alerts-card'),
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                CircleAvatar(child: Icon(_alertIcon(alerts.first.severity))),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'تنبيهات مالية',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w900,
-                        ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            for (var i = 0; i < alerts.length; i++) ...[
-              if (i > 0) const Divider(height: 20),
-              _alertRow(context, alerts[i]),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _alertRow(BuildContext context, FinancialAlert alert) {
-    final scheme = Theme.of(context).colorScheme;
-    final critical = alert.severity == FinancialAlertSeverity.critical;
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(
-          _alertIcon(alert.severity),
-          color: critical ? scheme.error : scheme.primary,
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                alert.title,
-                style: const TextStyle(fontWeight: FontWeight.w900),
-              ),
-              const SizedBox(height: 4),
-              Text(alert.message),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  IconData _alertIcon(FinancialAlertSeverity severity) {
-    switch (severity) {
-      case FinancialAlertSeverity.critical:
-        return Icons.warning_amber_rounded;
-      case FinancialAlertSeverity.warning:
-        return Icons.priority_high_rounded;
-      case FinancialAlertSeverity.info:
-        return Icons.info_outline_rounded;
-    }
-  }
-
-  HouseholdInsight? _first(
-    HouseholdIntelligenceSnapshot snapshot,
-    String type,
-  ) {
+  HouseholdInsight? _first(HouseholdIntelligenceSnapshot snapshot, String type) {
     for (final insight in snapshot.insights) {
       if (insight.type == type) return insight;
     }
     return null;
   }
 
-  Widget _sectionCard(
-    BuildContext context, {
-    required Key key,
-    required String title,
-    required IconData icon,
-    required Widget child,
-  }) {
-    return Card(
-      key: key,
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                CircleAvatar(child: Icon(icon)),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    title,
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w900,
-                        ),
+  @override
+  Widget build(BuildContext context) {
+    final snapshot = _snapshot;
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('تقارير NUS', style: TextStyle(fontWeight: FontWeight.w900)),
+      ),
+      body: SafeArea(
+        child: RefreshIndicator(
+          onRefresh: _load,
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 34),
+            children: <Widget>[
+              _hero(context),
+              const SizedBox(height: 12),
+              if (_loading)
+                const Card(child: Padding(padding: EdgeInsets.all(28), child: Center(child: CircularProgressIndicator())))
+              else if (_error != null)
+                Card(
+                  key: const ValueKey<String>('household-intelligence-error'),
+                  child: Padding(
+                    padding: const EdgeInsets.all(18),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
+                      const Text('تعذر تحميل التقرير الآن.', style: TextStyle(fontWeight: FontWeight.w900)),
+                      const SizedBox(height: 6),
+                      const Text('لم يتم اختراع أي أرقام. البيانات الحالية بقيت بدون تعديل.'),
+                      const SizedBox(height: 10),
+                      OutlinedButton.icon(onPressed: _load, icon: const Icon(Icons.refresh_rounded), label: const Text('إعادة المحاولة')),
+                    ]),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            child,
-          ],
+                )
+              else if (snapshot != null)
+                ..._report(context, snapshot),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _insightBody(
-    HouseholdInsight insight,
-    BuildContext context, {
-    bool showSeries = false,
-    bool compact = false,
-  }) {
-    final label = insight.categoryCode == null
-        ? null
-        : ExpenseCategories.labelsAr[insight.categoryCode!] ??
-            insight.categoryCode!;
-    final value = insight.valueMinorUnits == null
-        ? null
-        : _minorMoney(insight.valueMinorUnits!);
-    final comparison = insight.comparisonValueMinorUnits == null
-        ? null
-        : _minorMoney(insight.comparisonValueMinorUnits!);
-    return Padding(
-      padding: EdgeInsets.only(bottom: compact ? 8 : 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (label != null)
-            Text(
-              label,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w900,
-                  ),
+  Widget _hero(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(28),
+        gradient: LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft, colors: <Color>[scheme.primary, scheme.secondary]),
+        boxShadow: const <BoxShadow>[BoxShadow(blurRadius: 24, offset: Offset(0, 10), color: Color(0x22000000))],
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
+        Row(children: <Widget>[
+          Container(width: 50, height: 50, decoration: BoxDecoration(color: Colors.white.withValues(alpha: .15), borderRadius: BorderRadius.circular(16)), child: const Icon(Icons.insights_rounded, color: Colors.white, size: 28)),
+          const SizedBox(width: 12),
+          const Expanded(child: Text('لوحة تقارير NUS', style: TextStyle(color: Colors.white, fontSize: 23, fontWeight: FontWeight.w900))),
+        ]),
+        const SizedBox(height: 10),
+        Text('افهم الصورة كاملة من البيانات المسجلة فعلًا.', style: TextStyle(color: Colors.white.withValues(alpha: .92), height: 1.45)),
+        const SizedBox(height: 12),
+        Row(children: <Widget>[
+          Expanded(child: FilledButton.icon(key: const ValueKey<String>('financial-goals-section-entry'), onPressed: _openGoals, style: FilledButton.styleFrom(backgroundColor: Colors.white, foregroundColor: scheme.primary), icon: const Icon(Icons.flag_rounded), label: const Text('الأهداف المالية'))),
+          const SizedBox(width: 10),
+          Expanded(child: OutlinedButton.icon(key: const ValueKey<String>('cashflow-forecast-entry'), onPressed: _loading ? null : _openForecast, style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: BorderSide(color: Colors.white.withValues(alpha: .65))), icon: const Icon(Icons.timeline_rounded), label: const Text('توقع السيولة'))),
+        ]),
+      ]),
+    );
+  }
+
+  List<Widget> _report(BuildContext context, HouseholdIntelligenceSnapshot snapshot) {
+    final trend = _first(snapshot, 'monthly_trend');
+    final highest = _first(snapshot, 'highest_category');
+    final recurring = _first(snapshot, 'recurring_vs_actual');
+    final obligation = _first(snapshot, 'obligation_burden');
+    final comparison = _first(snapshot, 'unusual_months');
+    final changes = snapshot.insights.where((i) => i.type == 'category_increasing' || i.type == 'category_decreasing').take(4).toList(growable: false);
+    final insufficient = snapshot.insights.where((i) => i.dataState == HouseholdDataState.insufficient).take(4).toList(growable: false);
+
+    return <Widget>[
+      if (trend != null) _trendCard(context, trend),
+      const SizedBox(height: 12),
+      _kpiGrid(context, highest, obligation, recurring),
+      const SizedBox(height: 12),
+      if (comparison != null) _section(context, const ValueKey<String>('monthly-comparison-card'), 'مقارنة الأشهر', Icons.compare_arrows_rounded, _insight(context, comparison, series: true)),
+      if (changes.isNotEmpty) ...<Widget>[
+        const SizedBox(height: 12),
+        _section(context, const ValueKey<String>('category-changes-card'), 'بنود بتزيد أو بتقل', Icons.swap_vert_rounded, Column(children: changes.map((i) => _insight(context, i, compact: true)).toList(growable: false))),
+      ],
+      const SizedBox(height: 12),
+      _section(context, const ValueKey<String>('insufficient-data-card'), 'ما نعرفه وما لا نعرفه', Icons.verified_outlined, insufficient.isEmpty
+          ? const Text('البيانات الحالية كافية لإظهار المؤشرات الأساسية.')
+          : Column(crossAxisAlignment: CrossAxisAlignment.start, children: insufficient.map((i) => Padding(padding: const EdgeInsets.only(bottom: 8), child: Text('• ${i.title}: ${i.explanation}'))).toList(growable: false))),
+    ];
+  }
+
+  Widget _trendCard(BuildContext context, HouseholdInsight trend) {
+    final values = trend.periodValues;
+    return _section(
+      context,
+      const ValueKey<String>('spending-trend-card'),
+      'اتجاه المصروفات',
+      Icons.stacked_line_chart_rounded,
+      Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
+        const Text('عرض بصري تاريخي بعمق منظور 3D — من السجل الفعلي فقط.'),
+        const SizedBox(height: 10),
+        SizedBox(
+          height: 210,
+          child: CustomPaint(
+            painter: _PerspectiveChartPainter(
+              values: values.map((item) => item.valueMinorUnits.abs().toDouble()).toList(growable: false),
+              labels: values.map((item) => item.periodLabel).toList(growable: false),
+              primary: Theme.of(context).colorScheme.primary,
             ),
-          Text(insight.explanation),
-          const SizedBox(height: 8),
-          if (value != null)
-            Text(
-              'القيمة المسجلة: $value',
-              style: const TextStyle(fontWeight: FontWeight.w800),
-            ),
-          if (comparison != null)
-            Text(
-              'المقارنة: $comparison',
-              style: const TextStyle(fontWeight: FontWeight.w800),
-            ),
-          if (insight.dataState == HouseholdDataState.insufficient)
-            const Padding(
-              padding: EdgeInsets.only(top: 6),
-              child: Text('البيانات غير كافية للحكم الآمن.'),
-            ),
-          if (showSeries && insight.periodValues.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            for (final point in insight.periodValues)
-              Text(
-                '${point.periodLabel}: ${_minorMoney(point.valueMinorUnits)}',
-              ),
-          ],
-        ],
+            child: const SizedBox.expand(),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(trend.explanation, style: const TextStyle(height: 1.45)),
+      ]),
+    );
+  }
+
+  Widget _kpiGrid(BuildContext context, HouseholdInsight? highest, HouseholdInsight? obligation, HouseholdInsight? recurring) {
+    final scheme = Theme.of(context).colorScheme;
+    final income = obligation?.comparisonValueMinorUnits ?? 0;
+    final obligationValue = obligation?.valueMinorUnits ?? 0;
+    final recurringValue = recurring?.comparisonValueMinorUnits ?? 0;
+    final pressure = income <= 0 ? 0 : (obligationValue.abs() / income.abs()).clamp(0.0, 1.0);
+    final category = highest?.categoryCode == null ? '—' : ExpenseCategories.labelsAr[highest!.categoryCode!] ?? highest.categoryCode!;
+    final categoryAmount = highest?.valueMinorUnits == null ? '—' : _money(highest!.valueMinorUnits!);
+
+    return GridView.count(
+      crossAxisCount: 2,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisSpacing: 10,
+      mainAxisSpacing: 10,
+      childAspectRatio: 1.18,
+      children: <Widget>[
+        _metricCard(context, 'أعلى إنفاق', category, categoryAmount, Icons.pie_chart_rounded),
+        _metricCard(context, 'ضغط الالتزامات', '${(pressure * 100).round()}%', _money(obligationValue), Icons.speed_rounded),
+        _metricCard(context, 'المتكرر المتوقع', _money(recurringValue), 'ليس مصروفًا فعليًا', Icons.repeat_rounded),
+        _metricCard(context, 'جودة البيانات', 'حقيقية', 'بدون تخمين أو تحويل عملات', Icons.verified_rounded),
+      ],
+    );
+  }
+
+  Widget _metricCard(BuildContext context, String title, String value, String subtitle, IconData icon) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: .55)),
+        boxShadow: const <BoxShadow>[BoxShadow(blurRadius: 18, offset: Offset(0, 7), color: Color(0x10000000))],
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
+        Icon(icon, size: 22),
+        const Spacer(),
+        Text(title, style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant, fontWeight: FontWeight.w700)),
+        const SizedBox(height: 4),
+        Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900)),
+        const SizedBox(height: 3),
+        Text(subtitle, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11, color: scheme.onSurfaceVariant)),
+      ]),
+    );
+  }
+
+  Widget _section(BuildContext context, Key key, String title, IconData icon, Widget child) {
+    return Card(
+      key: key,
+      child: Padding(
+        padding: const EdgeInsets.all(17),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
+          Row(children: <Widget>[CircleAvatar(child: Icon(icon)), const SizedBox(width: 10), Expanded(child: Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900)))]),
+          const SizedBox(height: 12),
+          child,
+        ]),
       ),
     );
   }
 
-  Widget _insufficientText(String text) => Text(text);
+  Widget _insight(BuildContext context, HouseholdInsight insight, {bool series = false, bool compact = false}) {
+    final category = insight.categoryCode == null ? null : ExpenseCategories.labelsAr[insight.categoryCode!] ?? insight.categoryCode!;
+    final value = insight.valueMinorUnits == null ? null : _money(insight.valueMinorUnits!);
+    final comparison = insight.comparisonValueMinorUnits == null ? null : _money(insight.comparisonValueMinorUnits!);
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
+      if (category != null) Text(category, style: const TextStyle(fontWeight: FontWeight.w900)),
+      Text(insight.explanation, style: const TextStyle(height: 1.4)),
+      if (value != null) Text('القيمة: $value', style: const TextStyle(fontWeight: FontWeight.w800)),
+      if (comparison != null) Text('المقارنة: $comparison', style: const TextStyle(fontWeight: FontWeight.w800)),
+      if (series && insight.periodValues.isNotEmpty) ...<Widget>[
+        const SizedBox(height: 8),
+        Wrap(spacing: 6, runSpacing: 6, children: insight.periodValues.take(6).map((p) => Chip(label: Text('${p.periodLabel}: ${_money(p.valueMinorUnits)}'))).toList(growable: false)),
+      ],
+      if (insight.dataState == HouseholdDataState.insufficient && !compact) const Padding(padding: EdgeInsets.only(top: 6), child: Text('البيانات غير كافية للحكم الآمن.')),
+    ]);
+  }
 
-  String _minorMoney(int minorUnits) {
+  String _money(int minorUnits) {
     final metadata = CurrencyRegistry.get(widget.currencyCode.trim().toUpperCase());
-    if (metadata.exponent == 0) {
-      return '${_format(minorUnits)} ${metadata.code}';
-    }
+    if (metadata.exponent == 0) return '${_format(minorUnits)} ${metadata.code}';
     final absolute = minorUnits.abs();
     final whole = absolute ~/ metadata.scale;
-    final fraction = (absolute % metadata.scale)
-        .toString()
-        .padLeft(metadata.exponent, '0');
+    final fraction = (absolute % metadata.scale).toString().padLeft(metadata.exponent, '0');
     return '${minorUnits < 0 ? '-' : ''}${_format(whole)}.$fraction ${metadata.code}';
   }
 
   String _format(int value) {
-    final text = value.abs().toString();
+    final raw = value.abs().toString();
     final parts = <String>[];
-    for (var i = text.length; i > 0; i -= 3) {
+    for (var i = raw.length; i > 0; i -= 3) {
       final start = i > 3 ? i - 3 : 0;
-      parts.insert(0, text.substring(start, i));
+      parts.insert(0, raw.substring(start, i));
     }
     return '${value < 0 ? '-' : ''}${parts.join(',')}';
   }
+}
+
+class _PerspectiveChartPainter extends CustomPainter {
+  const _PerspectiveChartPainter({required this.values, required this.labels, required this.primary});
+  final List<double> values;
+  final List<String> labels;
+  final Color primary;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (values.isEmpty) return;
+    final maxValue = values.reduce(math.max);
+    if (maxValue <= 0) return;
+    final baseline = size.height - 28;
+    final chartHeight = size.height - 52;
+    final gap = 9.0;
+    final depth = 8.0;
+    final barWidth = math.max(18.0, (size.width - gap * (values.length + 1)) / values.length);
+
+    canvas.drawLine(Offset(0, baseline), Offset(size.width, baseline), Paint()..color = Colors.grey.withValues(alpha: .25));
+    for (var i = 0; i < values.length; i++) {
+      final x = gap + i * (barWidth + gap);
+      final h = chartHeight * values[i] / maxValue;
+      final top = baseline - h;
+      final front = RRect.fromRectAndRadius(Rect.fromLTWH(x, top, barWidth, h), const Radius.circular(6));
+      final side = Path()..moveTo(x + barWidth, top + 6)..lineTo(x + barWidth + depth, top - 2)..lineTo(x + barWidth + depth, baseline - 2)..lineTo(x + barWidth, baseline)..close();
+      final cap = Path()..moveTo(x, top)..lineTo(x + depth, top - 7)..lineTo(x + barWidth + depth, top - 2)..lineTo(x + barWidth, top + 6)..close();
+      canvas.drawRRect(front.shift(const Offset(0, 5)), Paint()..color = Colors.black.withValues(alpha: .12)..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4));
+      canvas.drawRRect(front, Paint()..color = primary);
+      canvas.drawPath(side, Paint()..color = primary.withValues(alpha: .68));
+      canvas.drawPath(cap, Paint()..color = primary.withValues(alpha: .92));
+
+      if (i < labels.length) {
+        final text = TextPainter(
+          text: TextSpan(text: labels[i], style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.grey)),
+          textDirection: TextDirection.rtl,
+          maxLines: 1,
+          ellipsis: '…',
+        )..layout(maxWidth: barWidth + depth + 8);
+        text.paint(canvas, Offset(x - 2, baseline + 5));
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _PerspectiveChartPainter oldDelegate) => oldDelegate.values != values || oldDelegate.labels != labels || oldDelegate.primary != primary;
 }
