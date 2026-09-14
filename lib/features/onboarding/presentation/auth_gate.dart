@@ -12,24 +12,21 @@ import '../../income/application/income_source_repository.dart';
 import '../../income/data/supabase_income_source_repository.dart';
 import '../../../legacy_main.dart' as legacy;
 import '../../shopping/application/shopping_lifecycle_service.dart';
-import '../../shopping/data/supabase_household_shopping_repository.dart';
 import '../../household/application/household_service.dart';
 import '../../household/application/household_task_service.dart';
 import '../../household/data/supabase_household_repository.dart';
 import '../../household/data/supabase_household_task_repository.dart';
-import '../../household/presentation/household_page.dart';
-import '../../household/domain/household.dart';
 import '../../obligations/application/obligation_service.dart';
 import '../../obligations/data/supabase_obligation_repository.dart';
 import '../application/household_profile_repository.dart';
 import '../application/household_profile_validator.dart';
 import '../data/supabase_household_profile_repository.dart';
 import '../domain/household_profile.dart';
-import '../../today/presentation/nus_today_page.dart';
 import '../../today/presentation/nus_unified_work_page.dart';
 import 'auth_page.dart';
 import 'financial_dashboard_page.dart';
 import 'household_onboarding_page.dart';
+import '../../finance/presentation/nus_financial_home_page.dart';
 
 class AuthGate extends StatefulWidget {
   const AuthGate({
@@ -156,14 +153,10 @@ class _AuthGateState extends State<AuthGate> {
       final supabaseReady = SupabaseService.client != null;
       if (supabaseReady) {
         try {
-          household = await HouseholdService(repository: const SupabaseHouseholdRepository()).getOrCreateForUser(
-            userId: userId,
-          );
-          householdShoppingService = ShoppingLifecycleService(
-            repository: SupabaseHouseholdShoppingRepository(householdId: household.id),
-          );
+          household = await HouseholdService(repository: const SupabaseHouseholdRepository()).getOrCreateForUser(userId: userId);
+          householdShoppingService = ShoppingLifecycleService(repository: SupabaseHouseholdShoppingRepository(householdId: household.id));
         } catch (_) {
-          // Keep Today usable in offline/local-first mode when household sharing is unavailable.
+          // Keep the financial home usable even when household-sharing data is temporarily unavailable.
         }
       }
 
@@ -192,32 +185,6 @@ class _AuthGateState extends State<AuthGate> {
     if (_loadingProfile) return;
     setState(() => _loadingProfile = true);
     await _resolveAuthenticatedUser(_authState);
-  }
-
-  void _openFinance(BuildContext context, HouseholdProfile profile) {
-    Navigator.of(context).push<void>(
-      MaterialPageRoute(
-        builder: (_) => Directionality(
-          textDirection: TextDirection.rtl,
-          child: FinancialDashboardPage(
-            profile: profile,
-            incomeRepository: _incomeRepository,
-            expenseService: widget.expenseService,
-            expenseManagementService: widget.expenseManagementService,
-            onOpenGeneralHome: widget.onOpenGeneralHome,
-            onSignOut: () => _authRepository.signOut(),
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _openHousehold(BuildContext context, String userId) {
-    Navigator.of(context).push<void>(
-      MaterialPageRoute(
-        builder: (_) => HouseholdPage(userId: userId),
-      ),
-    );
   }
 
   void _openUnifiedWork(BuildContext context, String userId) {
@@ -265,42 +232,11 @@ class _AuthGateState extends State<AuthGate> {
       );
     }
 
-    final shoppingService = _householdShoppingService ?? widget.shoppingService;
-    final scheduleStore = widget.scheduleStore;
     return Directionality(
       textDirection: TextDirection.rtl,
-      child: Stack(
-        children: [
-          NusTodayPage(
-            profile: profile,
-            scheduleStore: scheduleStore,
-            expenseManagementService: widget.expenseManagementService,
-            shoppingService: shoppingService,
-            onOpenFinance: () => _openFinance(context, profile),
-            onOpenAppointments: widget.onOpenGeneralHome == null ? null : () => widget.onOpenGeneralHome!(context),
-            onCreateReminder: widget.onCreateReminder,
-          ),
-          PositionedDirectional(
-            end: 20,
-            bottom: 92,
-            child: FloatingActionButton.extended(
-              key: const ValueKey<String>('open-unified-work'),
-              onPressed: scheduleStore == null ? null : () => _openUnifiedWork(context, userId),
-              icon: const Icon(Icons.view_timeline_rounded),
-              label: const Text('العمل الموحد'),
-            ),
-          ),
-          PositionedDirectional(
-            end: 20,
-            bottom: 20,
-            child: FloatingActionButton.extended(
-              key: const ValueKey<String>('open-household-space'),
-              onPressed: () => _openHousehold(context, userId),
-              icon: const Icon(Icons.home_work_outlined),
-              label: Text(_household == null ? 'البيت' : _household!.name),
-            ),
-          ),
-        ],
+      child: NusFinancialHomePage(
+        profile: profile,
+        expenseManagementService: widget.expenseManagementService ?? const ExpenseManagementService(),
       ),
     );
   }
