@@ -117,13 +117,6 @@ class _Nus2AppState extends State<Nus2App> {
     if (mounted) setState(() => _themeMode = mode);
   }
 
-  Future<void> _toggleTheme() async {
-    final next = _themeMode == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark;
-    setState(() => _themeMode = next);
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_themeKey, next == ThemeMode.dark ? 'dark' : 'light');
-  }
-
   ThemeData _theme(Brightness brightness) => ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(
