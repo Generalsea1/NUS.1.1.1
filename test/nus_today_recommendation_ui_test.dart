@@ -29,7 +29,8 @@ void main() {
 
     expect(find.text('NUS'), findsOneWidget);
     expect(find.text('اقتصاد البيت تحت السيطرة'), findsOneWidget);
-    expect(find.text('تعذر تجهيز اللوحة المالية'), findsOneWidget);
+    expect(find.text('اسأل NUS'), findsWidgets);
+    expect(find.text('NUS Copilot'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 }
