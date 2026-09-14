@@ -11,13 +11,6 @@ void _faDiag(String line) {
   FinancialAdvisorDiagnostics.instance.record(line);
 }
 
-class FinancialAdvisorUnavailableException implements Exception {
-  const FinancialAdvisorUnavailableException(this.message);
-  final String message;
-  @override
-  String toString() => message;
-}
-
 enum FinancialAdvisorFailureKind {
   authentication,
   backendUnavailable,
@@ -95,9 +88,9 @@ class SupabaseFinancialAdvisorTransport implements FinancialAdvisorTransport {
       _faDiag('[FA_DIAG] INPUT_STATUS=${error.status}');
       _faDiag('[FA_DIAG] FALLBACK_MESSAGE_SELECTED=${_fallbackMessageIdentifier(error.status, error.details)}');
       throw mapped;
-    } catch (error) {
+    } catch (_) {
       _faDiag('[FA_DIAG] NON_FUNCTION_EXCEPTION');
-      _faDiag('[FA_DIAG] TYPE=${error.runtimeType}');
+      _faDiag('[FA_DIAG] TYPE=unknown');
       throw const FinancialAdvisorException(
         kind: FinancialAdvisorFailureKind.backendUnavailable,
         message: 'تعذر الاتصال بخدمة المستشار المالي. حاول مرة أخرى.',
@@ -113,12 +106,6 @@ class SupabaseFinancialAdvisorTransport implements FinancialAdvisorTransport {
           kind: FinancialAdvisorFailureKind.authentication,
           statusCode: error.status,
           message: message ?? 'يجب تسجيل الدخول لاستخدام المستشار المالي.',
-        );
-      case 409:
-        return FinancialAdvisorException(
-          kind: FinancialAdvisorFailureKind.providerUnavailable,
-          statusCode: error.status,
-          message: message ?? 'اربط حساب Gemini أولًا لاستخدام المستشار المالي.',
         );
       case 429:
         return FinancialAdvisorException(
@@ -136,7 +123,7 @@ class SupabaseFinancialAdvisorTransport implements FinancialAdvisorTransport {
         return FinancialAdvisorException(
           kind: FinancialAdvisorFailureKind.providerUnavailable,
           statusCode: error.status,
-          message: message ?? 'خدمة Gemini غير متاحة حاليًا.',
+          message: message ?? 'خدمة التحليل الذكي غير متاحة حاليًا.',
         );
       case 503:
         return FinancialAdvisorException(
@@ -189,12 +176,10 @@ class SupabaseFinancialAdvisorTransport implements FinancialAdvisorTransport {
   }
 
   String _fallbackMessageIdentifier(int status, dynamic details) {
-    if (status == 409 && _errorMessage(details) == null) return 'legacy_gemini_connection_409';
-    if (status == 409) return 'server_or_client_409_error';
     if (status == 401) return 'authentication_401';
     if (status == 429) return 'rate_limit_429';
     if (status == 422) return 'malformed_response_422';
-    if (status == 502) return 'gemini_unavailable_502';
+    if (status == 502) return 'provider_unavailable_502';
     if (status == 503) return 'backend_unavailable_503';
     if (status == 504) return 'timeout_504';
     return 'generic_${status}';
@@ -204,7 +189,6 @@ class SupabaseFinancialAdvisorTransport implements FinancialAdvisorTransport {
 }
 
 /// Real read-only production provider for the Financial Advisor.
-/// The request comes only from the existing Financial Engine snapshot.
 class FinancialAdvisorProvider implements AiInsightProvider {
   const FinancialAdvisorProvider({this.transport, this.accessTokenReader});
 
@@ -262,9 +246,12 @@ class FinancialAdvisorProvider implements AiInsightProvider {
     }
     final payload = Map<String, dynamic>.from(data);
     if (payload['ok'] != true) {
-      throw const FinancialAdvisorException(
+      final serverMessage = payload['error'];
+      throw FinancialAdvisorException(
         kind: FinancialAdvisorFailureKind.providerUnavailable,
-        message: 'خدمة المستشار المالي لم تُرجع نتيجة صالحة.',
+        message: serverMessage is String && serverMessage.trim().isNotEmpty
+            ? serverMessage.trim()
+            : 'خدمة المستشار المالي لم تُرجع نتيجة صالحة.',
       );
     }
 
@@ -285,18 +272,14 @@ class FinancialAdvisorProvider implements AiInsightProvider {
       );
     }
 
-    final sections = <String>[
-      summary.trim(),
-      if (facts.isNotEmpty) 'الحقائق\n${facts.map((value) => '• $value').join('\n')}',
-      if (advice.isNotEmpty) 'النصيحة\n${advice.map((value) => '• $value').join('\n')}',
-      if (warnings.isNotEmpty) 'تنبيهات\n${warnings.map((value) => '• $value').join('\n')}',
-    ];
-
     return AiInsight(
       id: id.trim(),
-      summary: sections.join('\n\n'),
+      summary: summary.trim(),
       generatedAt: DateTime.parse(generatedAt).toUtc(),
       sourceDomain: 'financial_advisor',
+      facts: facts,
+      advice: advice,
+      warnings: warnings,
     );
   }
 
