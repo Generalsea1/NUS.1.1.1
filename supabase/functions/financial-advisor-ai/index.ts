@@ -15,7 +15,23 @@ const DAILY_LIMIT = 10;
 const ALLOWED_DOMAIN = "financial_engine";
 
 type JsonObject = Record<string, unknown>;
-const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
+
+const ADVISOR_RESPONSE_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    summary: { type: "string" },
+    advice: { type: "array", items: { type: "string" }, maxItems: 8 },
+    warnings: { type: "array", items: { type: "string" }, maxItems: 8 },
+  },
+  required: ["summary", "advice", "warnings"],
+};
+
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+  });
 
 async function getAuthenticatedUser(req: Request) {
   if (!ADMIN) return null;
@@ -26,6 +42,7 @@ async function getAuthenticatedUser(req: Request) {
   const { data, error } = await ADMIN.auth.getUser(jwt);
   return error ? null : data.user ?? null;
 }
+
 function validateRequest(body: unknown) {
   if (!body || typeof body !== "object") return "Invalid JSON request.";
   const record = body as JsonObject;
@@ -42,20 +59,31 @@ function validateRequest(body: unknown) {
   }
   return null;
 }
+
 async function reserveQuota(userId: string) {
   if (!ADMIN) throw new Error("Database client unavailable.");
-  const { data, error } = await ADMIN.rpc("reserve_ai_quota", { p_user_id: userId, p_limit: DAILY_LIMIT, p_ttl_seconds: 120 });
+  const { data, error } = await ADMIN.rpc("reserve_ai_quota", {
+    p_user_id: userId,
+    p_limit: DAILY_LIMIT,
+    p_ttl_seconds: 120,
+  });
   if (error) throw error;
   return typeof data === "string" && data.trim() ? data : null;
 }
+
 async function finalizeQuota(userId: string, reservationId: string) {
   if (!ADMIN) return false;
-  const { data, error } = await ADMIN.rpc("finalize_ai_quota", { p_user_id: userId, p_reservation_id: reservationId });
+  const { data, error } = await ADMIN.rpc("finalize_ai_quota", {
+    p_user_id: userId,
+    p_reservation_id: reservationId,
+  });
   return !error && data === true;
 }
+
 async function releaseQuota(userId: string, reservationId: string) {
   if (ADMIN) await ADMIN.rpc("release_ai_quota", { p_user_id: userId, p_reservation_id: reservationId });
 }
+
 function asStringArray(value: unknown) {
   if (!Array.isArray(value) || value.length > 8) return null;
   const result: string[] = [];
@@ -66,16 +94,42 @@ function asStringArray(value: unknown) {
   return result;
 }
 
+function safeProviderError(raw: string) {
+  try {
+    const parsed = JSON.parse(raw);
+    const error = parsed?.error ?? parsed;
+    return {
+      providerCode: typeof error?.code === "number" ? error.code : null,
+      providerStatus: typeof error?.status === "string" ? error.status : null,
+      providerMessage: typeof error?.message === "string" ? error.message.slice(0, 600) : null,
+    };
+  } catch {
+    return {
+      providerCode: null,
+      providerStatus: null,
+      providerMessage: raw.slice(0, 600).replace(/AIza[0-9A-Za-z_-]{20,}/g, "[REDACTED]"),
+    };
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS_HEADERS });
   if (req.method !== "POST") return json({ ok: false, error: "POST is required." }, 405);
   if (!ADMIN || !GEMINI_API_KEY) return json({ ok: false, error: "خدمة المستشار المالي غير مُهيأة على الخادم." }, 503);
+
   const user = await getAuthenticatedUser(req);
   if (!user) return json({ ok: false, error: "Authentication required." }, 401);
+
   let body: JsonObject;
-  try { body = await req.json() as JsonObject; } catch { return json({ ok: false, error: "Invalid JSON request." }, 400); }
+  try {
+    body = await req.json() as JsonObject;
+  } catch {
+    return json({ ok: false, error: "Invalid JSON request." }, 400);
+  }
+
   const validationError = validateRequest(body);
   if (validationError) return json({ ok: false, error: validationError }, 400);
+
   const reservationId = await reserveQuota(user.id);
   if (!reservationId) return json({ ok: false, error: "لقد وصلت إلى الحد المجاني اليومي للمستشار الذكي.", code: "DAILY_QUOTA_EXCEEDED", limit: DAILY_LIMIT }, 429);
 
@@ -84,6 +138,7 @@ Deno.serve(async (req) => {
   const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(GEMINI_MODEL)}:generateContent`;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
+
   try {
     const response = await fetch(endpoint, {
       method: "POST",
@@ -91,35 +146,80 @@ Deno.serve(async (req) => {
       signal: controller.signal,
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { responseFormat: { text: { mimeType: "APPLICATION_JSON", schema: {
-          type: "object", additionalProperties: false,
-          properties: { summary: { type: "string" }, advice: { type: "array", items: { type: "string" }, maxItems: 8 }, warnings: { type: "array", items: { type: "string" }, maxItems: 8 } },
-          required: ["summary", "advice", "warnings"],
-        } } } },
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: ADVISOR_RESPONSE_SCHEMA,
+        },
       }),
     });
+
     clearTimeout(timeout);
+
     if (!response.ok) {
       const raw = await response.text().catch(() => "");
       await releaseQuota(user.id, reservationId);
-      console.error("financial-advisor-ai provider error", { status: response.status, bodyLength: raw.length });
-      return json({ ok: false, error: response.status === 429 ? "تم الوصول إلى حد استخدام Gemini مؤقتًا. حاول بعد قليل." : "خدمة Gemini غير متاحة حاليًا." }, response.status === 429 ? 429 : 502);
+      const provider = safeProviderError(raw);
+      console.error("GEMINI_PROVIDER_DIAGNOSTIC", {
+        status: response.status,
+        contentType: response.headers.get("content-type"),
+        ...provider,
+      });
+      return json({
+        ok: false,
+        error: response.status === 429
+          ? "تم الوصول إلى حد استخدام Gemini مؤقتًا. حاول بعد قليل."
+          : `Gemini provider error: status=${response.status} | code=${provider.providerCode ?? "unknown"} | type=${provider.providerStatus ?? "unknown"} | message=${provider.providerMessage ?? "unknown"}`,
+      }, response.status === 429 ? 429 : 502);
     }
+
     let payload: JsonObject;
-    try { payload = await response.json() as JsonObject; } catch { await releaseQuota(user.id, reservationId); return json({ ok: false, error: "Gemini returned malformed response data." }, 422); }
+    try {
+      payload = await response.json() as JsonObject;
+    } catch {
+      await releaseQuota(user.id, reservationId);
+      return json({ ok: false, error: "Gemini returned malformed response data." }, 422);
+    }
+
     const candidates = Array.isArray(payload.candidates) ? payload.candidates as JsonObject[] : [];
     const content = candidates[0] && typeof candidates[0].content === "object" ? candidates[0].content as JsonObject : null;
     const parts = content && Array.isArray(content.parts) ? content.parts as JsonObject[] : [];
     const textPart = parts.find((part) => typeof part?.text === "string" && part.text.trim());
-    if (!textPart || typeof textPart.text !== "string") { await releaseQuota(user.id, reservationId); return json({ ok: false, error: "Gemini returned no advisor response." }, 422); }
+    if (!textPart || typeof textPart.text !== "string") {
+      await releaseQuota(user.id, reservationId);
+      return json({ ok: false, error: "Gemini returned no advisor response." }, 422);
+    }
+
     let result: JsonObject;
-    try { result = JSON.parse(textPart.text) as JsonObject; } catch { await releaseQuota(user.id, reservationId); return json({ ok: false, error: "Gemini returned malformed advisor JSON." }, 422); }
+    try {
+      result = JSON.parse(textPart.text) as JsonObject;
+    } catch {
+      await releaseQuota(user.id, reservationId);
+      return json({ ok: false, error: "Gemini returned malformed advisor JSON." }, 422);
+    }
+
     const summary = typeof result.summary === "string" ? result.summary.trim() : "";
     const advice = asStringArray(result.advice);
     const warnings = asStringArray(result.warnings);
-    if (!summary || !advice || !warnings) { await releaseQuota(user.id, reservationId); return json({ ok: false, error: "Gemini response does not match the advisor contract." }, 422); }
-    if (!await finalizeQuota(user.id, reservationId)) return json({ ok: false, error: "تعذر تثبيت استخدام المستشار. حاول مرة أخرى." }, 503);
-    return json({ ok: true, id: crypto.randomUUID(), provider: "gemini", model: GEMINI_MODEL, generatedAt: new Date().toISOString(), summary, facts: context.map((item) => String(item.summary)), advice, warnings });
+    if (!summary || !advice || !warnings) {
+      await releaseQuota(user.id, reservationId);
+      return json({ ok: false, error: "Gemini response does not match the advisor contract." }, 422);
+    }
+
+    if (!await finalizeQuota(user.id, reservationId)) {
+      return json({ ok: false, error: "تعذر تثبيت استخدام المستشار. حاول مرة أخرى." }, 503);
+    }
+
+    return json({
+      ok: true,
+      id: crypto.randomUUID(),
+      provider: "gemini",
+      model: GEMINI_MODEL,
+      generatedAt: new Date().toISOString(),
+      summary,
+      facts: context.map((item) => String(item.summary)),
+      advice,
+      warnings,
+    });
   } catch (error) {
     clearTimeout(timeout);
     await releaseQuota(user.id, reservationId);
