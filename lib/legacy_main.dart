@@ -564,7 +564,7 @@ class _HomePageState extends State<HomePage> {
             'Keep reminders, appointments, shopping, and household tasks in one place.',
             'خلي التذكيرات والمواعيد والمشتريات ومهام البيت في مكان واحد.',
           ),
-          style: TextStyle(color: scheme.onPrimary.withOpacity(.9), height: 1.5),
+          style: TextStyle(color: scheme.onPrimary.withValues(alpha: 0.9), height: 1.5),
         ),
         const SizedBox(height: 18),
         Row(children: [
@@ -580,8 +580,8 @@ class _HomePageState extends State<HomePage> {
     padding: const EdgeInsets.all(12),
     decoration: BoxDecoration(
       borderRadius: BorderRadius.circular(18),
-      color: Colors.white.withOpacity(.12),
-      border: Border.all(color: Colors.white.withOpacity(.15)),
+      color: Colors.white.withValues(alpha: 0.12),
+      border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
     ),
     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Text(label, style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w800)),
