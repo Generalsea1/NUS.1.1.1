@@ -120,7 +120,7 @@ class _NusFinancialHomePageState extends State<NusFinancialHomePage> {
     if (snapshot == null || _tipLoading) return;
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     final String dateKey = DateTime.now().toIso8601String().substring(0, 10);
-    final String key = 'nus.ai.opening_tip.$dateKey.${widget.profile.currencyCode}';
+    final String key = 'nus.ai.opening_tip.${widget.profile.userId}.$dateKey.$_year.${_month.toString().padLeft(2, '0')}.${widget.profile.currencyCode}';
     final String? cached = prefs.getString(key);
     if (cached != null && cached.trim().isNotEmpty) {
       if (mounted) {
