@@ -54,11 +54,10 @@ void main() {
     );
 
     expect(find.text('اسأل NUS'), findsNWidgets(2));
-    expect(find.text('لقطة مالية في ثانية'), findsOneWidget);
-    expect(find.text('اختار السؤال الأسرع'), findsOneWidget);
     expect(find.byTooltip('اسأل NUS'), findsOneWidget);
     expect(find.textContaining('المصروف الفعلي'), findsOneWidget);
     expect(find.textContaining('الالتزامات'), findsOneWidget);
+    expect(find.text('أسئلة جاهزة'), findsOneWidget);
     expect(find.text('ضع مفتاح'), findsNothing);
     expect(find.textContaining('Gemini'), findsNothing);
 
