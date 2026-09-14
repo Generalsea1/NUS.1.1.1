@@ -65,7 +65,11 @@ void main() {
     expect(input, findsOneWidget);
     await tester.ensureVisible(input);
     await tester.enterText(input, 'فين أكبر فرصة أوفر منها هذا الشهر؟');
-    await tester.testTextInput.receiveAction(TextInputAction.send);
+
+    final submit = find.byTooltip('اسأل NUS', skipOffstage: false);
+    expect(submit, findsOneWidget);
+    await tester.ensureVisible(submit);
+    await tester.tap(submit);
     await tester.pumpAndSettle();
 
     expect(find.text('الخلاصة', skipOffstage: false), findsOneWidget);
