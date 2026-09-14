@@ -63,7 +63,9 @@ void main() {
     final question = 'فين أكبر فرصة أوفر منها هذا الشهر؟';
     final questionText = find.text(question, skipOffstage: false);
     expect(questionText, findsOneWidget);
-    await tester.scrollUntilVisible(questionText, 300.0, scrollable: find.byType(Scrollable).first);
+    await tester.drag(find.byType(ListView).first, const Offset(0, -360));
+    await tester.pumpAndSettle();
+    expect(questionText, findsOneWidget);
     await tester.tap(questionText);
     await tester.pumpAndSettle();
 
