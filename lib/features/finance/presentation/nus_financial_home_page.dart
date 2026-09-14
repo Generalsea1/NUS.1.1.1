@@ -243,20 +243,29 @@ class _NusFinancialHomePageState extends State<NusFinancialHomePage> {
     return '${value < 0 ? '-' : ''}${chunks.join(',')}';
   }
 
-  List<MapEntry<String, int>> _categories() {
+  List<MapEntry<String, int>> _allCategories() {
     final List<MapEntry<String, int>> items =
         (_advisorSnapshot?.actualByCategory.entries.toList() ?? <MapEntry<String, int>>[])
           ..removeWhere((MapEntry<String, int> item) => item.value <= 0)
           ..sort((MapEntry<String, int> a, MapEntry<String, int> b) => b.value.compareTo(a.value));
-    return _showAllCategories ? items : items.take(5).toList(growable: false);
+    return items;
+  }
+
+  List<MapEntry<String, int>> _chartCategories(List<MapEntry<String, int>> allCategories) {
+    if (_showAllCategories || allCategories.length <= 5) return allCategories;
+    final List<MapEntry<String, int>> visible = allCategories.take(5).toList(growable: true);
+    final int hiddenTotal = allCategories.skip(5).fold<int>(0, (int sum, MapEntry<String, int> item) => sum + item.value);
+    if (hiddenTotal > 0) visible.add(MapEntry<String, int>('أخرى', hiddenTotal));
+    return visible;
   }
 
   @override
   Widget build(BuildContext context) {
     final ColorScheme scheme = Theme.of(context).colorScheme;
     final FinancialSnapshot? snapshot = _snapshot;
-    final List<MapEntry<String, int>> categories = _categories();
-    final int total = categories.fold<int>(0, (int sum, MapEntry<String, int> item) => sum + item.value);
+    final List<MapEntry<String, int>> allCategories = _allCategories();
+    final List<MapEntry<String, int>> chartCategories = _chartCategories(allCategories);
+    final int total = allCategories.fold<int>(0, (int sum, MapEntry<String, int> item) => sum + item.value);
     final int positionMinor = snapshot?.actualPositionMinorUnits ?? 0;
 
     return Scaffold(
@@ -343,7 +352,7 @@ class _NusFinancialHomePageState extends State<NusFinancialHomePage> {
               else if (_error != null)
                 _errorCard(context)
               else ...<Widget>[
-                _categoryCard(context, categories, total),
+                _categoryCard(context, chartCategories, total, allCategories.length > 5),
                 const SizedBox(height: 12),
                 _budgetCard(context, snapshot),
                 const SizedBox(height: 12),
@@ -414,14 +423,14 @@ class _NusFinancialHomePageState extends State<NusFinancialHomePage> {
     ),
   );
 
-  Widget _categoryCard(BuildContext context, List<MapEntry<String, int>> entries, int total) {
+  Widget _categoryCard(BuildContext context, List<MapEntry<String, int>> entries, int total, bool canExpand) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
           Row(children: <Widget>[
             const Expanded(child: Text('خريطة الإنفاق الفعلي', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900))),
-            if ((_advisorSnapshot?.actualByCategory.length ?? 0) > 5)
+            if (canExpand)
               TextButton(onPressed: () => setState(() => _showAllCategories = !_showAllCategories), child: Text(_showAllCategories ? 'أقل' : 'كل الفئات')),
           ]),
           const SizedBox(height: 10),
