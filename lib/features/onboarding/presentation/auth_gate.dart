@@ -12,7 +12,6 @@ import '../../expenses/data/supabase_expense_repository.dart';
 import '../../expenses/data/supabase_recurring_expense_repository.dart';
 import '../../medications/application/medication_lifecycle_service.dart';
 import '../../shopping/application/shopping_lifecycle_service.dart';
-import '../../finance/presentation/nus_financial_home_page.dart';
 import '../../reminders/presentation/reminders_hub_page.dart';
 import '../application/household_profile_repository.dart';
 import '../application/household_profile_validator.dart';
