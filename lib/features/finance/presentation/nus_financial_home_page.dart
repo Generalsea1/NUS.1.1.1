@@ -120,7 +120,7 @@ class _NusFinancialHomePageState extends State<NusFinancialHomePage> {
     if (snapshot == null || _tipLoading) return;
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     final String dateKey = DateTime.now().toIso8601String().substring(0, 10);
-    final String key = 'nus.ai.opening_tip.${widget.profile.userId}.$dateKey.$_year.${_month.toString().padLeft(2, '0')}.${widget.profile.currencyCode}';
+    final String key = 'nus.ai.opening_tip.v2.${widget.profile.userId}.$dateKey.$_year.${_month.toString().padLeft(2, '0')}.${widget.profile.currencyCode}';
     final String? cached = prefs.getString(key);
     if (cached != null && cached.trim().isNotEmpty) {
       if (mounted) {
@@ -141,7 +141,7 @@ class _NusFinancialHomePageState extends State<NusFinancialHomePage> {
       final AiInsight insight = await _advisor.generateInsight(
         AiInsightRequest(
           objective:
-              'Give one practical evidence-based opening financial tip for the household today. Use only supplied facts. Do not invent numbers, promises, or trends. Maximum 2 sentences. Do not mention the AI provider.',
+              'اكتب نصيحة مالية عملية ومختصرة لرب الأسرة اليوم باللهجة المصرية الطبيعية. استخدم الحقائق المرسلة فقط. لا تخترع أرقامًا أو وعودًا أو اتجاهات. جملتان كحد أقصى. لا تذكر اسم مزود الذكاء الاصطناعي.',
           context: request.context,
         ),
       );
@@ -384,7 +384,7 @@ class _NusFinancialHomePageState extends State<NusFinancialHomePage> {
           Icon(Icons.lightbulb_rounded, color: scheme.onTertiaryContainer),
           const SizedBox(width: 10),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
-            Text('نصيحة NUS', style: TextStyle(fontWeight: FontWeight.w900, color: scheme.onTertiaryContainer)),
+            Text('نصيحة NUS — تحليل حي', style: TextStyle(fontWeight: FontWeight.w900, color: scheme.onTertiaryContainer)),
             const SizedBox(height: 5),
             if (_tipLoading) const LinearProgressIndicator() else Text(_openingTip?.summary ?? '', style: TextStyle(height: 1.45, fontWeight: FontWeight.w600, color: scheme.onTertiaryContainer)),
           ])),
