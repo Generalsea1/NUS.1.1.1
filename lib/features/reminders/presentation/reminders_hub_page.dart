@@ -285,7 +285,7 @@ class _RemindersHubPageState extends State<RemindersHubPage> {
                     children: <Widget>[
                       const Text('كل اللي مهم… في مكان واحد', style: TextStyle(fontSize: 21, fontWeight: FontWeight.w900)),
                       const SizedBox(height: 6),
-                      Text('مواعيدك، أدويةك، والتذكيرات اليومية بدون ما تضيع منك حاجة.', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, height: 1.4)),
+                      Text('مواعيدك، أدويتك، والتذكيرات اليومية بدون ما تضيع منك حاجة.', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, height: 1.4)),
                       const SizedBox(height: 14),
                       Row(
                         children: <Widget>[
