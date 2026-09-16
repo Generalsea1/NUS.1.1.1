@@ -34,35 +34,47 @@ class _NusHomeShellState extends State<NusHomeShell> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack(
-        index: _index,
-        children: <Widget>[
-          NusFinancialHomePage(
-            profile: widget.profile,
-            expenseManagementService: widget.expenseManagementService,
-            onSignOut: widget.onSignOut,
-          ),
-          RemindersHubPage(
-            scheduleStore: widget.scheduleStore,
-            medicationService: widget.medicationService,
-          ),
-        ],
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _index,
-        onDestinationSelected: (value) => setState(() => _index = value),
-        destinations: const <NavigationDestination>[
-          NavigationDestination(
-            icon: Icon(Icons.account_balance_wallet_outlined),
-            selectedIcon: Icon(Icons.account_balance_wallet_rounded),
-            label: 'البيت',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.notifications_none_rounded),
-            selectedIcon: Icon(Icons.notifications_active_rounded),
-            label: 'متنساش مواعيدك',
-          ),
-        ],
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          children: <Widget>[
+            Expanded(
+              child: IndexedStack(
+                index: _index,
+                children: <Widget>[
+                  NusFinancialHomePage(
+                    profile: widget.profile,
+                    expenseManagementService: widget.expenseManagementService,
+                    onSignOut: widget.onSignOut,
+                  ),
+                  RemindersHubPage(
+                    scheduleStore: widget.scheduleStore,
+                    medicationService: widget.medicationService,
+                  ),
+                ],
+              ),
+            ),
+            NavigationBar(
+              selectedIndex: _index,
+              onDestinationSelected: (value) {
+                if (!mounted) return;
+                setState(() => _index = value);
+              },
+              destinations: const <NavigationDestination>[
+                NavigationDestination(
+                  icon: Icon(Icons.account_balance_wallet_outlined),
+                  selectedIcon: Icon(Icons.account_balance_wallet_rounded),
+                  label: 'البيت',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.notifications_none_rounded),
+                  selectedIcon: Icon(Icons.notifications_active_rounded),
+                  label: 'متنساش مواعيدك',
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
