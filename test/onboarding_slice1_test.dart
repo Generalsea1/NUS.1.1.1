@@ -88,6 +88,44 @@ void main() {
     expect(called, isTrue);
   });
 
+  testWidgets('login explains an unconfirmed email instead of showing a generic network error', (tester) async {
+    await tester.pumpWidget(MaterialApp(home: AuthPage(
+      onSignIn: (email, password) async {
+        throw Exception('Email not confirmed');
+      },
+    )));
+
+    await tester.tap(find.text('لديك حساب بالفعل؟ تسجيل الدخول'));
+    await tester.pump();
+    final fields = find.byType(TextFormField);
+    await tester.enterText(fields.at(0), 'user@example.com');
+    await tester.enterText(fields.at(1), 'secret1');
+    await tester.tap(find.text('تسجيل الدخول'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('البريد الإلكتروني لم يتم تأكيده بعد'), findsOneWidget);
+    expect(find.textContaining('راجع الاتصال والإعدادات'), findsNothing);
+  });
+
+  testWidgets('login explains network failures separately from auth failures', (tester) async {
+    await tester.pumpWidget(MaterialApp(home: AuthPage(
+      onSignIn: (email, password) async {
+        throw Exception('SocketException: Failed host lookup');
+      },
+    )));
+
+    await tester.tap(find.text('لديك حساب بالفعل؟ تسجيل الدخول'));
+    await tester.pump();
+    final fields = find.byType(TextFormField);
+    await tester.enterText(fields.at(0), 'user@example.com');
+    await tester.enterText(fields.at(1), 'secret1');
+    await tester.tap(find.text('تسجيل الدخول'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('تعذر الوصول إلى خادم تسجيل الدخول'), findsOneWidget);
+    expect(find.textContaining('راجع الاتصال والإعدادات'), findsNothing);
+  });
+
   testWidgets('persistence failure keeps onboarding on screen with entered data', (tester) async {
     final profiles = FakeProfileRepository()..shouldFailSave = true;
     HouseholdProfile? completed;
