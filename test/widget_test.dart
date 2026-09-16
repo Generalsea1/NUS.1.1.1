@@ -1,12 +1,15 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nus/features/expenses/application/expense_lifecycle_service.dart';
 import 'package:nus/features/expenses/application/expense_management_service.dart';
+import 'package:nus/features/expenses/data/local_expense_repository.dart';
 import 'package:nus/features/expenses/data/supabase_expense_repository.dart';
 import 'package:nus/features/expenses/data/supabase_recurring_expense_repository.dart';
 import 'package:nus/features/medications/application/medication_lifecycle_service.dart';
 import 'package:nus/features/medications/application/medication_reminder_coordinator.dart';
 import 'package:nus/features/medications/data/local_medication_repository.dart';
 import 'package:nus/features/medications/domain/medication_reminder_port.dart';
+import 'package:nus/features/onboarding/domain/household_profile.dart';
+import 'package:nus/features/reminders/presentation/nus_home_shell_v2.dart';
 import 'package:nus/features/shopping/application/shopping_lifecycle_service.dart';
 import 'package:nus/features/shopping/data/local_shopping_repository.dart';
 import 'package:nus/main.dart';
@@ -103,6 +106,51 @@ void main() {
     );
     expect(find.text('Gemini'), findsNothing);
     expect(find.text('ضع مفتاح'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('authenticated shell keeps reminders and real NUS AI navigation visible',
+      (tester) async {
+    final medicationService = MedicationLifecycleService(
+      repository: LocalMedicationRepository(),
+      reminders: MedicationReminderCoordinator(_FakeMedicationReminderPort()),
+    );
+    final expenseManagementService = ExpenseManagementService(
+      expenseRepository: const SupabaseExpenseRepository(),
+      recurringRepository: const SupabaseRecurringExpenseRepository(),
+    );
+    const profile = HouseholdProfile(
+      userId: 'test-user',
+      countryCode: 'EG',
+      region: 'Red Sea',
+      currencyCode: 'EGP',
+      householdSize: 5,
+      adults: 2,
+      children: 3,
+      housingType: 'owned',
+      incomeFrequency: 'monthly',
+      monthlyIncome: 30000,
+      recurringObligations: 0,
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: NusHomeShellV2(
+          profile: profile,
+          expenseManagementService: expenseManagementService,
+          scheduleStore: ScheduleStore(notifications: _FakeReminderScheduler()),
+          medicationService: medicationService,
+          onSignOut: () {},
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('البيت'), findsOneWidget);
+    expect(find.text('مواعيدي وتذكيراتي'), findsOneWidget);
+    expect(find.text('NUS الذكي'), findsOneWidget);
+    expect(find.text('الأدوات'), findsOneWidget);
+    expect(find.text('مركز البيت — كل أدوات NUS في متناولك'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
