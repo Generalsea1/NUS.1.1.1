@@ -4,6 +4,7 @@ import '../../../legacy_main.dart';
 import '../../appointments/data/local_appointment_repository.dart';
 import '../../appointments/domain/appointment.dart';
 import '../../appointments/presentation/appointments_page.dart';
+import '../../finance/presentation/nus_financial_home_page.dart';
 import '../../medications/application/medication_lifecycle_service.dart';
 import '../../medications/presentation/medications_page.dart';
 
