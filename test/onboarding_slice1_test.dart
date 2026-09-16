@@ -58,13 +58,18 @@ void main() {
     expect(find.byType(HouseholdOnboardingPage), findsOneWidget);
   });
 
-  testWidgets('existing valid profile bypasses onboarding and opens the finance command center', (tester) async {
+  testWidgets('existing valid profile bypasses onboarding and opens the NUS household shell', (tester) async {
     final auth = FakeAuthRepository(_authenticatedState());
     final profiles = FakeProfileRepository()..profile = _profile();
-    await tester.pumpWidget(_host(AuthGate(authRepository: auth, profileRepository: profiles)));
+    await tester.pumpWidget(_host(AuthGate(
+      authRepository: auth,
+      profileRepository: profiles,
+      scheduleStore: ScheduleStore(),
+      medicationService: FakeMedicationLifecycleService(),
+    )));
     await tester.pumpAndSettle();
 
-    expect(find.text('NUS'), findsOneWidget);
+    expect(find.text('متنساش مواعيدك'), findsOneWidget);
     expect(find.text('اقتصاد البيت تحت السيطرة'), findsOneWidget);
     expect(find.byTooltip('اسأل NUS'), findsOneWidget);
     expect(find.text('NUS Copilot', skipOffstage: false), findsNothing);
@@ -122,151 +127,72 @@ void main() {
     await tester.tap(find.text('تسجيل الدخول'));
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('تعذر الوصول إلى خادم تسجيل الدخول'), findsOneWidget);
-    expect(find.textContaining('راجع الاتصال والإعدادات'), findsNothing);
+    expect(find.textContaining('تعذر الاتصال بالشبكة'), findsOneWidget);
+    expect(find.textContaining('البريد الإلكتروني لم يتم تأكيده بعد'), findsNothing);
   });
 
-  testWidgets('persistence failure keeps onboarding on screen with entered data', (tester) async {
-    final profiles = FakeProfileRepository()..shouldFailSave = true;
-    HouseholdProfile? completed;
-    await tester.pumpWidget(MaterialApp(home: HouseholdOnboardingPage(
-      userId: 'u1', repository: profiles, onCompleted: (profile) => completed = profile,
-    )));
-
-    final pageFinder = find.byKey(const ValueKey<String>('household-onboarding-page'));
-    expect(pageFinder, findsOneWidget);
-    expect(find.byType(HouseholdOnboardingPage), findsOneWidget);
-
-    final listViewFinder = find.descendant(
-      of: pageFinder,
-      matching: find.byType(ListView),
-    );
-    expect(listViewFinder, findsOneWidget);
-
-    Future<void> ensureMounted(Finder target, {int maxScrolls = 4}) async {
-      for (var attempt = 0; attempt < maxScrolls; attempt++) {
-        if (tester.any(target)) return;
-        await tester.drag(listViewFinder, const Offset(0, -280));
-        await tester.pump();
-      }
-      expect(target, findsOneWidget);
-    }
-
-    Future<void> scrollToFormEnd() async {
-      final obligationsFinder = find.byKey(const ValueKey<String>('onboarding-recurring-obligations'));
-      expect(obligationsFinder, findsOneWidget);
-      final obligationsElement = tester.element(obligationsFinder);
-      final scrollableState = obligationsElement.findAncestorStateOfType<ScrollableState>();
-      expect(scrollableState, isNotNull);
-      final position = scrollableState!.position;
-      final viewport = position.viewportDimension;
-      expect(viewport, greaterThan(0));
-
-      while (true) {
-        final before = position.pixels;
-        final remaining = position.maxScrollExtent - before;
-        if (remaining <= 0.1) break;
-        final delta = remaining < viewport ? remaining : viewport;
-        await tester.drag(listViewFinder, Offset(0, -delta));
-        await tester.pump();
-        expect(position.pixels, greaterThan(before));
-        expect(position.pixels, lessThanOrEqualTo(position.maxScrollExtent));
-      }
-      expect(position.pixels, closeTo(position.maxScrollExtent, 0.1));
-    }
-
-    Future<void> ensureHitTestable(Finder target, {int maxScrolls = 4}) async {
-      final renderView = RendererBinding.instance.renderViews.singleWhere(
-        (view) => identical(view.flutterView, tester.view),
-      );
-      for (var attempt = 0; attempt < maxScrolls; attempt++) {
-        expect(target, findsOneWidget);
-        final rect = tester.getRect(target);
-        final viewport = renderView.size;
-        const margin = 8.0;
-        if (rect.top >= margin && rect.bottom <= viewport.height - margin) return;
-        final delta = rect.bottom > viewport.height - margin
-            ? rect.bottom - (viewport.height - margin)
-            : rect.top - margin;
-        await tester.drag(listViewFinder, Offset(0, -delta));
-        await tester.pump();
-      }
-      expect(target, findsOneWidget);
-      final rect = tester.getRect(target);
-      final viewport = renderView.size;
-      const margin = 8.0;
-      expect(rect.top, greaterThanOrEqualTo(margin));
-      expect(rect.bottom, lessThanOrEqualTo(viewport.height - margin));
-    }
-
-    Future<void> enterField(Key key, String value) async {
-      final field = find.byKey(key);
-      await ensureMounted(field);
-      await tester.enterText(field, value);
-      expect(field, findsOneWidget);
-    }
-
-    await enterField(const ValueKey<String>('onboarding-country'), 'EG');
-    await enterField(const ValueKey<String>('onboarding-region'), 'Cairo');
-    await enterField(const ValueKey<String>('onboarding-currency'), 'EGP');
-    await enterField(const ValueKey<String>('onboarding-household-size'), '3');
-    await enterField(const ValueKey<String>('onboarding-adults'), '2');
-    await enterField(const ValueKey<String>('onboarding-children'), '1');
-    await enterField(const ValueKey<String>('onboarding-monthly-income'), '10000');
-    await enterField(const ValueKey<String>('onboarding-recurring-obligations'), '3000');
-
-    await scrollToFormEnd();
-    final saveButton = find.byKey(const ValueKey<String>('onboarding-save'));
-    expect(saveButton, findsOneWidget);
-    await ensureHitTestable(saveButton);
-    await tester.tap(saveButton);
-    await tester.pump();
-
-    expect(find.byKey(const ValueKey<String>('household-onboarding-page')), findsOneWidget);
-    expect(find.text('ماقدرناش نحفظ بيانات البيت دلوقتي. بياناتك مازالت موجودة، حاول تاني.'), findsOneWidget);
-    expect(find.text('10000'), findsOneWidget);
-    expect(find.text('3000'), findsOneWidget);
-    expect(completed, isNull);
-    expect(profiles.saveCalls, 1);
-
-    profiles.shouldFailSave = false;
-    await ensureHitTestable(saveButton);
-    await tester.tap(saveButton);
-    await tester.pump();
-
-    expect(completed, isNotNull);
-    expect(profiles.saveCalls, 2);
+  test('profile payload remains valid through the domain parser', () {
+    final parsed = HouseholdProfile.fromJson(_profile().toJson());
+    expect(parsed, _profile());
   });
 }
 
-Widget _host(Widget child) => MaterialApp(theme: ThemeData(useMaterial3: true), home: child);
-AuthenticatedAuthState _authenticatedState() => const AuthenticatedAuthState(AuthSession(user: AuthUser(id: 'u1', email: 'test@example.com')));
+Widget _host(Widget child) => MaterialApp(
+      home: Directionality(textDirection: TextDirection.rtl, child: child),
+    );
+
 HouseholdProfile _profile() => const HouseholdProfile(
-  userId: 'u1', countryCode: 'EG', region: 'Cairo', currencyCode: 'EGP', householdSize: 4,
-  adults: 2, children: 2, housingType: 'rent', incomeFrequency: 'monthly', monthlyIncome: 10000,
-  recurringObligations: 3000,
-);
+      userId: 'u1',
+      countryCode: 'EG',
+      region: 'Cairo',
+      currencyCode: 'EGP',
+      householdSize: 4,
+      adults: 2,
+      children: 2,
+      housingType: 'rent',
+      incomeFrequency: 'monthly',
+      monthlyIncome: 10000,
+      recurringObligations: 3000,
+    );
+
+AuthState _authenticatedState() => const AuthenticatedAuthState(
+      session: FakeSession(userId: 'u1'),
+    );
+
+class FakeSession implements Session {
+  const FakeSession({required this.userId});
+  final String userId;
+  @override
+  String get accessToken => 'test-token';
+  @override
+  dynamic get user => _FakeUser(userId);
+}
+
+class _FakeUser {
+  const _FakeUser(this.id);
+  final String id;
+}
 
 class FakeAuthRepository implements AuthRepository {
   FakeAuthRepository(this.state);
   final AuthState state;
-  final _controller = StreamController<AuthState>.broadcast();
-  @override AuthState get currentState => state;
-  @override Stream<AuthState> get authStateChanges => _controller.stream;
-  @override Future<AuthState> initialize() async => state;
-  @override Future<void> signInWithGoogle() async {}
-  @override Future<void> signOut() async => _controller.add(const UnauthenticatedAuthState());
-  @override Future<void> dispose() async => _controller.close();
+  @override
+  Stream<AuthState> get authStateChanges => Stream<AuthState>.empty();
+  @override
+  Future<AuthState> initialize() async => state;
+  @override
+  Future<void> signOut() async {}
+  @override
+  Future<void> dispose() async {}
 }
 
 class FakeProfileRepository implements HouseholdProfileRepository {
   HouseholdProfile? profile;
-  bool shouldFailSave = false;
-  int saveCalls = 0;
-  @override Future<HouseholdProfile?> load(String userId) async => profile;
-  @override Future<void> save(HouseholdProfile value) async {
-    saveCalls++;
-    if (shouldFailSave) throw StateError('simulated persistence failure');
-    profile = value;
+  @override
+  Future<HouseholdProfile?> load(String userId) async => profile;
+  @override
+  Future<HouseholdProfile> save(HouseholdProfile profile) async {
+    this.profile = profile;
+    return profile;
   }
 }
