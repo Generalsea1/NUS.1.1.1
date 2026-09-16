@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/auth/email_auth_repository.dart';
 
@@ -86,17 +87,48 @@ class _AuthPageState extends State<AuthPage> {
   }
 
   String _authError(Object error) {
+    if (error is AuthException) {
+      switch (error.code) {
+        case 'email_not_confirmed':
+          return 'البريد الإلكتروني لم يتم تأكيده بعد. افتح رسالة التأكيد في بريدك ثم حاول تسجيل الدخول.';
+        case 'invalid_credentials':
+          return 'البريد الإلكتروني أو كلمة المرور غير صحيحة.';
+        case 'email_address_invalid':
+          return 'عنوان البريد الإلكتروني غير صالح.';
+        case 'too_many_requests':
+          return 'تم تكرار المحاولة بسرعة. انتظر قليلًا ثم حاول مرة أخرى.';
+      }
+    }
+
     final text = error.toString().replaceFirst('Exception: ', '').trim();
-    if (text.contains('Invalid login credentials')) {
+    final normalized = text.toLowerCase();
+    if (normalized.contains('email not confirmed') ||
+        normalized.contains('email_not_confirmed')) {
+      return 'البريد الإلكتروني لم يتم تأكيده بعد. افتح رسالة التأكيد في بريدك ثم حاول تسجيل الدخول.';
+    }
+    if (normalized.contains('invalid login credentials') ||
+        normalized.contains('invalid_credentials')) {
       return 'البريد الإلكتروني أو كلمة المرور غير صحيحة.';
     }
-    if (text.contains('User already registered')) {
+    if (normalized.contains('user already registered')) {
       return 'هذا البريد مسجّل بالفعل. استخدم تسجيل الدخول.';
     }
-    if (text.contains('Unsupported provider')) {
+    if (normalized.contains('unsupported provider')) {
       return 'طريقة الدخول دي غير مفعّلة على الخادم. استخدم البريد وكلمة المرور.';
     }
-    if (text.contains('email')) return text;
+    if (normalized.contains('failed host lookup') ||
+        normalized.contains('socketexception') ||
+        normalized.contains('connection refused') ||
+        normalized.contains('connection reset') ||
+        normalized.contains('network is unreachable') ||
+        normalized.contains('failed to fetch')) {
+      return 'تعذر الوصول إلى خادم تسجيل الدخول. تأكد من اتصال الإنترنت ثم حاول مرة أخرى.';
+    }
+    if (normalized.contains('supabase authentication is not configured') ||
+        normalized.contains('configuration')) {
+      return 'إعدادات تسجيل الدخول في هذه النسخة غير مكتملة.';
+    }
+    if (normalized.contains('email')) return text;
     return 'تعذر إتمام العملية الآن. راجع الاتصال والإعدادات ثم حاول مرة أخرى.';
   }
 
