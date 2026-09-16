@@ -12,7 +12,7 @@ import '../../expenses/data/supabase_expense_repository.dart';
 import '../../expenses/data/supabase_recurring_expense_repository.dart';
 import '../../medications/application/medication_lifecycle_service.dart';
 import '../../shopping/application/shopping_lifecycle_service.dart';
-import '../../reminders/presentation/reminders_hub_page.dart';
+import '../../reminders/presentation/nus_home_shell_v2.dart';
 import '../application/household_profile_repository.dart';
 import '../application/household_profile_validator.dart';
 import '../data/supabase_household_profile_repository.dart';
@@ -196,7 +196,7 @@ class _AuthGateState extends State<AuthGate> {
 
     return Directionality(
       textDirection: TextDirection.rtl,
-      child: NusHomeShell(
+      child: NusHomeShellV2(
         profile: profile,
         expenseManagementService: _expenseService,
         scheduleStore: store,
