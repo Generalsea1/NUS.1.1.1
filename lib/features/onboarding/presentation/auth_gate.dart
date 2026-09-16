@@ -5,16 +5,19 @@ import 'package:flutter/material.dart';
 import '../../../core/auth/auth_repository.dart';
 import '../../../core/auth/auth_state.dart';
 import '../../../core/auth/supabase_auth_repository.dart';
+import '../../../legacy_main.dart';
 import '../../expenses/application/expense_lifecycle_service.dart';
 import '../../expenses/application/expense_management_service.dart';
 import '../../expenses/data/supabase_expense_repository.dart';
 import '../../expenses/data/supabase_recurring_expense_repository.dart';
+import '../../medications/application/medication_lifecycle_service.dart';
 import '../../shopping/application/shopping_lifecycle_service.dart';
+import '../../finance/presentation/nus_financial_home_page.dart';
+import '../../reminders/presentation/reminders_hub_page.dart';
 import '../application/household_profile_repository.dart';
 import '../application/household_profile_validator.dart';
 import '../data/supabase_household_profile_repository.dart';
 import '../domain/household_profile.dart';
-import '../../finance/presentation/nus_financial_home_page.dart';
 import 'auth_page.dart';
 import 'household_onboarding_page.dart';
 
@@ -29,6 +32,7 @@ class AuthGate extends StatefulWidget {
     this.shoppingService,
     this.onCreateReminder,
     this.scheduleStore,
+    this.medicationService,
     this.taskService,
     this.obligationService,
   });
@@ -40,7 +44,8 @@ class AuthGate extends StatefulWidget {
   final ExpenseManagementService? expenseManagementService;
   final ShoppingLifecycleService? shoppingService;
   final Future<void> Function(String title, DateTime dateTime)? onCreateReminder;
-  final dynamic scheduleStore;
+  final ScheduleStore? scheduleStore;
+  final MedicationLifecycleService? medicationService;
   final dynamic taskService;
   final dynamic obligationService;
 
@@ -181,11 +186,22 @@ class _AuthGateState extends State<AuthGate> {
       );
     }
 
+    final ScheduleStore? store = widget.scheduleStore;
+    final MedicationLifecycleService? medicationService = widget.medicationService;
+    if (store == null || medicationService == null) {
+      return _ErrorView(
+        message: 'تعذر تجهيز قسم المواعيد والتذكيرات. أعد تشغيل التطبيق لتجهيز خدمات التذكير.',
+        onRetry: _retryProfile,
+      );
+    }
+
     return Directionality(
       textDirection: TextDirection.rtl,
-      child: NusFinancialHomePage(
+      child: NusHomeShell(
         profile: profile,
         expenseManagementService: _expenseService,
+        scheduleStore: store,
+        medicationService: medicationService,
         onSignOut: () => _authRepository.signOut(),
       ),
     );
