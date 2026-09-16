@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../expenses/application/expense_management_service.dart';
 import '../../finance/application/financial_advisor.dart';
-import '../../finance/application/financial_advisor_provider.dart';
 import '../../finance/application/financial_engine.dart';
 import '../../income/application/income_source_service.dart';
 import '../../income/data/supabase_income_source_repository.dart';
@@ -55,18 +54,19 @@ class _NusAiCommandPageState extends State<NusAiCommandPage> {
         _error = null;
       });
     }
+    final now = DateTime.now();
     try {
       final snapshot = await _engine.calculate(
         userId: widget.profile.userId,
-        year: DateTime.now().year,
-        month: DateTime.now().month,
+        year: now.year,
+        month: now.month,
         currencyCode: widget.profile.currencyCode,
       );
       Map<String, int> categories = const <String, int>{};
       try {
         categories = await widget.expenseManagementService.monthlyActualByCategory(
-          year: DateTime.now().year,
-          month: DateTime.now().month,
+          year: now.year,
+          month: now.month,
           currencyCode: widget.profile.currencyCode,
         );
       } catch (_) {}
@@ -89,7 +89,6 @@ class _NusAiCommandPageState extends State<NusAiCommandPage> {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     if (_loading) {
       return const Scaffold(
         appBar: _AiAppBar(),
@@ -98,6 +97,7 @@ class _NusAiCommandPageState extends State<NusAiCommandPage> {
     }
     final snapshot = _snapshot;
     if (snapshot == null) {
+      final scheme = Theme.of(context).colorScheme;
       return Scaffold(
         appBar: const _AiAppBar(),
         body: Center(
@@ -112,11 +112,19 @@ class _NusAiCommandPageState extends State<NusAiCommandPage> {
                   children: <Widget>[
                     Icon(Icons.auto_awesome_rounded, size: 42, color: scheme.onErrorContainer),
                     const SizedBox(height: 10),
-                    Text('المستشار الذكي لم يستطع قراءة البيانات المالية.', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w900, color: scheme.onErrorContainer)),
+                    Text(
+                      'المستشار الذكي لم يستطع قراءة البيانات المالية.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontWeight: FontWeight.w900, color: scheme.onErrorContainer),
+                    ),
                     const SizedBox(height: 8),
                     Text(_error ?? 'خطأ غير معروف.', textAlign: TextAlign.center, style: TextStyle(color: scheme.onErrorContainer)),
                     const SizedBox(height: 14),
-                    FilledButton.icon(onPressed: _loadSnapshot, icon: const Icon(Icons.refresh_rounded), label: const Text('إعادة قراءة البيانات')),
+                    FilledButton.icon(
+                      onPressed: _loadSnapshot,
+                      icon: const Icon(Icons.refresh_rounded),
+                      label: const Text('إعادة قراءة البيانات'),
+                    ),
                   ],
                 ),
               ),
@@ -125,7 +133,6 @@ class _NusAiCommandPageState extends State<NusAiCommandPage> {
         ),
       );
     }
-
     return AskNusPage(snapshot: snapshot);
   }
 }
@@ -136,13 +143,6 @@ class _AiAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) => AppBar(
         title: const Text('NUS الذكي', style: TextStyle(fontWeight: FontWeight.w900)),
-        actions: <Widget>[
-          IconButton(
-            onPressed: () {},
-            icon: const Icon(Icons.auto_awesome_rounded),
-            tooltip: 'ذكاء اصطناعي حقيقي',
-          ),
-        ],
       );
 
   @override
