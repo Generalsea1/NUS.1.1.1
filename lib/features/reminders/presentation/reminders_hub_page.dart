@@ -4,6 +4,7 @@ import '../../../legacy_main.dart';
 import '../../appointments/data/local_appointment_repository.dart';
 import '../../appointments/domain/appointment.dart';
 import '../../appointments/presentation/appointments_page.dart';
+import '../../finance/presentation/nus_ai_command_page.dart';
 import '../../finance/presentation/nus_financial_home_page.dart';
 import '../../medications/application/medication_lifecycle_service.dart';
 import '../../medications/presentation/medications_page.dart';
@@ -51,6 +52,10 @@ class _NusHomeShellState extends State<NusHomeShell> {
                     scheduleStore: widget.scheduleStore,
                     medicationService: widget.medicationService,
                   ),
+                  NusAiCommandPage(
+                    profile: widget.profile,
+                    expenseManagementService: widget.expenseManagementService,
+                  ),
                 ],
               ),
             ),
@@ -70,6 +75,11 @@ class _NusHomeShellState extends State<NusHomeShell> {
                   icon: Icon(Icons.notifications_none_rounded),
                   selectedIcon: Icon(Icons.notifications_active_rounded),
                   label: 'متنساش مواعيدك',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.auto_awesome_outlined),
+                  selectedIcon: Icon(Icons.auto_awesome_rounded),
+                  label: 'NUS الذكي',
                 ),
               ],
             ),
