@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nus/features/expenses/application/expense_lifecycle_service.dart';
 import 'package:nus/features/expenses/application/expense_management_service.dart';
-import 'package:nus/features/expenses/data/local_expense_repository.dart';
 import 'package:nus/features/expenses/data/supabase_expense_repository.dart';
 import 'package:nus/features/expenses/data/supabase_recurring_expense_repository.dart';
 import 'package:nus/features/medications/application/medication_lifecycle_service.dart';
