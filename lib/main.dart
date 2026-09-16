@@ -156,6 +156,7 @@ class _Nus2AppState extends State<Nus2App> {
       themeMode: _themeMode,
       home: AuthGate(
         scheduleStore: widget.store,
+        medicationService: widget.medicationService,
         expenseService: widget.expenseService,
         expenseManagementService: widget.expenseManagementService,
         shoppingService: widget.shoppingService,
