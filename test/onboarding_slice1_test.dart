@@ -80,7 +80,8 @@ void main() {
       scheduleStore: ScheduleStore(),
       medicationService: medicationService,
     )));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
 
     expect(find.text('متنساش مواعيدك'), findsOneWidget);
     expect(find.text('اقتصاد البيت تحت السيطرة'), findsOneWidget);
